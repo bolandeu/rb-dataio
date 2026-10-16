@@ -23,9 +23,12 @@ owns_paths:
 - src/rb_dataio/core/dataio/pipeline.py
 - src/rb_dataio/core/errors.py
 - src/rb_dataio/formats/__init__.py
+- src/rb_dataio/commands/backups.py
 test_paths:
 - tests/test_sqlite.py
 - tests/data/bases_core/formats/testbase.py
+- tests/snapshots/describe.json
+- tests/snapshots/help/backups.txt
 docs: none
 tools: []
 worker_args: null
@@ -85,3 +88,13 @@ The base contract of the core (DATAIO-011) and the container contract (DATAIO-00
 ### Blocked: scope_held (holders ['DATAIO-009'], paths ['src/rb_dataio/core/dataio/pipeline.py', 'src/rb_dataio/core/errors.py', 'src/rb_dataio/formats/__init__.py'])
 
 DATAIO-009 finished; your kept work on src/rb_dataio/core/dataio/pipeline.py, src/rb_dataio/core/errors.py, src/rb_dataio/formats/__init__.py is back in the worktree; main is merged into your branch where it merges clean
+
+### Attempt 0 (not counted): main moved and conflicts with the work
+
+`main` changed since your work began, and merging it conflicts in:
+
+- `src/rb_dataio/commands/backups.py`
+- `tests/snapshots/describe.json`
+- `tests/snapshots/help/backups.txt`
+
+Merge it into your branch (`git merge main`), resolve each file keeping both behaviours, `git add` it and run the checks; do not commit: Antagor commits the merge with your work when the round ends (IDEA-201).
