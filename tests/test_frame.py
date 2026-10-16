@@ -87,6 +87,9 @@ def test_dry_run_reports_and_writes_nothing(workdir: Path) -> None:
         "mode": "replace",
         "rows": 3,
         "columns": ["phrase", "freq"],
+        "exists": False,
+        "rows_before": 0,
+        "rows_after": 3,
     }
     assert not (workdir / "b.csv").exists()
 

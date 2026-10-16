@@ -52,6 +52,15 @@ uv tool install "rb-dataio @ git+ssh://git@github.com/bolandeu/rb-dataio.git@vX.
   and `--confirm`. Always: run with `--dry-run`, show the user, get
   explicit sign-off, then `--confirm --non-interactive`. Never chain
   straight to `--confirm` without a human having seen the dry-run.
+  In dataio these are `restore` (it replaces a target with a backup) and a
+  `convert` whose target is its own source (it asks first; under
+  `--non-interactive` it is refused until `--confirm`): get the user's
+  sign-off before `--confirm`.
+- **Every replace keeps a backup.** Before a write replaces an existing
+  target, dataio keeps its old content; `backups --json` lists them and
+  `restore ID` brings one back. Read `warnings` in the report: a replace
+  that drops most rows or loses columns says so — show it to the user,
+  who may want it restored. `--no-backup` only for throwaway targets.
 - **`doctor --json`** first when something looks off — it reports
   project, config, version compatibility and credential readiness.
 - **`describe --json`** — the whole CLI as one machine-readable OpenCLI

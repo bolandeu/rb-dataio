@@ -5,6 +5,7 @@
 
  Options both sides have take --in- (the source) or --out- (the target).
  With --dry-run the report comes back and nothing is written.
+ A TARGET that is the SOURCE itself asks first: --confirm skips the question.
 
  Example: dataio convert a.csv b.csv --json
 
@@ -58,6 +59,9 @@
 │                                                              [default: backup]                   │
 │ --dry-run                                                    Show what would happen without      │
 │                                                              making changes.                     │
+│ --confirm                                                    Confirm a destructive action        │
+│                                                              (required together with             │
+│                                                              --non-interactive).                 │
 │ --json                                                       Emit machine-readable JSON output.  │
 │ --quiet                                                      Suppress non-essential output.      │
 │ --help                                                       Show this message and exit.         │

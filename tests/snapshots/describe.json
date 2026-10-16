@@ -320,7 +320,7 @@
       },
       {
         "name": "convert",
-        "description": "Read a table from SOURCE and write it to TARGET; report both sides.\n\nOptions both sides have take --in- (the source) or --out- (the target).\nWith --dry-run the report comes back and nothing is written.\n\nExample: dataio convert a.csv b.csv --json",
+        "description": "Read a table from SOURCE and write it to TARGET; report both sides.\n\nOptions both sides have take --in- (the source) or --out- (the target).\nWith --dry-run the report comes back and nothing is written.\nA TARGET that is the SOURCE itself asks first: --confirm skips the question.\n\nExample: dataio convert a.csv b.csv --json",
         "options": [
           {
             "name": "--in-format",
@@ -647,6 +647,20 @@
           {
             "name": "--dry-run",
             "description": "Show what would happen without making changes.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--confirm",
+            "description": "Confirm a destructive action (required together with --non-interactive).",
             "metadata": [
               {
                 "name": "x-rb-type",
@@ -991,7 +1005,7 @@
       },
       {
         "name": "restore",
-        "description": "Bring a target back from a backup. Not available in this release yet.\n\nExample: dataio restore --dry-run --json",
+        "description": "Bring a target back from a backup (the newest without ID); what it holds now is backed up first.\n\nIt replaces the target, so it asks first: --confirm skips the question.\nWith --dry-run the report shows the target before and after, and nothing changes.\n\nExample: dataio restore --dry-run --json",
         "options": [
           {
             "name": "--dry-run",
@@ -1592,7 +1606,13 @@
         "value": {
           "user_data_dir": {
             "appname": "dataio",
-            "files": []
+            "files": [
+              {
+                "path": "backups/*/*",
+                "kind": "data",
+                "description": "Backups: the old content of each replaced target and its entry (id, time, target, rows)"
+              }
+            ]
           }
         }
       },

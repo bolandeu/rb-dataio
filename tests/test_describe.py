@@ -104,6 +104,19 @@ def test_root_metadata() -> None:
     assert len(names) == len(set(names))
 
 
+def test_backup_store_is_in_the_data() -> None:
+    files = _meta(DOCUMENT["command"])["x-rb-data"]["user_data_dir"]["files"]
+    assert [entry["path"] for entry in files if entry["kind"] == "data"] == ["backups/*/*"]
+
+
+def test_skill_names_the_destructive_actions() -> None:
+    """The bundled SKILL.md: restore and a convert over its source are destructive, signed off before --confirm."""
+    skill = (Path(opencli.__file__).parents[1] / "data" / "SKILL.md").read_text()
+    [rule] = [line for line in skill.split("\n- ") if line.startswith("**Destructive")]
+    words = set(re.findall(r"[\w-]+", rule))
+    assert {"restore", "convert", "source", "sign-off", "--confirm", "--dry-run"} <= words
+
+
 class DescribeSnapshot(SingleFileSnapshotExtension):
     """tests/snapshots/describe.json, pretty-printed for readable diffs."""
 
