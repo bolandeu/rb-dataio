@@ -7,6 +7,9 @@ from pathlib import Path
 import platformdirs
 import pytest
 
+from rb_dataio.core.dataio.options import ReadOptions
+from rb_dataio.formats import Loaded, TextAdapter
+
 
 @pytest.fixture
 def data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
@@ -20,3 +23,17 @@ def data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     path = platformdirs.user_data_path("dataio")
     assert path.is_relative_to(home)
     return path
+
+
+@pytest.fixture
+def reads(monkeypatch: pytest.MonkeyPatch) -> list[Path]:
+    """The paths the text adapters were asked to read, in order."""
+    paths: list[Path] = []
+    original = TextAdapter.read
+
+    def counting(self: TextAdapter, path: Path, options: ReadOptions) -> Loaded:
+        paths.append(path)
+        return original(self, path, options)
+
+    monkeypatch.setattr(TextAdapter, "read", counting)
+    return paths

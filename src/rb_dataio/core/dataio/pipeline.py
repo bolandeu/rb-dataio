@@ -7,6 +7,7 @@
 A source is an address, a text or a Python object (objects.py); a target is an address,
 or none for `write()` to return the data. `-` is stdin or stdout (stdio.py); local paths
 are the files; the other schemes are recognised and refused with FORMAT_UNSUPPORTED until their tasks.
+`refuse_over_source` stops `convert` before it reads a source that is also its target.
 """
 
 from __future__ import annotations
@@ -100,8 +101,14 @@ def _load(source: object, options: ReadOptions) -> tuple[str, Loaded]:
     return adapter.name, adapter.read(path, options)
 
 
-def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions, source: str | None = None) -> Report:
-    """Write `frame` to `target`; `source` is the address `convert` read, so a write over it is caught."""
+def refuse_over_source(source: str, target: str, options: WriteOptions) -> None:
+    """Raise WriteOverSource when `convert` would write over its own source; called before the source is read."""
+    if not options.dry_run:
+        protection.check_over_source(_address(target, options), parse(source), options.overwrite)
+
+
+def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Report:
+    """Write `frame` to `target`."""
     address = _address(target, options)
     if address.scheme == STDIO:
         return _write_stdout(frame, target, options)
@@ -113,19 +120,13 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions, source:
         raise _unable(adapter.name, "append")
     if options.mode is Mode.ERROR and path.exists():
         raise TargetExists(target)
-    before = _state(target, path, options)
+    keep = options.backup and options.mode is Mode.REPLACE
+    before = _state(target, path, options, parse=keep or options.dry_run)
     part = TargetPart(uri=target, format=adapter.name, mode=options.mode, rows=len(frame), columns=column_names(frame))
     if options.dry_run:
         return Report(target=_planned(part, before))
-    protection.check_over_source(address, parse(source) if source else None, options.overwrite)
     warnings = protection.loss_warnings(frame, before, options.mode)
-    warnings += _replace(
-        path,
-        part,
-        before,
-        lambda into: adapter.write(frame, into, options),
-        keep=options.backup and options.mode is Mode.REPLACE,
-    )
+    warnings += _replace(path, part, before, lambda into: adapter.write(frame, into, options), keep=keep)
     return Report(target=part, warnings=warnings)
 
 
@@ -154,7 +155,7 @@ def restore_target(backup_id: str | None, dry_run: bool) -> Report:
     entry = backup.find(backup_id)
     path = Path(entry.target)
     reading = SharedOptions(format=entry.format, sheet=None, table=None, encoding=None, sep=None, header=True)
-    before = _state(entry.target, path, reading)
+    before = _state(entry.target, path, reading, parse=True)
     part = TargetPart(uri=entry.target, format=entry.format, mode=Mode.REPLACE, rows=entry.rows, columns=entry.columns)
     if dry_run:
         return Report(target=_planned(part, before), backup=entry)
@@ -162,10 +163,15 @@ def restore_target(backup_id: str | None, dry_run: bool) -> Report:
     return Report(target=part, backup=entry, warnings=warnings)
 
 
-def _state(target: str, path: Path, options: SharedOptions) -> TargetState:
-    """What the target holds now, read with the options of the write."""
+def _state(target: str, path: Path, options: SharedOptions, *, parse: bool) -> TargetState:
+    """What the target holds now, read with the options of the write.
+
+    The rows and the columns are not read (None) when `parse` is off or the target is over the backup size limit.
+    """
     if not path.exists():
         return MISSING
+    if not parse or backup.over_limit(path, target):
+        return TargetState(exists=True, rows=None, columns=None)
     try:
         frame, _, _ = read_frame(target, ReadOptions.reading_back(options))
     except DataioError:  # not a table dataio can read: it is still replaced and kept
