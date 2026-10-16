@@ -3,7 +3,7 @@ id: DATAIO-022
 title: 'Small defects after E-002..E-005: int stays int when stacking, error actions
   fit the case, RAW ''='' text in xlsx, mode=error per part, batch edge cases'
 status: queue
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -29,8 +29,14 @@ owns_paths:
 - src/rb_dataio/providers/http.py
 - src/rb_dataio/commands/convert.py
 - tests/test_defects.py
+- src/rb_dataio/commands/info.py
+- src/rb_dataio/formats/__init__.py
+- src/rb_dataio/formats/csv.py
 test_paths:
 - tests/test_defects.py
+- tests/snapshots/describe.json
+- tests/snapshots/help/convert.txt
+- tests/snapshots/help/info.txt
 docs: none
 tools: []
 worker_args: null
@@ -84,3 +90,9 @@ Reuse the existing error classes in core/errors.py and their action= argument; f
 ## Out of scope
 
 - New features, formulas in xlsx, Google Sheets changes, new CLI flags.
+
+## Feedback
+
+### Attempt 1: file docstring
+
+- add a docstring to src/rb_dataio/providers/http.py: what it holds and why
