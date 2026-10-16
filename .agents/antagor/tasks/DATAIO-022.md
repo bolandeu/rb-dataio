@@ -2,7 +2,7 @@
 id: DATAIO-022
 title: 'Small defects after E-002..E-005: int stays int when stacking, error actions
   fit the case, RAW ''='' text in xlsx, mode=error per part, batch edge cases'
-status: queue
+status: in_review
 attempts: 1
 blocked: false
 blocked_reason: null
