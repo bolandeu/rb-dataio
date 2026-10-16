@@ -2,10 +2,10 @@
 id: DATAIO-002
 title: 'Formats and values: CSV/TSV/txt with detection and normalisation, Python objects,
   JSON/jsonl and stdin/stdout'
-status: in_progress
+status: queue
 attempts: 0
-blocked: true
-blocked_reason: scope_held
+blocked: false
+blocked_reason: null
 phase: null
 tests_hash: null
 publish_stage: null
@@ -121,3 +121,15 @@ Extend the CSV adapter of the frame task; add txt and tsv as new modules of the 
 - Backups, atomic writes and write modes other than CSV append (protection task)
 - Excel cell types (Excel epic)
 - Any change to the public API or CLI flags (the frame owns them)
+
+## Feedback
+
+### Blocked: scope_held (holders ['DATAIO-001', 'DATAIO-004'], paths ['src/rb_dataio/core/dataio/api.py', 'src/rb_dataio/core/dataio/pipeline.py', 'src/rb_dataio/formats/__init__.py', 'tests/test_cli_frame.py', 'tests/test_frame.py'])
+
+DATAIO-001, DATAIO-004 finished; your kept work on src/rb_dataio/core/dataio/api.py, src/rb_dataio/core/dataio/pipeline.py, src/rb_dataio/formats/__init__.py, tests/test_cli_frame.py, tests/test_frame.py is back in the worktree; main is merged into your branch where it merges clean
+
+`main` changed since your work began, and merging it conflicts in:
+
+- `src/rb_dataio/core/dataio/api.py`
+
+Merge it into your branch (`git merge main`), resolve each file keeping both behaviours, `git add` it and run the checks; do not commit: Antagor commits the merge with your work when the round ends (IDEA-201).
