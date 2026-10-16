@@ -1,7 +1,7 @@
 ---
 id: DATAIO-010
 title: Parquet files through DuckDB, without pyarrow
-status: in_review
+status: publish
 attempts: 0
 blocked: false
 blocked_reason: null
