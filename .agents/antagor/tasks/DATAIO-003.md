@@ -1,10 +1,10 @@
 ---
 id: DATAIO-003
 title: Python objects, JSON, jsonl and stdin/stdout, including in-memory write targets
-status: queue
+status: in_progress
 attempts: 0
-blocked: false
-blocked_reason: null
+blocked: true
+blocked_reason: scope_held
 phase: null
 tests_hash: null
 publish_stage: null
@@ -22,10 +22,17 @@ owns_paths:
 - tests/test_json.py
 - tests/test_stdio.py
 - tests/data/json/
+- src/rb_dataio/core/dataio/api.py
+- src/rb_dataio/core/dataio/pipeline.py
+- src/rb_dataio/core/dataio/registry.py
+- src/rb_dataio/formats/__init__.py
 test_paths:
 - tests/test_objects.py
 - tests/test_json.py
 - tests/test_stdio.py
+- tests/snapshots/describe.json
+- tests/snapshots/help/convert.txt
+- tests/test_frame.py
 docs: none
 tools: []
 worker_args: null
