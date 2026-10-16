@@ -1,3 +1,11 @@
+"""The provider contract: `Provider`, the base of every external integration, and what its health check returns.
+
+A provider declares its credential fields and where else to find them (legacy env vars, other
+tools' namespaces, a key file); `auth status --check` calls its `health_check()` and reads the
+`Health` (with an optional `Quota`). `all_providers()` finds every concrete provider of this
+package, so there is no hand-written registry.
+"""
+
 from __future__ import annotations
 
 import importlib

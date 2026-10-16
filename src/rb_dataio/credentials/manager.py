@@ -1,3 +1,14 @@
+"""The credential store: where a provider's credential fields are found, stored and removed.
+
+A credential is a small bag of named fields per provider. It is found field by field in env vars
+(`<NAMESPACE>_<PROVIDER>_<FIELD>`), the OS keychain, a legacy env var and a key file
+(`Lookup`: the places besides env and keychain; `locate_fields` for the order), so secrets never
+live in a project file. `get_credential` resolves the bag, `locate_fields` tells `auth status`
+where each field came from, `read_key_file` reads a key file (JSON), and `store_credential` /
+`delete_credential` write the keychain. `get_secret` and the other `*_secret` helpers cover the
+one-field case.
+"""
+
 from __future__ import annotations
 
 import json
