@@ -17,8 +17,17 @@ owns_paths:
 - src/rb_dataio/formats/gsheet.py
 - tests/test_gsheet.py
 - tests/data/gsheet/
+- pyproject.toml
+- src/rb_dataio/core/dataio/settings.py
+- src/rb_dataio/core/errors.py
+- src/rb_dataio/data/settings.toml
+- src/rb_dataio/formats/__init__.py
+- src/rb_dataio/formats/_excel.py
+- src/rb_dataio/providers/google.py
+- uv.lock
 test_paths:
 - tests/test_gsheet.py
+- tests/test_frame.py
 docs: none
 tools: []
 worker_args: null
@@ -72,3 +81,13 @@ The remote container contract and the google key of DATAIO-014; gspread; the bac
 ## Out of scope
 
 - Creating spreadsheets; formatting of written sheets; OAuth user login; http(s) sources.
+
+## Feedback
+
+### Attempt 0 (not counted): main moved and conflicts with the work
+
+`main` changed since your work began, and merging it conflicts in:
+
+- `tests/test_frame.py`
+
+Merge it into your branch (`git merge main`), resolve each file keeping both behaviours, `git add` it and run the checks; do not commit: Antagor commits the merge with your work when the round ends (IDEA-201).
