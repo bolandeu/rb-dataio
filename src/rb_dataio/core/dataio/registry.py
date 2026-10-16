@@ -1,4 +1,8 @@
-"""The format registry: the adapter for an address, and the list `formats()` returns."""
+"""The format registry: the adapter of an address, the text format of data with no file, the formats list.
+
+`resolve` picks the adapter of an address by `format=` or the extension; `text_adapter` picks a
+text format by name for stdin, stdout and the in-memory text of `write()` (`text` is txt).
+"""
 
 from __future__ import annotations
 
