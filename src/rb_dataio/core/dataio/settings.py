@@ -1,4 +1,8 @@
-"""The settings of the table connector, read from the settings file the package ships (data/settings.toml)."""
+"""The settings of the table connector, read from the settings file the package ships (data/settings.toml).
+
+`settings()` gives one section per concern: `BackupLimits` (the backup store), `WarningLimits`
+(the loss warning) and `XlsxLayout` (the layout of a written xlsx sheet).
+"""
 
 from __future__ import annotations
 
@@ -26,9 +30,14 @@ class WarningLimits(_Section):
     row_drop_share: float
 
 
+class XlsxLayout(_Section):
+    column_padding: int
+
+
 class Settings(_Section):
     backup: BackupLimits
     warnings: WarningLimits
+    xlsx: XlsxLayout
 
 
 @functools.cache

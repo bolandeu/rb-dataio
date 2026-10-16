@@ -1,10 +1,10 @@
 ---
 id: DATAIO-013
 title: 'DuckDB bases: x.duckdb#table read and write with modes and transactions'
-status: queue
+status: in_progress
 attempts: 0
-blocked: false
-blocked_reason: null
+blocked: true
+blocked_reason: scope_held
 phase: null
 tests_hash: null
 publish_stage: null
@@ -16,6 +16,12 @@ owns_paths:
 - src/rb_dataio/formats/duckdb.py
 - tests/test_duckdb.py
 - tests/data/duckdb/
+- src/rb_dataio/commands/info.py
+- src/rb_dataio/core/dataio/containers.py
+- src/rb_dataio/core/dataio/pipeline.py
+- src/rb_dataio/core/dataio/report.py
+- src/rb_dataio/core/errors.py
+- src/rb_dataio/formats/__init__.py
 test_paths:
 - tests/test_duckdb.py
 docs: none
