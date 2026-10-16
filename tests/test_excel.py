@@ -105,7 +105,34 @@ def test_without_header_the_columns_are_numbered(workdir: Path) -> None:
     assert read("book.xlsx#B", header=False).to_dict("list") == {"col1": ["x", 3], "col2": ["y", "c"]}
 
 
+@pytest.mark.parametrize("extension", ["xlsx", "xls", "xlsb", "ods"])
+def test_a_file_that_is_no_book_is_read_failed(workdir: Path, extension: str) -> None:
+    (workdir / f"bad.{extension}").write_text("junk", encoding="utf-8")
+    code, payload = invoke_json("info", f"bad.{extension}")
+    assert (code, payload["error"]["code"]) == (1, "READ_FAILED")
+    with pytest.raises(DataioError) as caught:
+        read(f"bad.{extension}")
+    assert caught.value.code == "READ_FAILED"
+
+
+def test_a_huge_whole_number_stays_a_float(workdir: Path) -> None:
+    build_book(workdir / "huge.xlsx", {"S": [("n",), (1e20,), (2e20,)]})
+    frame = read("huge.xlsx")
+    assert frame["n"].tolist() == [1e20, 2e20]
+    assert str(frame["n"].dtype) == "float64"
+
+
 # --- write -----------------------------------------------------------------------
+
+
+def test_a_write_over_a_file_that_is_no_book_is_write_failed(workdir: Path) -> None:
+    (workdir / "bad.xlsx").write_text("junk", encoding="utf-8")
+    code, payload = invoke_json("convert", "book.xlsx", "bad.xlsx#A")
+    assert (code, payload["error"]["code"]) == (1, "WRITE_FAILED")
+    with pytest.raises(DataioError) as caught:
+        write(pd.DataFrame({"x": [1]}), "bad.xlsx#A")
+    assert caught.value.code == "WRITE_FAILED"
+    assert (workdir / "bad.xlsx").read_text(encoding="utf-8") == "junk"
 
 
 def test_a_write_replaces_its_sheet_and_keeps_the_others(workdir: Path) -> None:
@@ -200,6 +227,12 @@ def test_append_with_another_header_is_refused_and_the_book_is_unchanged(workdir
     assert caught.value.code == "WRITE_FAILED"
     assert "['x', 'y']" in caught.value.message and "['x', 'z']" in caught.value.message
     assert (workdir / "book.xlsx").read_bytes() == before
+
+
+def test_append_to_an_empty_sheet_writes_the_header_and_the_rows(workdir: Path) -> None:
+    build_book(workdir / "empty.xlsx", {"A": []})
+    write(pd.DataFrame({"x": [5]}), "empty.xlsx#A", mode="append")
+    assert sheet_rows(workdir / "empty.xlsx", "A") == [("x",), (5,)]
 
 
 def test_append_to_a_new_sheet_writes_it(workdir: Path) -> None:

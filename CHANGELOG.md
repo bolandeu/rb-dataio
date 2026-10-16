@@ -5,6 +5,15 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.9 — 2026-10-16
+
+### E-002 — dataio excel-parquet: Excel books and Parquet files (0.3)
+
+read/write/convert/info handle Excel and Parquet like CSV: book.xlsx#Sheet, all sheets at once with _sheet, one sheet replaced while the others stay, a usable xlsx (autowidth, frozen header, autofilter), Parquet without pyarrow.
+Time: 0.6h since the epic was approved
+
+- Excel books: read xlsx/xls/xlsb/ods, write xlsx sheets with a usable layout (DATAIO-009)
+
 ## v0.1.8 — 2026-10-16
 
 ### E-002 — dataio excel-parquet: Excel books and Parquet files (0.3)

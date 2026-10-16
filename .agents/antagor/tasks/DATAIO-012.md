@@ -17,8 +17,15 @@ owns_paths:
 - src/rb_dataio/formats/sqlite.py
 - tests/test_sqlite.py
 - tests/data/sqlite/
+- src/rb_dataio/commands/info.py
+- src/rb_dataio/core/dataio/containers.py
+- src/rb_dataio/core/dataio/report.py
+- src/rb_dataio/core/dataio/pipeline.py
+- src/rb_dataio/core/errors.py
+- src/rb_dataio/formats/__init__.py
 test_paths:
 - tests/test_sqlite.py
+- tests/data/bases_core/formats/testbase.py
 docs: none
 tools: []
 worker_args: null
@@ -72,3 +79,9 @@ The base contract of the core (DATAIO-011) and the container contract (DATAIO-00
 ## Out of scope
 
 - Postgres, MySQL, SQLAlchemy; keys, indexes, upsert; schema migration on append; streaming; the other base format.
+
+## Feedback
+
+### Blocked: scope_held (holders ['DATAIO-009'], paths ['src/rb_dataio/core/dataio/pipeline.py', 'src/rb_dataio/core/errors.py', 'src/rb_dataio/formats/__init__.py'])
+
+DATAIO-009 finished; your kept work on src/rb_dataio/core/dataio/pipeline.py, src/rb_dataio/core/errors.py, src/rb_dataio/formats/__init__.py is back in the worktree; main is merged into your branch where it merges clean
