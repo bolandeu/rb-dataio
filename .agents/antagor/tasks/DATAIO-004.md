@@ -2,7 +2,7 @@
 id: DATAIO-004
 title: 'Protection: backups, restore, atomic writes, write modes, safety checks and
   loss warnings'
-status: in_review
+status: publish
 attempts: 1
 blocked: false
 blocked_reason: null
