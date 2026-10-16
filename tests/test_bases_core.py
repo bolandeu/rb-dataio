@@ -1,5 +1,5 @@
 """Bases in the core: a table written in place in one transaction, its old rows kept as a backup, and formats told
-apart by their signature; through the public library API.
+apart by their signature; through the public library API and the human view of the CLI `backups`.
 
 The base is tests/data/bases_core/formats/testbase.py (stdlib sqlite3, `.tbase`); alpha and beta
 are two formats of `.db` files with their own signatures. They are added to the formats package the
@@ -15,8 +15,10 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from typer.testing import CliRunner
 
 from rb_dataio import DataioError, backups, read, restore, write
+from rb_dataio.cli import app
 
 format_modules = importlib.import_module("rb_dataio.formats")
 FORMATS_FIXTURE = Path(__file__).parent / "data" / "bases_core" / "formats"
@@ -62,6 +64,17 @@ def test_restore_of_a_table_keeps_its_current_rows_first(workdir: Path) -> None:
     assert (newest.table, newest.rows) == ("t", 1)
     restore(newest.id)
     assert read("base.tbase#t").to_dict("list") == {"phrase": ["сосна"], "freq": [9]}
+
+
+def test_backups_human_output_names_the_table_of_each_entry(workdir: Path) -> None:
+    write(pd.DataFrame({"phrase": ["сосна"], "freq": [9]}), "base.tbase#t")
+    write(pd.DataFrame({"n": [7]}), "base.tbase#u")
+    result = CliRunner().invoke(app, ["backups"], env={"COLUMNS": "400"})
+    assert result.exit_code == 0
+    targets = {line.split()[0]: line.split()[2] for line in result.stdout.splitlines()}
+    base = workdir / "base.tbase"
+    assert targets == {entry.id: f"{base}#{entry.table}" for entry in backups()}
+    assert sorted(targets.values()) == [f"{base}#t", f"{base}#u"]
 
 
 def test_a_new_table_keeps_no_backup_and_leaves_the_others(workdir: Path) -> None:

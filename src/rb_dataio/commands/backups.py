@@ -13,7 +13,7 @@ def _render(data: dict) -> None:
         output.human.echo("No backups.")
     for entry in data["backups"]:
         rows = "?" if entry["rows"] is None else entry["rows"]  # None: dataio could not read the old content
-        target = f"{entry['target']}#{entry['table']}" if entry["table"] else entry["target"]
+        target = entry["target"] if entry["table"] is None else f"{entry['target']}#{entry['table']}"
         output.human.echo(f"{entry['id']}  {entry['time']}  {target}  {rows} rows")
 
 
@@ -23,7 +23,7 @@ def backups(
     json_output: bool = output.JsonOption,
     quiet: bool = output.QuietOption,
 ) -> None:
-    """List the kept backups, newest first: id, time, target (`file#table` for a table of a base) and rows.
+    """List the kept backups, newest first: id, time, target (with #table for a table of a base) and rows.
 
     Example: {cli} backups --json
     """

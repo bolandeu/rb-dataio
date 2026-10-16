@@ -24,6 +24,7 @@ import os
 import shutil
 from collections.abc import Callable
 from contextlib import AbstractContextManager, nullcontext
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -180,7 +181,7 @@ def _old_rows(adapter: BaseAdapter, path: Path, table: str, options: WriteOption
     try:
         if not path.exists() or table not in adapter.parts(path):
             return None
-        return adapter.read_part(path, table, ReadOptions.reading_back(options)).frame
+        return adapter.read_part(path, table, replace(ReadOptions.reading_back(options), as_text=False)).frame
     except (ValueError, OSError) as exc:
         raise WriteFailed(uri, exc) from exc
 
@@ -248,7 +249,7 @@ def _restore_table(entry: Backup, dry_run: bool) -> Report:
         backup=True,
         dry_run=dry_run,
     )
-    return write_frame(backup.rows(entry), entry.target, options).model_copy(update={"backup": entry})
+    return write_frame(backup.kept_table_rows(entry), entry.target, options).model_copy(update={"backup": entry})
 
 
 def _state(target: str, path: Path, options: SharedOptions) -> TargetState:
