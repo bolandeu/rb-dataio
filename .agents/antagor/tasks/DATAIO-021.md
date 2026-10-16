@@ -1,10 +1,10 @@
 ---
 id: DATAIO-021
 title: x
-status: in_progress
+status: cancelled
 attempts: 0
-blocked: true
-blocked_reason: needs_scope
+blocked: false
+blocked_reason: null
 phase: null
 tests_hash: null
 publish_stage: null
