@@ -1,7 +1,7 @@
 ---
 id: DATAIO-010
 title: Parquet files through DuckDB, without pyarrow
-status: queue
+status: in_review
 attempts: 0
 blocked: false
 blocked_reason: null
@@ -16,6 +16,8 @@ owns_paths:
 - src/rb_dataio/formats/parquet.py
 - tests/test_parquet.py
 - tests/data/parquet/
+- pyproject.toml
+- uv.lock
 test_paths:
 - tests/test_parquet.py
 - tests/test_deps.py
