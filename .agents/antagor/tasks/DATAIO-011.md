@@ -3,7 +3,7 @@ id: DATAIO-011
 title: 'Bases and SQL in the core: query= over any source, table writes in one transaction,
   table backups as parquet'
 status: in_review
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
