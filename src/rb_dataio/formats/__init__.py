@@ -10,7 +10,11 @@ format of plain text: it defines `parse` and `render`, and the same two serve it
 files, stdin and stdout, and the in-memory text of `write()`. A `ContainerAdapter` is a
 format of a file with named parts (sheets, tables): it lists the parts, reads one and
 writes one, and the core gives every container the same choice of the part
-(core/dataio/containers.py). A module whose name starts with `_` is a helper, not a format.
+(core/dataio/containers.py). A `BaseAdapter` is a container of tables (a base): it runs
+SQL inside the base and writes a table in place, in one transaction. Any adapter may run
+`query=` on its file itself (`query`) and may claim a file by its signature (`claims`),
+so that formats that share an extension (`.db`) tell their files apart.
+A module whose name starts with `_` is a helper, not a format.
 """
 
 from __future__ import annotations
@@ -92,6 +96,17 @@ class FormatAdapter:
     def write(self, frame: pd.DataFrame, path: Path, options: WriteOptions) -> None:
         raise NotImplementedError
 
+    def claims(self, path: Path) -> bool:
+        """True when `path` has this format's signature; asked only of the formats that share its extension."""
+        return False
+
+    def query(self, path: Path, sql: str, options: ReadOptions) -> Loaded | None:
+        """The result of `sql` run on the file itself, the file being the table `data` of `query=`.
+
+        None: the format cannot, and the core runs the SQL over the table it reads (core/dataio/query.py).
+        """
+        return None
+
     @property
     def reads(self) -> bool:
         return type(self).read is not FormatAdapter.read
@@ -147,6 +162,19 @@ class ContainerAdapter(FormatAdapter):
     @property
     def writes(self) -> bool:
         return type(self).write_part is not ContainerAdapter.write_part
+
+
+class BaseAdapter(ContainerAdapter):
+    """A format of a base: a database file whose parts are tables.
+
+    `query` runs the SQL inside the base, where the tables have their own names. `write_part`
+    gets the base itself, not a copy, and writes the table in one transaction: the core
+    neither copies nor replaces the file, and its backup holds the old rows of that table
+    only. An error of the database is raised as a ValueError with the database's message.
+    """
+
+    def query(self, path: Path, sql: str, options: ReadOptions) -> Loaded:
+        raise NotImplementedError
 
 
 def adapters() -> list[FormatAdapter]:

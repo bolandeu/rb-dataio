@@ -1,6 +1,7 @@
 """The parameter vocabulary: the options of a read and of a write, the same words in every format and in the CLI.
 
 `SharedOptions` are the options both sides have; in `convert` they take `in_` / `out_`.
+`query` is of the read side only, so `convert` takes it without a prefix.
 """
 
 from __future__ import annotations
@@ -46,12 +47,13 @@ class ReadOptions(SharedOptions):
     as_text: bool
     dtypes: dict[str, str] | None
     limit: int | None
+    query: str | None  # SQL whose result is the table read (core/dataio/query.py)
 
     @classmethod
     def reading_back(cls, written: SharedOptions) -> Self:
         """The options that read what a write with `written` options leaves: its shared options, every value as text."""
         shared = {field.name: getattr(written, field.name) for field in fields(SharedOptions)}
-        return cls(**shared, as_text=True, dtypes=None, limit=None)
+        return cls(**shared, as_text=True, dtypes=None, limit=None, query=None)
 
     def __post_init__(self) -> None:
         if self.limit is not None and self.limit < 0:

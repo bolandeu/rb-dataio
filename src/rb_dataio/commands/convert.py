@@ -1,10 +1,10 @@
 """The `convert` command: read a source, write a target, report both sides.
 
 It maps the flags to one `convert()` call. The options both sides have take
-`--in-` / `--out-`. A target that is the source itself asks first (`--confirm` skips the
-question). With the target `-` stdout is the data: the human report is left out, and under
-`--json` the data is records inside the envelope. `render_report` is the human view of a
-report, shared with `restore`.
+`--in-` / `--out-`; `--query` is of the source. A target that is the source itself
+asks first (`--confirm` skips the question). With the target `-` stdout is the data:
+the human report is left out, and under `--json` the data is records inside the
+envelope. `render_report` is the human view of a report, shared with `restore`.
 """
 
 from __future__ import annotations
@@ -48,6 +48,7 @@ def convert(
     as_text: bool = option("as_text", False),
     dtypes: list[str] | None = option("dtypes", None, metavar="COLUMN=TYPE"),
     limit: int | None = option("limit", None, min=0),
+    query: str | None = option("query", None),
     out_format: str | None = option("format", None, "out"),
     out_sheet: str | None = option("sheet", None, "out"),
     out_table: str | None = option("table", None, "out"),
@@ -66,6 +67,8 @@ def convert(
     """Read a table from SOURCE and write it to TARGET; report both sides.
 
     Options both sides have take --in- (the source) or --out- (the target).
+    --query is SQL over the source whose result is written: inside a base
+    it names its tables, over any other source the table is data.
     With --dry-run the report comes back and nothing is written.
     A TARGET that is the SOURCE itself asks first: --confirm skips the question.
     SOURCE - is stdin, its format comes from the content; TARGET - is stdout:
@@ -91,6 +94,7 @@ def convert(
             as_text=as_text,
             dtypes=pairs(dtypes),
             limit=limit,
+            query=query,
             out_format=out_format,
             out_sheet=out_sheet,
             out_table=out_table,

@@ -33,6 +33,7 @@ def read(
     as_text: bool = False,
     dtypes: dict[str, str] | None = None,
     limit: int | None = None,
+    query: str | None = None,
 ) -> pd.DataFrame:
     """Read a source into a DataFrame: `read("phrases.csv")`, `read("book.xlsx#Sheet1")`, `read(["a", "b"])`.
 
@@ -40,6 +41,8 @@ def read(
     In a file of sheets or tables the first one is read when none is named; `#*` reads them all
     stacked, with the column `_sheet` naming the one of each row.
     A string with a line break is text; `format="text"` reads a one-line string as text too.
+    `query` is SQL whose result is returned: inside a base it names the base's tables, over any
+    other source the table is `data` (DuckDB reads a csv or parquet file itself).
     """
     frame, _, _ = pipeline.read_frame(source, ReadOptions.taken_from(locals()))
     return frame
@@ -86,6 +89,7 @@ def convert(
     as_text: bool = False,
     dtypes: dict[str, str] | None = None,
     limit: int | None = None,
+    query: str | None = None,
     out_format: str | None = None,
     out_sheet: str | None = None,
     out_table: str | None = None,
@@ -100,7 +104,7 @@ def convert(
 ) -> Report:
     """Read a source and write it to a target: `convert("a.csv", "b.csv")`; the report has both sides.
 
-    The options both sides have take `in_` (the source) or `out_` (the target).
+    The options both sides have take `in_` (the source) or `out_` (the target); `query` is of the source.
     A target that is the source itself needs `overwrite=True`.
     """
     arguments = locals()
@@ -123,8 +127,12 @@ def info(
     as_text: bool = False,
     dtypes: dict[str, str] | None = None,
     limit: int | None = None,
+    query: str | None = None,
 ) -> Info:
-    """Describe a source before a convert: its format, rows, column types, the first 5 rows and its sheets or tables."""
+    """Describe a source before a convert: its format, rows, column types, the first 5 rows and its sheets or tables.
+
+    With `query` it describes the result of the query, as `read()` returns it.
+    """
     return pipeline.describe_source(os.fspath(source), ReadOptions.taken_from(locals()))
 
 

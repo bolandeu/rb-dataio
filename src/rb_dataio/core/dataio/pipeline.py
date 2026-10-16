@@ -1,11 +1,15 @@
 """The read and the write pipelines.
 
-    read:    resolve the source -> adapter read (of the part, in a container) -> value normalisation -> limit
+    read:    resolve the source -> adapter read (of the part, in a container) -> query= -> value normalisation -> limit
     write:   resolve the target -> dry run -> safety checks -> backup -> atomic write -> report
 
 A write to a container (containers.py) starts from a copy of the current file and changes
-only its part, so the backup and the atomic write are of the whole file.
+only its part, so the backup and the atomic write are of the whole file. A base (a
+`BaseAdapter`) is written in place instead, in its one transaction: the file is not
+copied, and the backup holds the old rows of the table only.
     restore: find the backup -> dry run -> backup of the current content -> atomic write -> report
+(of a table: a write of its old rows to it). `query=` (query.py) runs on the file itself
+when its format can, else over the table read.
 
 A source is an address, a text or a Python object (objects.py); a target is an address,
 or none for `write()` to return the data. `-` is stdin or stdout (stdio.py); local paths
@@ -19,20 +23,20 @@ import json
 import os
 import shutil
 from collections.abc import Callable
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
 
-from ...formats import ContainerAdapter, FormatAdapter, Loaded, WriteRefused
+from ...formats import BaseAdapter, ContainerAdapter, FormatAdapter, Loaded, WriteRefused
 from ...formats import txt as txt_format
 from ..errors import DataioError, FormatUnsupported, ReadFailed, SourceNotFound, TargetExists, WriteFailed
-from . import backup, containers, objects, protection, registry, stdio, values
+from . import backup, containers, objects, protection, query, registry, stdio, values
 from .address import FILE, STDIO, Address, parse
 from .options import Mode, ReadOptions, SharedOptions, WriteOptions
 from .protection import MISSING, TargetState
-from .report import Info, PlannedTarget, Report, SourcePart, TargetPart, column_names
+from .report import Backup, Info, PlannedTarget, Report, SourcePart, TargetPart, column_names
 
 PREVIEW_ROWS = 5  # the first rows `info()` shows
 IN_MEMORY = "<object>"  # how a report and an error name the target of `write()` with none
@@ -89,24 +93,33 @@ def _source_name(source: object) -> str:
 
 
 def _load(source: object, options: ReadOptions) -> tuple[str, Loaded]:
-    """The format name and the table of a source."""
+    """The format name and the table of a source; under `query=` the result of the query."""
     if not isinstance(source, str | os.PathLike):
-        return type(source).__name__, objects.loaded(source)
+        return type(source).__name__, query.over_table(objects.loaded(source), options)
     text = os.fspath(source)
     if objects.is_text(text, options):
-        return registry.TEXT, txt_format.ADAPTER.parse(text, options)
+        return registry.TEXT, query.over_table(txt_format.ADAPTER.parse(text, options), options)
     address = _address(text, options)
     if address.scheme == STDIO:
-        return stdio.read(options)
+        format_name, loaded = stdio.read(options)
+        return format_name, query.over_table(loaded, options)
+    return _load_file(address, options)
+
+
+def _load_file(address: Address, options: ReadOptions) -> tuple[str, Loaded]:
     path = Path(address.path)
     if not path.exists():
-        raise SourceNotFound(text)
+        raise SourceNotFound(address.text)
     adapter = registry.resolve(address, options.format)
     if not adapter.reads:
         raise _unable(adapter.name, "read")
+    if options.query and (result := adapter.query(path, options.query, options)) is not None:
+        return adapter.name, result
     if isinstance(adapter, ContainerAdapter):
-        return adapter.name, containers.read(adapter, path, address.fragment, options, text)
-    return adapter.name, adapter.read(path, options)
+        loaded = containers.read(adapter, path, address.fragment, options, address.text)
+    else:
+        loaded = adapter.read(path, options)
+    return adapter.name, query.over_table(loaded, options)
 
 
 def refuse_over_source(source: str, target: str, options: WriteOptions) -> None:
@@ -128,9 +141,11 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
         raise _unable(adapter.name, "append")
     if options.mode is Mode.ERROR and path.exists():
         raise TargetExists(target)
+    part = TargetPart(uri=target, format=adapter.name, mode=options.mode, rows=len(frame), columns=column_names(frame))
+    if isinstance(adapter, BaseAdapter):
+        return _write_table(adapter, frame, address, part, options)
     keep = options.backup and options.mode is Mode.REPLACE
     before = _state(target, path, options)
-    part = TargetPart(uri=target, format=adapter.name, mode=options.mode, rows=len(frame), columns=column_names(frame))
     if options.dry_run:
         return Report(target=_planned(part, before))
     write, written = _writer(adapter, frame, address, options)
@@ -138,6 +153,36 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
     from_copy = options.mode is Mode.APPEND or isinstance(adapter, ContainerAdapter)
     warnings += _replace(path, part, before, write, keep=keep, from_copy=from_copy)
     return Report(target=part, warnings=[*warnings, *written])
+
+
+def _write_table(
+    adapter: BaseAdapter, frame: pd.DataFrame, address: Address, part: TargetPart, options: WriteOptions
+) -> Report:
+    """Write a table of a base in place, in the adapter's one transaction, after a backup of its old rows only."""
+    path = Path(address.path)
+    table = containers.part_to_write(adapter, path, address.fragment)
+    old = _old_rows(adapter, path, table, options, part.uri)
+    before = MISSING if old is None else TargetState(exists=True, rows=len(old), columns=column_names(old))
+    if options.dry_run:
+        return Report(target=_planned(part, before))
+    keeping = (
+        backup.kept_rows(old, path, adapter.name, table, part.uri)
+        if old is not None and options.backup and options.mode is Mode.REPLACE
+        else nullcontext([])
+    )
+    written: list[str] = []
+    warnings = _written(part.uri, keeping, lambda: written.extend(adapter.write_part(frame, path, table, options)))
+    return Report(target=part, warnings=[*protection.loss_warnings(frame, before, options.mode), *warnings, *written])
+
+
+def _old_rows(adapter: BaseAdapter, path: Path, table: str, options: WriteOptions, uri: str) -> pd.DataFrame | None:
+    """The rows the table holds now, as the base stores them; None when the base has no such table."""
+    try:
+        if not path.exists() or table not in adapter.parts(path):
+            return None
+        return adapter.read_part(path, table, ReadOptions.reading_back(options)).frame
+    except (ValueError, OSError) as exc:
+        raise WriteFailed(uri, exc) from exc
 
 
 def _writer(
@@ -174,6 +219,8 @@ def _write_stdout(frame: pd.DataFrame, target: str, options: WriteOptions) -> Re
 def restore_target(backup_id: str | None, dry_run: bool) -> Report:
     """Put the content of a backup back in its target, after a backup of what the target holds now."""
     entry = backup.find(backup_id)
+    if entry.table is not None:
+        return _restore_table(entry, dry_run)
     path = Path(entry.target)
     reading = SharedOptions(format=entry.format, sheet=None, table=None, encoding=None, sep=None, header=True)
     before = _state(entry.target, path, reading)
@@ -186,6 +233,24 @@ def restore_target(backup_id: str | None, dry_run: bool) -> Report:
     return Report(target=part, backup=entry, warnings=warnings)
 
 
+def _restore_table(entry: Backup, dry_run: bool) -> Report:
+    """Put the old rows of a table back: a replace of the table with them, which keeps its current rows first."""
+    options = WriteOptions(
+        format=entry.format,
+        sheet=None,
+        table=entry.table,
+        encoding=None,
+        sep=None,
+        header=True,
+        mode=Mode.REPLACE,
+        profile=None,
+        overwrite=False,
+        backup=True,
+        dry_run=dry_run,
+    )
+    return write_frame(backup.rows(entry), entry.target, options).model_copy(update={"backup": entry})
+
+
 def _state(target: str, path: Path, options: SharedOptions) -> TargetState:
     """What the target holds now, read with the options of the write.
 
@@ -193,7 +258,7 @@ def _state(target: str, path: Path, options: SharedOptions) -> TargetState:
     """
     if not path.exists():
         return MISSING
-    if backup.over_limit(path, target):
+    if backup.over_limit(path.stat().st_size, target):
         return TargetState(exists=True, rows=None, columns=None)
     try:
         frame, _, _ = read_frame(target, ReadOptions.reading_back(options))
@@ -224,11 +289,16 @@ def _replace(
     `from_copy`: `write` gets a copy of the current file to change (an append, a part of a container).
     """
     keeping = backup.kept(path, part.format, before, part.uri) if keep and before.exists else nullcontext([])
+    return _written(part.uri, keeping, lambda: protection.write_atomically(path, write, from_copy=from_copy))
+
+
+def _written(uri: str, keeping: AbstractContextManager[list[str]], write: Callable[[], object]) -> list[str]:
+    """Run `write` with the backup `keeping` (or none) and return its warnings; a failed write is WRITE_FAILED."""
     try:
         with keeping as warnings:
-            protection.write_atomically(path, write, from_copy=from_copy)
+            write()
     except (ValueError, OSError) as exc:
-        raise WriteFailed(part.uri, exc, action=exc.action if isinstance(exc, WriteRefused) else None) from exc
+        raise WriteFailed(uri, exc, action=exc.action if isinstance(exc, WriteRefused) else None) from exc
     return warnings
 
 
