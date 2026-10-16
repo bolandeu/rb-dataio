@@ -5,6 +5,15 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.14 — 2026-10-16
+
+### E-004 — dataio google-http: Google Sheets and http(s) sources (0.5)
+
+A Google Sheets URL or gsheet://id#Sheet reads and writes like a file; the key is found by the standard order and checked by auth status; a 403 says whom to share with; replacing a non-empty sheet asks first and keeps a backup; http(s) CSV and JSON links read directly.
+Time: 1.1h since the epic was approved
+
+- http(s) sources: CSV and JSON links, including Google 'Publish to web', read directly (DATAIO-016)
+
 ## v0.1.13 — 2026-10-16
 
 ### E-004 — dataio google-http: Google Sheets and http(s) sources (0.5)
