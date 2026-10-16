@@ -1,3 +1,8 @@
+"""The `info` command: a description of a source before a read.
+
+It takes the read options of `read()` and maps them to one `info()` call.
+"""
+
 from __future__ import annotations
 
 import typer

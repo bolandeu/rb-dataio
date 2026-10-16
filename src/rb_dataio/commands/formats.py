@@ -1,3 +1,8 @@
+"""The `formats` command: what this release can read and write.
+
+The list comes from the format registry, so a new format module shows here with no edit.
+"""
+
 from __future__ import annotations
 
 import typer

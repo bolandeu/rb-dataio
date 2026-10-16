@@ -1,3 +1,9 @@
+"""The expected failures of the CLI and the library: one `CliError` subclass per code.
+
+Each error has a code, a message, an action and an exit code; `output.guard`
+puts it in the error envelope. `DataioError` is the family of read and write failures.
+"""
+
 from __future__ import annotations
 
 from .._distribution import DIST_NAME

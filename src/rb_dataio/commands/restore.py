@@ -1,3 +1,9 @@
+"""The `restore` command: bring a target back from a backup.
+
+A stub until the protection task: the library refuses with `NOT_AVAILABLE`.
+The command is registered now so that the CLI surface does not change later.
+"""
+
 from __future__ import annotations
 
 import typer

@@ -1,3 +1,9 @@
+"""The `convert` command: read a source, write a target, report both sides.
+
+It maps the flags to one `convert()` call. The options both sides have take
+`--in-` / `--out-`. `render_report` is the human view of a report, shared with `restore`.
+"""
+
 from __future__ import annotations
 
 import typer

@@ -1,3 +1,9 @@
+"""The Typer app: the global options and the registration of every command.
+
+A bare `<cli>` prints the app help, the entry point for humans and agents.
+Each command lives in `commands/`; this module only names it.
+"""
+
 from __future__ import annotations
 
 from importlib import resources

@@ -1,3 +1,9 @@
+"""The `backups` command: the list of kept backups.
+
+A stub until the protection task: the library keeps no backups yet, so the list is empty.
+The command is registered now so that the CLI surface does not change later.
+"""
+
 from __future__ import annotations
 
 import typer
