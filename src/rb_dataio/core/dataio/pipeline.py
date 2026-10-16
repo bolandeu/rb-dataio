@@ -68,8 +68,12 @@ def _address(text: str, options: SharedOptions) -> Address:
     return parse(text, sheet=options.sheet, table=options.table)
 
 
-def _unable(format_name: str, ability: str, instead: str | None = None) -> FormatUnsupported:
-    """The refusal of an ability; `instead` is the format of the same kind that has it."""
+def _unable(format_name: str, ability: str, instead: str | None = None, *, why: str | None = None) -> FormatUnsupported:
+    """The refusal of an ability; `instead` is the format of the same kind that has it, `why` the reason."""
+    if why:
+        return FormatUnsupported(
+            f"Format '{format_name}' cannot {ability}: {why}.", action="Write to a file or a Google Sheet."
+        )
     return FormatUnsupported(
         f"Format '{format_name}' cannot {ability} in this release.",
         action=f"Use {instead} instead: it is the format of this kind that can {ability}."
@@ -165,7 +169,7 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
         return _write_stdout(frame, target, options)
     adapter = registry.resolve(address, options.format)
     if not adapter.writes:
-        raise _unable(adapter.name, "write", adapter.written_as)
+        raise _unable(adapter.name, "write", adapter.written_as, why=adapter.read_only)
     if options.mode is Mode.APPEND and not adapter.appends:
         raise _unable(adapter.name, "append")
     part = TargetPart(uri=target, format=adapter.name, mode=options.mode, rows=len(frame), columns=column_names(frame))
