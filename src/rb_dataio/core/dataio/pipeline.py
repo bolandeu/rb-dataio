@@ -7,6 +7,7 @@
 A source is an address, a text or a Python object (objects.py); a target is an address,
 or none for `write()` to return the data. `-` is stdin or stdout (stdio.py); local paths
 are the files; the other schemes are recognised and refused with FORMAT_UNSUPPORTED until their tasks.
+`refuse_over_source` stops `convert` before it reads a source that is also its target.
 """
 
 from __future__ import annotations
