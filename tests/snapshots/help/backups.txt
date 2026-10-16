@@ -1,0 +1,13 @@
+
+ Usage: dataio backups [OPTIONS]
+
+ List the kept backups, newest first: id, time, target and rows.
+
+ Example: dataio backups --json
+
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --json           Emit machine-readable JSON output.                                              │
+│ --quiet          Suppress non-essential output.                                                  │
+│ --help           Show this message and exit.                                                     │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
