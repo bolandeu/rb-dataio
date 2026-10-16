@@ -3,7 +3,7 @@ id: DATAIO-002
 title: 'Formats and values: CSV/TSV/txt with detection and normalisation, Python objects,
   JSON/jsonl and stdin/stdout'
 status: queue
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -133,3 +133,7 @@ DATAIO-001, DATAIO-004 finished; your kept work on src/rb_dataio/core/dataio/api
 - `src/rb_dataio/core/dataio/api.py`
 
 Merge it into your branch (`git merge main`), resolve each file keeping both behaviours, `git add` it and run the checks; do not commit: Antagor commits the merge with your work when the round ends (IDEA-201).
+
+### Attempt 1: file docstring
+
+- update the docstring of src/rb_dataio/core/dataio/registry.py: +text_adapter
