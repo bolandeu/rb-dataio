@@ -32,6 +32,8 @@ owns_paths:
 - src/rb_dataio/core/dataio/report.py
 - src/rb_dataio/core/dataio/settings.py
 - src/rb_dataio/core/errors.py
+- tests/snapshots/help/convert.txt
+- tests/snapshots/help/restore.txt
 test_paths:
 - tests/test_backup.py
 - tests/test_protect.py
