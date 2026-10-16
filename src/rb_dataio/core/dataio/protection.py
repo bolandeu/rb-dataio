@@ -58,17 +58,17 @@ def loss_warnings(frame: pd.DataFrame, before: TargetState, mode: Mode) -> list[
     return warnings
 
 
-def write_atomically(path: Path, write: Callable[[Path], object], *, append: bool = False) -> None:
+def write_atomically(path: Path, write: Callable[[Path], object], *, from_copy: bool = False) -> None:
     """`write` fills a temporary file next to `path`, which then replaces `path` in one step.
 
-    A failed write leaves `path` as it was and removes the temporary file. With `append`
-    the temporary file starts as a copy of `path`; the new file keeps the permissions of
+    A failed write leaves `path` as it was and removes the temporary file. With `from_copy`
+    the temporary file starts as a copy of `path` (an append, a part of a container); the new file keeps the permissions of
     the old one. The name keeps the suffix, as some engines pick the format by it.
     """
     temporary = path.with_name(f".{path.stem}.{secrets.token_hex(4)}.tmp{path.suffix}")
     exists = path.exists()
     try:
-        if append and exists:
+        if from_copy and exists:
             shutil.copyfile(path, temporary)
         write(temporary)
         if exists:

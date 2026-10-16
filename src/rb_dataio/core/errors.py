@@ -241,6 +241,18 @@ class SourceNotFound(DataioError):
         )
 
 
+class PartNotFound(DataioError):
+    """The file has no part (sheet, table) of this name: the action lists the parts it has."""
+
+    def __init__(self, address: str, part: str, parts: list[str]) -> None:
+        super().__init__(
+            "SOURCE_NOT_FOUND",
+            f"Source '{address}' has no part '{part}'.",
+            action=f"Name one of the parts: {', '.join(parts)}." if parts else "The file has no parts yet.",
+            exit_code=2,
+        )
+
+
 class FormatUnknown(DataioError):
     def __init__(self, address: str, known: list[str]) -> None:
         super().__init__(

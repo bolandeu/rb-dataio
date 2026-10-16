@@ -1,7 +1,8 @@
 
  Usage: dataio info [OPTIONS] {source}
 
- Describe a source: format, encoding, delimiter, rows, column types and the first 5 rows.
+ Describe a source: format, encoding, delimiter, rows, column types, the first 5 rows, the sheets
+ or tables.
 
  Example: dataio info a.csv --json
 

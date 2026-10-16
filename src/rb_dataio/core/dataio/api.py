@@ -37,6 +37,8 @@ def read(
     """Read a source into a DataFrame: `read("phrases.csv")`, `read("book.xlsx#Sheet1")`, `read(["a", "b"])`.
 
     `format`, `sheet` and `table` win over what the address says; `limit` keeps the first rows.
+    In a file of sheets or tables the first one is read when none is named; `#*` reads them all
+    stacked, with the column `_sheet` naming the one of each row.
     A string with a line break is text; `format="text"` reads a one-line string as text too.
     """
     frame, _, _ = pipeline.read_frame(source, ReadOptions.taken_from(locals()))
@@ -122,7 +124,7 @@ def info(
     dtypes: dict[str, str] | None = None,
     limit: int | None = None,
 ) -> Info:
-    """Describe a source before a convert: its format, rows, column types and the first 5 rows."""
+    """Describe a source before a convert: its format, rows, column types, the first 5 rows and its sheets or tables."""
     return pipeline.describe_source(os.fspath(source), ReadOptions.taken_from(locals()))
 
 
