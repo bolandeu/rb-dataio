@@ -116,3 +116,16 @@ Backup store in platformdirs.user_data_path (the template's way), declared in co
 - Google Sheets confirmation and backups of remote sheets (google-http epic)
 - Backups of sheets and base tables (their epics reuse this store)
 - New CLI flags (the frame owns them)
+
+## Feedback
+
+### Answer to question #1
+
+> DATAIO-004 acceptance wants convert-over-source refused with action 'pass overwrite=True / --confirm', but the convert command has --overwrite and no --confirm, and new CLI flags are out of scope.
+> Question: How does the CLI allow a convert over its own source?
+> Options:
+> 1. Add output.ConfirmOption to convert: --confirm (or a yes at the prompt via require_confirmation) passes overwrite=True; keep --overwrite as the library parity flag
+> 2. No new flag: the action names --overwrite for the CLI ('pass overwrite=True / --overwrite')
+> Recommended: Add output.ConfirmOption to convert: --confirm (or a yes at the prompt via require_confirmation) passes overwrite=True; keep --overwrite as the library parity flag
+
+Option 1, per SPEC (Confirmation section) and ADR 0005: add the template ConfirmOption to convert and use require_confirmation for convert-over-source; --confirm (or yes at the prompt) passes overwrite=True; keep --overwrite as the library parity flag. The action text: 'pass overwrite=True / --confirm'. Owns now include the convert and restore help snapshots.
