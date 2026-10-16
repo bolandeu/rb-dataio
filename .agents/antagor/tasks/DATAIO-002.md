@@ -2,7 +2,7 @@
 id: DATAIO-002
 title: 'Formats and values: CSV/TSV/txt with detection and normalisation, Python objects,
   JSON/jsonl and stdin/stdout'
-status: queue
+status: in_review
 attempts: 1
 blocked: false
 blocked_reason: null
