@@ -2,7 +2,7 @@
 id: DATAIO-009
 title: 'Excel books: read xlsx/xls/xlsb/ods, write xlsx sheets with a usable layout'
 status: queue
-attempts: 1
+attempts: 2
 blocked: false
 blocked_reason: null
 phase: null
@@ -26,6 +26,8 @@ owns_paths:
 - src/rb_dataio/formats/__init__.py
 - src/rb_dataio/formats/csv.py
 - uv.lock
+- src/rb_dataio/core/dataio/settings.py
+- src/rb_dataio/data/settings.toml
 test_paths:
 - tests/test_excel.py
 docs: none
@@ -103,3 +105,7 @@ Minor remarks of the review: optional, if they do not widen the task:
 - [minor] C1 src/rb_dataio/formats/_excel.py: `EMPTY_CELL`/`_value` are clear. No `_Avoid_` word found. No other C1 remark.
 - [minor] [wrong] Append to an existing but empty sheet: `sheet[1]` gives `[None]` as the header, so the append fails with a header mismatch instead of adding the rows — «Given mode='append' to book.xlsx#A with the same header, When written, Then the rows go below the old ones». Edge case, not in the acceptance list.
 - [minor] [wrong] `_value` turns every whole float into `int`, so a float cell `1e20` becomes a huge Python int. Edge case. Not covered by a test.
+
+### Attempt 2: file docstring
+
+- update the docstring of src/rb_dataio/core/dataio/settings.py: +XlsxLayout
