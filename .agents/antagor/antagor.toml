@@ -23,6 +23,7 @@ required_types = ["feature", "bugfix"]  # chore and docs: the short path without
 versioning = "semver"
 changelog = "CHANGELOG.md"
 deploy_command = "sh scripts/deploy.sh"
+regenerate = { "uv.lock" = "uv lock" }
 
 [connector]
 webhook_secret = "PLANE_WEBHOOK_SECRET_TOOLS"
