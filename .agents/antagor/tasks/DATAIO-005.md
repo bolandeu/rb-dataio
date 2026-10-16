@@ -1,7 +1,7 @@
 ---
 id: DATAIO-005
 title: 'Backup safety fixes: content file name, no hard links, size check before parsing'
-status: queue
+status: in_progress
 attempts: 1
 blocked: false
 blocked_reason: null
