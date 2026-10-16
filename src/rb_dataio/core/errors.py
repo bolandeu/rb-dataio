@@ -211,3 +211,84 @@ class DatabaseTooNew(CliError):
             action=f"Run 'uv tool upgrade {_DIST}', then retry.",
             exit_code=6,
         )
+
+
+class DataioError(CliError):
+    """A failure of reading or writing a table: the address in the message, the next step in the action.
+
+    The one type a tool author catches around `read()` / `write()` / `convert()`;
+    the CLI reports it in the standard error envelope like any other CliError.
+    """
+
+
+class SourceNotFound(DataioError):
+    """A one-line string is an address (docs/adr/0004): no such source is an error, never silent text."""
+
+    def __init__(self, address: str) -> None:
+        super().__init__(
+            "SOURCE_NOT_FOUND",
+            f"Source '{address}' does not exist.",
+            action="Pass format='text' to read the string as text",
+            exit_code=2,
+        )
+
+
+class FormatUnknown(DataioError):
+    def __init__(self, address: str, known: list[str]) -> None:
+        super().__init__(
+            "FORMAT_UNKNOWN",
+            f"The format of '{address}' is unknown.",
+            action=f"Use an extension of a known format or pass format= with one of: {', '.join(known)}.",
+            exit_code=2,
+        )
+
+
+class FormatUnsupported(DataioError):
+    def __init__(self, message: str, *, action: str) -> None:
+        super().__init__("FORMAT_UNSUPPORTED", message, action=action, exit_code=2)
+
+
+class TargetExists(DataioError):
+    def __init__(self, address: str) -> None:
+        super().__init__(
+            "TARGET_EXISTS",
+            f"Target '{address}' already exists and the mode is 'error'.",
+            action="Pass mode='replace' to replace it, or name another target.",
+            exit_code=1,
+        )
+
+
+class ReadFailed(DataioError):
+    def __init__(self, address: str, cause: Exception) -> None:
+        super().__init__(
+            "READ_FAILED",
+            f"Could not read '{address}': {cause}",
+            action="Check that the source is a valid file of its format; pass encoding= or sep= if they differ.",
+            exit_code=1,
+        )
+
+
+class WriteFailed(DataioError):
+    def __init__(self, address: str, cause: Exception) -> None:
+        super().__init__(
+            "WRITE_FAILED",
+            f"Could not write '{address}': {cause}",
+            action="Check that the folder of the target exists and is writable.",
+            exit_code=1,
+        )
+
+
+class InvalidParameter(DataioError, InvalidArguments):
+    """A library parameter with a value it cannot take: `INVALID_ARGUMENTS`, caught as a DataioError too."""
+
+
+class NotAvailableYet(DataioError):
+    """A capability this release declares but does not have yet: the command is there, its behaviour comes later."""
+
+    def __init__(self, capability: str) -> None:
+        super().__init__(
+            "NOT_AVAILABLE",
+            f"{capability} is not available in this release yet.",
+            action=f"Run '{_CLI} --version' and update {_DIST} when a newer release has it.",
+            exit_code=1,
+        )

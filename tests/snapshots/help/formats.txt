@@ -1,0 +1,13 @@
+
+ Usage: dataio formats [OPTIONS]
+
+ List every format: its extensions, whether it can read, write and append, and its options.
+
+ Example: dataio formats --json
+
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --json           Emit machine-readable JSON output.                                              │
+│ --quiet          Suppress non-essential output.                                                  │
+│ --help           Show this message and exit.                                                     │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

@@ -15,6 +15,7 @@ dependencies = [
     "httpx>=0.27",
     "packaging>=24.0",
     "keyring>=25.0",
+    "pandas>=3.0",
 ]
 
 [project.scripts]
@@ -119,7 +120,7 @@ line-length = 120
 select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM", "RUF", "S", "T20", "TID251"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "T201", "TID251"]  # assert is the point of a test; print in code strings; httpx for mocks
+"tests/*" = ["S101", "T201", "TID251", "RUF001"]  # assert is the point of a test; print in code strings; httpx for mocks; Cyrillic test data
 "scripts/*" = ["S603", "S607", "T201"]  # subprocess with fixed argv lists (git, uv), no shell; scripts print to the console
 "src/*/providers/*" = ["TID251"]    # external APIs live here
 
@@ -128,4 +129,5 @@ select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM", "RUF", "S", "T20", "TID2
 
 [tool.ruff.lint.flake8-bugbear]
 # Typer's `param: T = typer.Option(...)` style is a call in a default on purpose.
-extend-immutable-calls = ["typer.Option", "typer.Argument"]
+# commands/_parameters.option is typer.Option with the vocabulary's help text.
+extend-immutable-calls = ["typer.Option", "typer.Argument", "rb_dataio.commands._parameters.option"]

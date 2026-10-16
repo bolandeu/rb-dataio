@@ -307,7 +307,7 @@ def test_declined_confirmation_is_a_structured_abort() -> None:
     assert payload["error"]["code"] == "ABORTED"
 
 
-# --- skill / run ---------------------------------------------------------------
+# --- skill ---------------------------------------------------------------------
 
 
 def test_skill_install_writes_to_project_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -318,9 +318,3 @@ def test_skill_install_writes_to_project_dir(tmp_path: Path, monkeypatch: pytest
     assert installed.is_file()
     assert "name: dataio" in installed.read_text()
     assert payload["path"] == str(installed)
-
-
-def test_run_dry_run_makes_no_changes(tmp_path: Path) -> None:
-    code, payload = invoke_json("--project", str(tmp_path), "run", "--dry-run")
-    assert code == 0
-    assert payload["result"] == "dry-run"

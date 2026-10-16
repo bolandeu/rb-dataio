@@ -18,6 +18,7 @@ tested like an API:
 from __future__ import annotations
 
 import inspect
+import re
 import typing
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -131,6 +132,16 @@ def test_every_parameter_has_help(path: tuple[str, ...]) -> None:
 @pytest.mark.parametrize("path", sorted(GROUPS), ids=_slug)
 def test_every_group_has_help(path: tuple[str, ...]) -> None:
     assert (GROUPS[path].info.help or "").strip(), f"group `{_slug(path)}` has no description"
+
+
+def test_bare_help_lists_the_dataio_commands() -> None:
+    """`dataio` alone lists the table commands next to the template's, and the placeholder `run` is gone."""
+    result = CliRunner().invoke(app, [], env=HELP_ENV, prog_name=CLI)
+    assert result.exit_code == 0, result.output
+    panel = result.output.split("Commands", 1)[1]
+    listed = {match[1] for match in re.finditer(r"^│ (\S+) ", panel, re.M)}
+    assert {"convert", "info", "formats", "backups", "restore", "status", "doctor", "describe"} <= listed
+    assert "run" not in listed
 
 
 def test_help_keeps_brackets() -> None:

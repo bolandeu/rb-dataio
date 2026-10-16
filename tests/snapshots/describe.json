@@ -319,8 +319,611 @@
         ]
       },
       {
-        "name": "run",
-        "description": "Execute the project's main operation.\n\nExtension point: replace this body with a call into core.services (or a\nprovider) for this CLI's actual business logic.\n\nIf the real implementation changes external state, keep this shape:\ncheck `output.is_dry_run(ctx)` first and return a preview instead of\nacting, and — if the action is destructive/irreversible — call\n`output.require_confirmation(ctx, \"...\", confirm)` right before the\nchange itself (never before the dry-run preview).\n\nExample: dataio run --dry-run",
+        "name": "convert",
+        "description": "Read a table from SOURCE and write it to TARGET; report both sides.\n\nOptions both sides have take --in- (the source) or --out- (the target).\nWith --dry-run the report comes back and nothing is written.\n\nExample: dataio convert a.csv b.csv --json",
+        "options": [
+          {
+            "name": "--in-format",
+            "arguments": [
+              {
+                "name": "IN_FORMAT",
+                "required": true
+              }
+            ],
+            "description": "Source: Format name; wins over the extension (see the formats command).",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--in-sheet",
+            "arguments": [
+              {
+                "name": "IN_SHEET",
+                "required": true
+              }
+            ],
+            "description": "Source: Sheet name; wins over the part of the address after #.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--in-table",
+            "arguments": [
+              {
+                "name": "IN_TABLE",
+                "required": true
+              }
+            ],
+            "description": "Source: Table name; wins over the part of the address after #.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--in-encoding",
+            "arguments": [
+              {
+                "name": "IN_ENCODING",
+                "required": true
+              }
+            ],
+            "description": "Source: Text encoding, e.g. utf-8 or cp1251.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--in-sep",
+            "arguments": [
+              {
+                "name": "IN_SEP",
+                "required": true
+              }
+            ],
+            "description": "Source: Field delimiter, e.g. ';' or '|'.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--in-header",
+            "aliases": [
+              "--no-in-header"
+            ],
+            "description": "Source: The first row holds the column names.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--as-text",
+            "aliases": [
+              "--no-as-text"
+            ],
+            "description": "Read every value as text.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--dtypes",
+            "arguments": [
+              {
+                "name": "COLUMN=TYPE",
+                "required": true
+              }
+            ],
+            "description": "Type of one column as COLUMN=TYPE, e.g. freq=int; repeatable.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              },
+              {
+                "name": "x-rb-multiple",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--limit",
+            "arguments": [
+              {
+                "name": "LIMIT",
+                "required": true
+              }
+            ],
+            "description": "Read at most this many rows.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "int range"
+              }
+            ]
+          },
+          {
+            "name": "--out-format",
+            "arguments": [
+              {
+                "name": "OUT_FORMAT",
+                "required": true
+              }
+            ],
+            "description": "Target: Format name; wins over the extension (see the formats command).",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-sheet",
+            "arguments": [
+              {
+                "name": "OUT_SHEET",
+                "required": true
+              }
+            ],
+            "description": "Target: Sheet name; wins over the part of the address after #.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-table",
+            "arguments": [
+              {
+                "name": "OUT_TABLE",
+                "required": true
+              }
+            ],
+            "description": "Target: Table name; wins over the part of the address after #.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-encoding",
+            "arguments": [
+              {
+                "name": "OUT_ENCODING",
+                "required": true
+              }
+            ],
+            "description": "Target: Text encoding, e.g. utf-8 or cp1251.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-sep",
+            "arguments": [
+              {
+                "name": "OUT_SEP",
+                "required": true
+              }
+            ],
+            "description": "Target: Field delimiter, e.g. ';' or '|'.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-header",
+            "aliases": [
+              "--no-out-header"
+            ],
+            "description": "Target: The first row holds the column names.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--mode",
+            "arguments": [
+              {
+                "name": "MODE",
+                "required": true,
+                "acceptedValues": [
+                  "replace",
+                  "append",
+                  "error"
+                ]
+              }
+            ],
+            "description": "Write mode: what to do with the data the target already has.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "choice"
+              },
+              {
+                "name": "x-rb-default",
+                "value": "replace"
+              }
+            ]
+          },
+          {
+            "name": "--profile",
+            "arguments": [
+              {
+                "name": "PROFILE",
+                "required": true
+              }
+            ],
+            "description": "Write profile, e.g. excel.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--overwrite",
+            "aliases": [
+              "--no-overwrite"
+            ],
+            "description": "Allow a write over the source itself.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--backup",
+            "aliases": [
+              "--no-backup"
+            ],
+            "description": "Keep a backup of the target before it is replaced.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--dry-run",
+            "description": "Show what would happen without making changes.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--json",
+            "description": "Emit machine-readable JSON output.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--quiet",
+            "description": "Suppress non-essential output.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          }
+        ],
+        "arguments": [
+          {
+            "name": "source",
+            "required": true,
+            "arity": {
+              "minimum": 1,
+              "maximum": 1
+            },
+            "description": "Address of the source, e.g. a.csv or book.xlsx#Sheet1.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "target",
+            "required": true,
+            "arity": {
+              "minimum": 1,
+              "maximum": 1
+            },
+            "description": "Address of the target, e.g. b.csv.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "info",
+        "description": "Describe a source: format, encoding, delimiter, rows, column types and the first 5 rows.\n\nExample: dataio info a.csv --json",
+        "options": [
+          {
+            "name": "--format",
+            "arguments": [
+              {
+                "name": "FORMAT",
+                "required": true
+              }
+            ],
+            "description": "Format name; wins over the extension (see the formats command).",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--sheet",
+            "arguments": [
+              {
+                "name": "SHEET",
+                "required": true
+              }
+            ],
+            "description": "Sheet name; wins over the part of the address after #.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--table",
+            "arguments": [
+              {
+                "name": "TABLE",
+                "required": true
+              }
+            ],
+            "description": "Table name; wins over the part of the address after #.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--encoding",
+            "arguments": [
+              {
+                "name": "ENCODING",
+                "required": true
+              }
+            ],
+            "description": "Text encoding, e.g. utf-8 or cp1251.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--sep",
+            "arguments": [
+              {
+                "name": "SEP",
+                "required": true
+              }
+            ],
+            "description": "Field delimiter, e.g. ';' or '|'.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--header",
+            "aliases": [
+              "--no-header"
+            ],
+            "description": "The first row holds the column names.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--as-text",
+            "aliases": [
+              "--no-as-text"
+            ],
+            "description": "Read every value as text.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--dtypes",
+            "arguments": [
+              {
+                "name": "COLUMN=TYPE",
+                "required": true
+              }
+            ],
+            "description": "Type of one column as COLUMN=TYPE, e.g. freq=int; repeatable.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              },
+              {
+                "name": "x-rb-multiple",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--limit",
+            "arguments": [
+              {
+                "name": "LIMIT",
+                "required": true
+              }
+            ],
+            "description": "Read at most this many rows.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "int range"
+              }
+            ]
+          },
+          {
+            "name": "--json",
+            "description": "Emit machine-readable JSON output.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--quiet",
+            "description": "Suppress non-essential output.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          }
+        ],
+        "arguments": [
+          {
+            "name": "source",
+            "required": true,
+            "arity": {
+              "minimum": 1,
+              "maximum": 1
+            },
+            "description": "Address of the source, e.g. a.csv or book.xlsx#Sheet1.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "formats",
+        "description": "List every format: its extensions, whether it can read, write and append, and its options.\n\nExample: dataio formats --json",
         "options": [
           {
             "name": "--json",
@@ -349,7 +952,47 @@
                 "value": false
               }
             ]
+          }
+        ]
+      },
+      {
+        "name": "backups",
+        "description": "List the kept backups, newest first: id, time, target and rows.\n\nExample: dataio backups --json",
+        "options": [
+          {
+            "name": "--json",
+            "description": "Emit machine-readable JSON output.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
           },
+          {
+            "name": "--quiet",
+            "description": "Suppress non-essential output.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "restore",
+        "description": "Bring a target back from a backup. Not available in this release yet.\n\nExample: dataio restore --dry-run --json",
+        "options": [
           {
             "name": "--dry-run",
             "description": "Show what would happen without making changes.",
@@ -361,6 +1004,65 @@
               {
                 "name": "x-rb-default",
                 "value": false
+              }
+            ]
+          },
+          {
+            "name": "--confirm",
+            "description": "Confirm a destructive action (required together with --non-interactive).",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--json",
+            "description": "Emit machine-readable JSON output.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--quiet",
+            "description": "Suppress non-essential output.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          }
+        ],
+        "arguments": [
+          {
+            "name": "id",
+            "required": false,
+            "arity": {
+              "minimum": 0,
+              "maximum": 1
+            },
+            "description": "Backup id from the backups command; the newest when left out.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
               }
             ]
           }
