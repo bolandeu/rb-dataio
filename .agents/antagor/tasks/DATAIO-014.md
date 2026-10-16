@@ -2,7 +2,7 @@
 id: DATAIO-014
 title: 'Remote sources in the core: the Google key and auth status, gsheet and http(s)
   addresses, start/value_input, confirmation for a non-empty remote part'
-status: in_review
+status: publish
 attempts: 1
 blocked: false
 blocked_reason: null
