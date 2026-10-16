@@ -16,6 +16,12 @@ owns_paths:
 - src/rb_dataio/formats/duckdb.py
 - tests/test_duckdb.py
 - tests/data/duckdb/
+- src/rb_dataio/commands/info.py
+- src/rb_dataio/core/dataio/containers.py
+- src/rb_dataio/core/dataio/pipeline.py
+- src/rb_dataio/core/dataio/report.py
+- src/rb_dataio/core/errors.py
+- src/rb_dataio/formats/__init__.py
 test_paths:
 - tests/test_duckdb.py
 docs: none
@@ -70,3 +76,20 @@ The base contract of the core (DATAIO-011) and the container contract (DATAIO-00
 ## Out of scope
 
 - Postgres, MySQL, SQLAlchemy; keys, indexes, upsert; schema migration on append; streaming; the other base format.
+
+## Feedback
+
+### Blocked: scope_held (holders ['DATAIO-009', 'DATAIO-012'], paths ['src/rb_dataio/commands/info.py', 'src/rb_dataio/core/dataio/containers.py', 'src/rb_dataio/core/dataio/pipeline.py', 'src/rb_dataio/core/dataio/report.py', 'src/rb_dataio/core/errors.py', 'src/rb_dataio/formats/__init__.py'])
+
+DATAIO-009, DATAIO-012 finished; your kept work on src/rb_dataio/commands/info.py, src/rb_dataio/core/dataio/containers.py, src/rb_dataio/core/dataio/pipeline.py, src/rb_dataio/core/dataio/report.py, src/rb_dataio/core/errors.py, src/rb_dataio/formats/__init__.py is back in the worktree; main is merged into your branch where it merges clean
+
+`main` changed since your work began, and merging it conflicts in:
+
+- `src/rb_dataio/commands/info.py`
+- `src/rb_dataio/core/dataio/containers.py`
+- `src/rb_dataio/core/dataio/pipeline.py`
+- `src/rb_dataio/core/dataio/report.py`
+- `src/rb_dataio/core/errors.py`
+- `src/rb_dataio/formats/__init__.py`
+
+Merge it into your branch (`git merge main`), resolve each file keeping both behaviours, `git add` it and run the checks; do not commit: Antagor commits the merge with your work when the round ends (IDEA-201).

@@ -111,6 +111,7 @@ class DuckdbAdapter(BaseAdapter):
     options = ()
     appends = True
     first_part = "data"
+    part_required = True
 
     def claims(self, path: Path) -> bool:
         with path.open("rb") as file:

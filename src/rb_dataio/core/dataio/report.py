@@ -76,7 +76,7 @@ class Info(_Part):
     """What `info()` tells about a source: the source part of a report, the column types and the first rows.
 
     `parts` are the sheets or tables of a container file; empty for any other source.
-    `part_rows` are the rows of every table of a base, by name; empty for any other source.
+    `part_rows` are the rows of each table of a base; empty for any other source.
     """
 
     source: SourcePart

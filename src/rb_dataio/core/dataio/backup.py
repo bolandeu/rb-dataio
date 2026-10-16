@@ -4,7 +4,7 @@ One folder per entry in the user data dir: the old content under a fixed name (`
 and `entry.json` (the `Backup`). The entry file comes last and in one step, so a listing
 never sees half an entry, and two processes never share a folder. The old content is
 always a real copy, so an in-place edit of the target never reaches it. For a table of a
-base (`kept_rows`) it is the old rows of that table only, as parquet; `rows` reads them back.
+base (`kept_rows`) it is the old rows of that table only, as parquet; `kept_table_rows` reads them back.
 Limits (data/settings.toml): entries, age and total size; a target over the object limit
 is not kept, with a warning.
 """
@@ -102,7 +102,7 @@ def kept_rows(rows: pd.DataFrame, path: Path, format_name: str, table: str, uri:
         yield []
 
 
-def rows(entry: Backup) -> pd.DataFrame:
+def kept_table_rows(entry: Backup) -> pd.DataFrame:
     """The old rows of the table that `entry` keeps."""
     return parquet.read_file(content(entry))
 

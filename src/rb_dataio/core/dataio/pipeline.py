@@ -181,7 +181,7 @@ def _old_rows(adapter: BaseAdapter, path: Path, table: str, options: WriteOption
     try:
         if not path.exists() or table not in adapter.parts(path):
             return None
-        return adapter.read_part(path, table, ReadOptions.reading_back(options)).frame
+        return adapter.read_part(path, table, replace(ReadOptions.reading_back(options), as_text=False)).frame
     except (ValueError, OSError) as exc:
         raise WriteFailed(uri, exc) from exc
 
@@ -249,7 +249,7 @@ def _restore_table(entry: Backup, dry_run: bool) -> Report:
         backup=True,
         dry_run=dry_run,
     )
-    return write_frame(backup.rows(entry), entry.target, options).model_copy(update={"backup": entry})
+    return write_frame(backup.kept_table_rows(entry), entry.target, options).model_copy(update={"backup": entry})
 
 
 def _state(target: str, path: Path, options: SharedOptions) -> TargetState:
@@ -304,46 +304,41 @@ def _written(uri: str, keeping: AbstractContextManager[list[str]], write: Callab
 
 
 def describe_source(source: str, options: ReadOptions) -> Info:
-    options, part_rows = _described_table(source, options)
+    base = _base(source, options)
+    part_rows = base[0].row_counts(Path(base[1].path)) if base else {}
+    if base and base[1].fragment is None and not options.query and len(part_rows) > 1:
+        # several tables and none named: info lists them instead of failing the read
+        part = SourcePart(uri=source, format=base[0].name, encoding=None, delimiter=None, rows=0, columns=[])
+        return Info(source=part, parts=list(part_rows), part_rows=part_rows, types={}, preview=[])
     frame, part, _ = read_frame(source, options)
     # to_json: missing values become null and dates ISO strings; without a path it returns the text
     preview = cast(str, frame.head(PREVIEW_ROWS).to_json(orient="records", force_ascii=False, date_format="iso"))
     return Info(
         source=part,
         parts=_parts(source, options),
-        part_rows=part_rows,
         types={str(column): str(dtype) for column, dtype in frame.dtypes.items()},
         preview=json.loads(preview),
+        part_rows=part_rows,
     )
 
 
-def _file_adapter(source: str, options: ReadOptions) -> tuple[FormatAdapter, Address] | None:
-    """The adapter and the address of a source that is an existing local file; None for any other source."""
+def _container(source: str, options: ReadOptions) -> tuple[ContainerAdapter, Address] | None:
+    """The adapter and the address of a source that is a container file; None for any other source."""
     if objects.is_text(source, options):
         return None
     address = _address(source, options)
-    if address.scheme != FILE or not Path(address.path).exists():
+    if address.scheme != FILE:
         return None
-    return registry.resolve(address, options.format), address
+    adapter = registry.resolve(address, options.format)
+    return (adapter, address) if isinstance(adapter, ContainerAdapter) else None
+
+
+def _base(source: str, options: ReadOptions) -> tuple[BaseAdapter, Address] | None:
+    found = _container(source, options)
+    return (found[0], found[1]) if found and isinstance(found[0], BaseAdapter) else None
 
 
 def _parts(source: str, options: ReadOptions) -> list[str]:
     """The parts of a container file; none for any other source."""
-    found = _file_adapter(source, options)
-    if found is None or not isinstance(found[0], ContainerAdapter):
-        return []
-    return found[0].parts(Path(found[1].path))
-
-
-def _described_table(source: str, options: ReadOptions) -> tuple[ReadOptions, dict[str, int]]:
-    """The rows of every table of a base; with several tables and none named, `options` name the first to describe."""
-    found = _file_adapter(source, options)
-    if found is None:
-        return options, {}
-    adapter, address = found
-    if not isinstance(adapter, BaseAdapter):
-        return options, {}
-    counts = adapter.row_counts(Path(address.path))
-    if address.fragment is None and len(counts) > 1:
-        options = replace(options, table=next(iter(counts)))
-    return options, counts
+    found = _container(source, options)
+    return found[0].parts(Path(found[1].path)) if found else []

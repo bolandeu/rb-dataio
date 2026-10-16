@@ -2,8 +2,8 @@
 id: DATAIO-011
 title: 'Bases and SQL in the core: query= over any source, table writes in one transaction,
   table backups as parquet'
-status: queue
-attempts: 0
+status: done
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -23,6 +23,8 @@ owns_paths:
 - tests/data/bases_core/
 - tests/snapshots/
 - tests/test_parity.py
+- src/rb_dataio/formats/csv.py
+- src/rb_dataio/formats/parquet.py
 test_paths:
 - tests/test_query.py
 - tests/test_bases_core.py
@@ -91,3 +93,19 @@ The container contract of DATAIO-008 and the backup store of the protection modu
 ## Out of scope
 
 - The real SQLite and DuckDB formats; Postgres, MySQL, SQLAlchemy; keys, indexes, upsert; schema migration; streaming.
+
+## Feedback
+
+### Attempt 1: the Architect's verdict
+
+The review found blockers; close each:
+
+- [blocker] C11 src/rb_dataio/commands/backups.py: `Backup` got the field `table`, but the human view of `backups` (`_render`, line 14) and its docstring ("id, time, target and rows") were left as they were. Two backups of two tables of one base print as the same line (same id pattern, same target), so the user cannot tell which table `restore <id>` brings back. Add the table to the line (for example `target#table`) and to the docstring; update the snapshot if the help changes.
+
+Minor remarks of the review: optional, if they do not widen the task:
+
+- [minor] C5 src/rb_dataio/core/dataio/pipeline.py `_old_rows`: it reads the old rows with `ReadOptions.reading_back(options)`, which sets `as_text=True`. The test base ignores `as_text`, so the tests do not show whether a real base adapter would back up INTEGER columns as text and restore them as text. Leave a note for DATAIO-012/013, or read the part with `as_text=False`.
+- [minor] C5 src/rb_dataio/core/dataio/pipeline.py `write_frame` / `_write_table`: `_write_table` repeats the order "dry run -> backup -> written" of `_replace`. Acceptable now; watch it if a third write path appears.
+- [minor] C1 src/rb_dataio/core/dataio/backup.py: `rows(entry)` shares its name with the `rows` field of `Backup` and with the `rows` parameter of `kept_rows`. A name such as `kept_table_rows` says more.
+- [minor] [wrong] The csv `query` path runs DuckDB with its own type inference, so `data` over a large csv can have other types than the read frame (e.g. a column with leading zeros becomes an integer). The module docstring says so; the acceptance test proves equality only on a small file with plain integers. «the result is the same as over the read frame»
+- [minor] [extra] `dtypes`/`as_text` apply to the query result, not to `data` (documented in query.py). This is a reasonable choice, but the task does not state it. «Over any other source the read frame is the table 'data' in an in-memory DuckDB»
