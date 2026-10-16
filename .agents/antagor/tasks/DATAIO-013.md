@@ -1,7 +1,7 @@
 ---
 id: DATAIO-013
 title: 'DuckDB bases: x.duckdb#table read and write with modes and transactions'
-status: in_review
+status: publish
 attempts: 0
 blocked: false
 blocked_reason: null
