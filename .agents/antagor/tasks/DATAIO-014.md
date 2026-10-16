@@ -2,7 +2,7 @@
 id: DATAIO-014
 title: 'Remote sources in the core: the Google key and auth status, gsheet and http(s)
   addresses, start/value_input, confirmation for a non-empty remote part'
-status: ideas
+status: queue
 attempts: 0
 blocked: false
 blocked_reason: null
@@ -10,7 +10,7 @@ phase: null
 tests_hash: null
 publish_stage: null
 created_by: architect
-approved_by: null
+approved_by: human
 worker: claude-code
 type: feature
 owns_paths:
