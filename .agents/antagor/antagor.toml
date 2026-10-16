@@ -4,6 +4,17 @@ prefix = "DATAIO"
 name = "dataio"
 worker = "claude-code"
 checks = ["python3 scripts/check_command_docstrings.py", "uv run scripts/release.py --check"]
+parallel = 3
+timeout_minutes = 90
+checks_timeout_minutes = 25
+red_timeout_minutes = 30
+
+[limits]
+max_lines = 800
+max_files = 30
+max_prompt_tokens = 16000
+max_attempts = 4
+hook_timeout_seconds = 600
 
 [review]
 required_types = ["feature", "bugfix"]  # chore and docs: the short path without review
@@ -29,3 +40,6 @@ in_review = "In Review"
 publish = "Publishing"
 done = "Done"
 cancelled = "Cancelled"
+
+[daemon]
+enabled = true
