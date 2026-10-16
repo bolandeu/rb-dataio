@@ -5,6 +5,21 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.7 — 2026-10-16
+
+### E-002 — dataio excel-parquet: Excel books and Parquet files (0.3)
+
+read/write/convert/info handle Excel and Parquet like CSV: book.xlsx#Sheet, all sheets at once with _sheet, one sheet replaced while the others stay, a usable xlsx (autowidth, frozen header, autofilter), Parquet without pyarrow.
+Time: 0.1h since the epic was approved
+
+- Parquet files through DuckDB, without pyarrow (DATAIO-010)
+
+## v0.1.6 — 2026-10-16
+
+### Outside epics
+
+- Release installs the new tag on this Mac (DATAIO-007)
+
 ## v0.1.5 — 2026-10-16
 
 ### E-001 — dataio core: the connector and its contract (0.2)
