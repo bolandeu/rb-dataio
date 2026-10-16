@@ -1,7 +1,7 @@
 ---
 id: DATAIO-009
 title: 'Excel books: read xlsx/xls/xlsb/ods, write xlsx sheets with a usable layout'
-status: in_review
+status: publish
 attempts: 2
 blocked: false
 blocked_reason: null
