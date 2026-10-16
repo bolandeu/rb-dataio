@@ -5,6 +5,15 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.12 — 2026-10-16
+
+### E-003 — dataio databases-query: SQLite, DuckDB and SQL over any source (0.4)
+
+x.sqlite#table and x.duckdb#table read and write like files, with modes in one transaction and backups; query= runs SQL inside a base or over any source as the table 'data', directly over csv/parquet files for large ones.
+Time: 0.7h since the epic was approved
+
+- DuckDB bases: x.duckdb#table read and write with modes and transactions (DATAIO-013)
+
 ## v0.1.11 — 2026-10-16
 
 ### E-003 — dataio databases-query: SQLite, DuckDB and SQL over any source (0.4)
