@@ -3,7 +3,7 @@ id: DATAIO-004
 title: 'Protection: backups, restore, atomic writes, write modes, safety checks and
   loss warnings'
 status: queue
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -24,10 +24,24 @@ owns_paths:
 - tests/test_backup.py
 - tests/test_protect.py
 - tests/snapshots/describe.json
+- src/rb_dataio/data/settings.toml
+- src/rb_dataio/commands/convert.py
+- src/rb_dataio/core/dataio/api.py
+- src/rb_dataio/core/dataio/options.py
+- src/rb_dataio/core/dataio/protection.py
+- src/rb_dataio/core/dataio/report.py
+- src/rb_dataio/core/dataio/settings.py
+- src/rb_dataio/core/errors.py
+- tests/snapshots/help/convert.txt
+- tests/snapshots/help/restore.txt
 test_paths:
 - tests/test_backup.py
 - tests/test_protect.py
 - tests/test_describe.py
+- tests/conftest.py
+- tests/snapshots/help/restore.txt
+- tests/test_cli_frame.py
+- tests/test_frame.py
 docs:
 - src/rb_dataio/data/SKILL.md
 tools: []
@@ -102,3 +116,25 @@ Backup store in platformdirs.user_data_path (the template's way), declared in co
 - Google Sheets confirmation and backups of remote sheets (google-http epic)
 - Backups of sheets and base tables (their epics reuse this store)
 - New CLI flags (the frame owns them)
+
+## Feedback
+
+### Answer to question #1
+
+> DATAIO-004 acceptance wants convert-over-source refused with action 'pass overwrite=True / --confirm', but the convert command has --overwrite and no --confirm, and new CLI flags are out of scope.
+> Question: How does the CLI allow a convert over its own source?
+> Options:
+> 1. Add output.ConfirmOption to convert: --confirm (or a yes at the prompt via require_confirmation) passes overwrite=True; keep --overwrite as the library parity flag
+> 2. No new flag: the action names --overwrite for the CLI ('pass overwrite=True / --overwrite')
+> Recommended: Add output.ConfirmOption to convert: --confirm (or a yes at the prompt via require_confirmation) passes overwrite=True; keep --overwrite as the library parity flag
+
+Option 1, per SPEC (Confirmation section) and ADR 0005: add the template ConfirmOption to convert and use require_confirmation for convert-over-source; --confirm (or yes at the prompt) passes overwrite=True; keep --overwrite as the library parity flag. The action text: 'pass overwrite=True / --confirm'. Owns now include the convert and restore help snapshots.
+
+### Blocked: needs_scope (entries [{'n': 1, 'text': "DATAIO-004 acceptance wants convert-over-source refused with action 'pass overwrite=True / --confirm', but the convert command has --overwrite and no --confirm, and new CLI flags are out of scope.\nQue"}])
+
+Inbox #1 answered: option 1 (--confirm via require_confirmation).
+
+### Attempt 1: file docstring
+
+- update the docstring of src/rb_dataio/core/dataio/report.py: +PlannedTarget
+- update the docstring of src/rb_dataio/core/errors.py: +BackupNotFound +WriteOverSource -NotAvailableYet

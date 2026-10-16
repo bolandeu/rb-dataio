@@ -28,8 +28,8 @@ deploy_command = "sh scripts/deploy.sh"
 webhook_secret = "PLANE_WEBHOOK_SECRET_TOOLS"
 kind = "plane"
 base_url = "https://homeserver.tailee01ab.ts.net:8443"
-workspace = "products"
-project_id = "1e46daca-6cd3-4319-957e-385a23ea0e42"
+workspace = "tools"
+project_id = "555d81d0-8de0-46aa-98d1-871fd2bf6941"
 humans = ["r.bolandau@gmail.com"]
 
 [connector.states]
