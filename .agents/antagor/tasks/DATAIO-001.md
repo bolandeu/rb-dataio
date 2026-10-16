@@ -4,8 +4,8 @@ title: 'Core frame: read/write/convert/info/formats through the address, the for
   registry and the report, with the full CLI surface'
 status: in_progress
 attempts: 0
-blocked: true
-blocked_reason: diff_too_large
+blocked: false
+blocked_reason: null
 phase: null
 tests_hash: null
 publish_stage: null
@@ -134,3 +134,7 @@ Follow the template layers: commands only map flags to one core call (output.gua
 > Recommended: Widen the test regex to [A-Z]{2,10} in this task (one line in tests/test_scripts.py)
 
 Already fixed on main in commit e2a34e5 (regex [A-Z]{2,12}). Run 'git cherry-pick e2a34e5' in the worktree and continue. Do not edit the test; do not shorten the prefix.
+
+### Blocked: diff_too_large (files 22 > 10)
+
+Size limits raised by the Human for the product start; config and test fix (e2a34e5) cherry-picked into the branch.
