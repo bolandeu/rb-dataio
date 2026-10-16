@@ -1,8 +1,4 @@
-"""The `restore` command: bring a target back from a backup.
-
-A stub until the protection task: the library refuses with `NOT_AVAILABLE`.
-The command is registered now so that the CLI surface does not change later.
-"""
+"""The `restore` command: bring a target back from a backup, behind confirmation."""
 
 from __future__ import annotations
 
@@ -22,8 +18,14 @@ def restore(
     json_output: bool = output.JsonOption,
     quiet: bool = output.QuietOption,
 ) -> None:
-    """Bring a target back from a backup. Not available in this release yet.
+    """Bring a target back from a backup (the newest without ID); what it holds now is backed up first.
+
+    It replaces the target, so it asks first: --confirm skips the question.
+    With --dry-run the report shows the target before and after, and nothing changes.
 
     Example: {cli} restore --dry-run --json
     """
-    output.emit_success(ctx, api.restore(id).to_dict(), render_human=render_report)
+    dry_run = output.is_dry_run(ctx)
+    if not dry_run:
+        output.require_confirmation(ctx, f"Restore backup {id or '(the newest)'} over its target", confirm)
+    output.emit_success(ctx, api.restore(id, dry_run=dry_run).to_dict(), render_human=render_report)

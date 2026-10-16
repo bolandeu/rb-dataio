@@ -13,7 +13,7 @@ NA_WORDS = ["NA", "null", "nan", "None", "-"]
 
 
 @pytest.fixture
-def workdir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def workdir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, data_dir: Path) -> Path:
     monkeypatch.chdir(tmp_path)
     return tmp_path
 

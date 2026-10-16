@@ -1,8 +1,4 @@
-"""The `backups` command: the list of kept backups.
-
-A stub until the protection task: the library keeps no backups yet, so the list is empty.
-The command is registered now so that the CLI surface does not change later.
-"""
+"""The `backups` command: the list of kept backups."""
 
 from __future__ import annotations
 
@@ -16,7 +12,8 @@ def _render(data: dict) -> None:
     if not data["backups"]:
         output.human.echo("No backups.")
     for entry in data["backups"]:
-        output.human.echo(f"{entry['id']}  {entry['time']}  {entry['target']}  {entry['rows']} rows")
+        rows = "?" if entry["rows"] is None else entry["rows"]  # None: dataio could not read the old content
+        output.human.echo(f"{entry['id']}  {entry['time']}  {entry['target']}  {rows} rows")
 
 
 @output.guard

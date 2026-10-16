@@ -3,29 +3,65 @@
 A new format is one new module here and nothing else: `adapters()` finds every
 module of this package, and `formats()` and the `FORMAT_UNKNOWN` list come from it.
 An adapter has a read ability when it defines `read`, a write ability when it
-defines `write`; `appends`, `infers_types` and `options` it states itself.
+defines `write`; `appends` and `options` it states itself. A `TextAdapter` is a
+format of plain text: it defines `parse` and `render`, and the same two serve its
+files, stdin and stdout, and the in-memory text of `write()`.
 """
 
 from __future__ import annotations
 
+import codecs
 import importlib
 import pkgutil
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import ClassVar
 
 import pandas as pd
 
 from ..core.dataio.options import ReadOptions, WriteOptions
+from ..core.errors import InvalidParameter
+
+ENCODING = "utf-8"
+BOM_ENCODING = "utf-8-sig"
+FALLBACK_ENCODING = "cp1251"
+_BINARY = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def decode(data: bytes, encoding: str | None) -> tuple[str, str]:
+    """The text of `data` and its encoding: `encoding` if given, else UTF-8 (with or without BOM) or cp1251."""
+    if encoding:
+        try:
+            text = data.decode(encoding)
+        except LookupError:
+            raise InvalidParameter(f"Unknown encoding '{encoding}'.") from None
+        return _text(text), encoding
+    for candidate in (BOM_ENCODING if data.startswith(codecs.BOM_UTF8) else ENCODING, FALLBACK_ENCODING):
+        try:
+            return _text(data.decode(candidate)), candidate
+        except UnicodeDecodeError:
+            continue
+    raise ValueError(f"binary or undecodable file: it is not text in {ENCODING} or {FALLBACK_ENCODING}.")
+
+
+def _text(text: str) -> str:
+    if _BINARY.search(text):
+        raise ValueError("binary file: it has control characters that text does not.")
+    return text
 
 
 @dataclass(frozen=True)
 class Loaded:
-    """A table an adapter read, with the encoding and the delimiter it used (None where the format has none)."""
+    """A table an adapter read, with the encoding and the delimiter it used (None where the format has none).
+
+    `infers_types` False: value normalisation keeps the text columns as they are (a phrase list stays text).
+    """
 
     frame: pd.DataFrame
     encoding: str | None = None
     delimiter: str | None = None
+    infers_types: bool = True
 
 
 class FormatAdapter:
@@ -33,7 +69,6 @@ class FormatAdapter:
     extensions: ClassVar[tuple[str, ...]]  # lower case, with the dot
     options: ClassVar[tuple[str, ...]]  # the parameters this format honours
     appends: ClassVar[bool] = False
-    infers_types: ClassVar[bool] = True  # False: value normalisation keeps the text columns as they are
 
     def read(self, path: Path, options: ReadOptions) -> Loaded:
         raise NotImplementedError
@@ -48,6 +83,27 @@ class FormatAdapter:
     @property
     def writes(self) -> bool:
         return type(self).write is not FormatAdapter.write
+
+
+class TextAdapter(FormatAdapter):
+    """A format of plain text: a read decodes the file and parses the text, a write renders the text and encodes it."""
+
+    def parse(self, text: str, options: ReadOptions) -> Loaded:
+        raise NotImplementedError
+
+    def render(self, frame: pd.DataFrame, options: WriteOptions) -> str:
+        raise NotImplementedError
+
+    def load(self, data: bytes, options: ReadOptions) -> Loaded:
+        """The table of the bytes of a file or of stdin, with the encoding they were read in."""
+        text, encoding = decode(data, options.encoding)
+        return replace(self.parse(text, options), encoding=encoding)
+
+    def read(self, path: Path, options: ReadOptions) -> Loaded:
+        return self.load(path.read_bytes(), options)
+
+    def write(self, frame: pd.DataFrame, path: Path, options: WriteOptions) -> None:
+        path.write_bytes(self.render(frame, options).encode(options.encoding or ENCODING))
 
 
 def adapters() -> list[FormatAdapter]:

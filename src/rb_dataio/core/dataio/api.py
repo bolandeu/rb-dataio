@@ -9,17 +9,20 @@ accepted and passed on already, so later tasks change behaviour, not the surface
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import pandas as pd
 
-from ..errors import NotAvailableYet
-from . import pipeline, registry
+from . import backup, pipeline, registry
 from .options import ReadOptions, WriteOptions
 from .report import Backup, FormatInfo, Info, Report
 
+# An address, a text with line breaks, or a Python object that is a table (core/dataio/objects.py).
+Source = str | os.PathLike[str] | pd.DataFrame | pd.Series | list[str] | list[dict[str, Any]] | dict[Any, Any]
+
 
 def read(
-    source: str | os.PathLike[str],
+    source: Source,
     *,
     format: str | None = None,
     sheet: str | None = None,
@@ -31,17 +34,18 @@ def read(
     dtypes: dict[str, str] | None = None,
     limit: int | None = None,
 ) -> pd.DataFrame:
-    """Read a source into a DataFrame: `read("phrases.csv")`, `read("book.xlsx#Sheet1")`.
+    """Read a source into a DataFrame: `read("phrases.csv")`, `read("book.xlsx#Sheet1")`, `read(["a", "b"])`.
 
     `format`, `sheet` and `table` win over what the address says; `limit` keeps the first rows.
+    A string with a line break is text; `format="text"` reads a one-line string as text too.
     """
-    frame, _, _ = pipeline.read_frame(os.fspath(source), ReadOptions.taken_from(locals()))
+    frame, _, _ = pipeline.read_frame(source, ReadOptions.taken_from(locals()))
     return frame
 
 
 def write(
     df: pd.DataFrame,
-    target: str | os.PathLike[str],
+    target: str | os.PathLike[str] | None = None,
     *,
     format: str | None = None,
     sheet: str | None = None,
@@ -54,12 +58,17 @@ def write(
     overwrite: bool = False,
     backup: bool = True,
     dry_run: bool = False,
-) -> Report:
-    """Write a DataFrame to a target and return the report: `write(df, "out.csv")`.
+) -> Any:
+    """Write a DataFrame to a target and return the report (a `Report`): `write(df, "out.csv")`.
 
     `mode` is the write mode (`replace`, `append`, `error`); `dry_run` returns the report and writes nothing.
+    With no target nothing is written: the data comes back as `format` says, `records` (the default),
+    `list`, `dict`, or the text of `text`, `csv`, `json` and the other text formats.
     """
-    return pipeline.write_frame(df, os.fspath(target), WriteOptions.taken_from(locals()))
+    options = WriteOptions.taken_from(locals())
+    if target is None:
+        return pipeline.frame_data(df, options)
+    return pipeline.write_frame(df, os.fspath(target), options)
 
 
 def convert(
@@ -90,10 +99,13 @@ def convert(
     """Read a source and write it to a target: `convert("a.csv", "b.csv")`; the report has both sides.
 
     The options both sides have take `in_` (the source) or `out_` (the target).
+    A target that is the source itself needs `overwrite=True`.
     """
     arguments = locals()
     frame, source_part, read_warnings = pipeline.read_frame(os.fspath(source), ReadOptions.taken_from(arguments, "in"))
-    report = pipeline.write_frame(frame, os.fspath(target), WriteOptions.taken_from(arguments, "out"))
+    report = pipeline.write_frame(
+        frame, os.fspath(target), WriteOptions.taken_from(arguments, "out"), source=os.fspath(source)
+    )
     return report.model_copy(update={"source": source_part, "warnings": [*read_warnings, *report.warnings]})
 
 
@@ -120,10 +132,14 @@ def formats() -> list[FormatInfo]:
 
 
 def backups() -> list[Backup]:
-    """The kept backups, newest first. None yet: backups come with the protection task."""
-    return []
+    """The kept backups, newest first: every replace of an existing target keeps one."""
+    return backup.entries()
 
 
-def restore(id: str | None = None) -> Report:
-    """Bring back the backup `id` (the newest without one). Not available yet: it comes with the protection task."""
-    raise NotAvailableYet("restore")
+def restore(id: str | None = None, *, dry_run: bool = False) -> Report:
+    """Bring back the backup `id` (the newest without one) into its target.
+
+    What the target holds now is kept as a new backup first, so a restore can be undone.
+    `dry_run` returns the report and changes nothing.
+    """
+    return pipeline.restore_target(id, dry_run)

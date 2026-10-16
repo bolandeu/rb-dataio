@@ -88,6 +88,9 @@ def test_dry_run_reports_and_writes_nothing(workdir: Path) -> None:
         "mode": "replace",
         "rows": 3,
         "columns": ["phrase", "freq"],
+        "exists": False,
+        "rows_before": 0,
+        "rows_after": 3,
     }
     assert not (workdir / "b.csv").exists()
 
@@ -129,7 +132,7 @@ def test_placeholders_are_parsed() -> None:
     assert address.parse("out/{region}/part_{n}.csv").placeholders == ("region", "n")
 
 
-@pytest.mark.parametrize("source", ["-", "gsheet://1AbC", "https://example.com/a.csv"])
+@pytest.mark.parametrize("source", ["gsheet://1AbC", "https://example.com/a.csv"])
 def test_other_schemes_are_not_supported_yet(source: str) -> None:
     with pytest.raises(DataioError) as caught:
         read(source)

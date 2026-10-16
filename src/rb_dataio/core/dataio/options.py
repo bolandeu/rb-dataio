@@ -47,6 +47,12 @@ class ReadOptions(SharedOptions):
     dtypes: dict[str, str] | None
     limit: int | None
 
+    @classmethod
+    def reading_back(cls, written: SharedOptions) -> Self:
+        """The options that read what a write with `written` options leaves: its shared options, every value as text."""
+        shared = {field.name: getattr(written, field.name) for field in fields(SharedOptions)}
+        return cls(**shared, as_text=True, dtypes=None, limit=None)
+
     def __post_init__(self) -> None:
         if self.limit is not None and self.limit < 0:
             raise InvalidParameter(f"limit must be 0 or more, not {self.limit}.")

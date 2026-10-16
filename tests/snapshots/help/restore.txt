@@ -1,7 +1,10 @@
 
  Usage: dataio restore [OPTIONS] [id]
 
- Bring a target back from a backup. Not available in this release yet.
+ Bring a target back from a backup (the newest without ID); what it holds now is backed up first.
+
+ It replaces the target, so it asks first: --confirm skips the question.
+ With --dry-run the report shows the target before and after, and nothing changes.
 
  Example: dataio restore --dry-run --json
 

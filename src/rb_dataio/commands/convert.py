@@ -1,7 +1,10 @@
 """The `convert` command: read a source, write a target, report both sides.
 
 It maps the flags to one `convert()` call. The options both sides have take
-`--in-` / `--out-`. `render_report` is the human view of a report, shared with `restore`.
+`--in-` / `--out-`. A target that is the source itself asks first (`--confirm` skips the
+question). With the target `-` stdout is the data: the human report is left out, and under
+`--json` the data is records inside the envelope. `render_report` is the human view of a
+report, shared with `restore`.
 """
 
 from __future__ import annotations
@@ -11,14 +14,22 @@ from rich.markup import escape
 
 from .. import output
 from ..core.dataio import api
+from ..core.dataio.address import STDIO_TEXT
+from ..core.dataio.objects import RECORDS
 from ..core.dataio.options import Mode
+from ..core.dataio.report import Report
+from ..core.errors import WriteOverSource
 from ._parameters import option, pairs
 
 
 def render_report(report: dict) -> None:
-    for side in ("source", "target"):
+    for side in ("source", "backup", "target"):
         if side in report:
             output.human.key_values(side.capitalize(), report[side])
+    render_warnings(report)
+
+
+def render_warnings(report: dict) -> None:
     for warning in report["warnings"]:
         output.human.err_console.print(f"[yellow]Warning:[/yellow] {escape(warning)}")
 
@@ -26,8 +37,8 @@ def render_report(report: dict) -> None:
 @output.guard
 def convert(
     ctx: typer.Context,
-    source: str = typer.Argument(..., help="Address of the source, e.g. a.csv or book.xlsx#Sheet1."),
-    target: str = typer.Argument(..., help="Address of the target, e.g. b.csv."),
+    source: str = typer.Argument(..., help="Address of the source, e.g. a.csv or book.xlsx#Sheet1; - is stdin."),
+    target: str = typer.Argument(..., help="Address of the target, e.g. b.csv; - is stdout."),
     in_format: str | None = option("format", None, "in"),
     in_sheet: str | None = option("sheet", None, "in"),
     in_table: str | None = option("table", None, "in"),
@@ -48,6 +59,7 @@ def convert(
     overwrite: bool = option("overwrite", False),
     backup: bool = option("backup", True),
     dry_run: bool = output.DryRunOption,
+    confirm: bool = output.ConfirmOption,
     json_output: bool = output.JsonOption,
     quiet: bool = output.QuietOption,
 ) -> None:
@@ -55,31 +67,46 @@ def convert(
 
     Options both sides have take --in- (the source) or --out- (the target).
     With --dry-run the report comes back and nothing is written.
+    A TARGET that is the SOURCE itself asks first: --confirm skips the question.
+    SOURCE - is stdin, its format comes from the content; TARGET - is stdout:
+    CSV, one value per line for one column, or --out-format; under --json the
+    data is inside the envelope as data.
 
     Example: {cli} convert a.csv b.csv --json
     """
-    report = api.convert(
-        source,
-        target,
-        in_format=in_format,
-        in_sheet=in_sheet,
-        in_table=in_table,
-        in_encoding=in_encoding,
-        in_sep=in_sep,
-        in_header=in_header,
-        as_text=as_text,
-        dtypes=pairs(dtypes),
-        limit=limit,
-        out_format=out_format,
-        out_sheet=out_sheet,
-        out_table=out_table,
-        out_encoding=out_encoding,
-        out_sep=out_sep,
-        out_header=out_header,
-        mode=mode,
-        profile=profile,
-        overwrite=overwrite,
-        backup=backup,
-        dry_run=output.is_dry_run(ctx),
-    )
-    output.emit_success(ctx, report.to_dict(), render_human=render_report)
+    to_stdout = target == STDIO_TEXT
+    if to_stdout and ctx.obj.get("json"):
+        out_format = RECORDS  # stdout stays one JSON document: the data rides in the envelope
+
+    def run(overwrite: bool) -> Report:
+        return api.convert(
+            source,
+            target,
+            in_format=in_format,
+            in_sheet=in_sheet,
+            in_table=in_table,
+            in_encoding=in_encoding,
+            in_sep=in_sep,
+            in_header=in_header,
+            as_text=as_text,
+            dtypes=pairs(dtypes),
+            limit=limit,
+            out_format=out_format,
+            out_sheet=out_sheet,
+            out_table=out_table,
+            out_encoding=out_encoding,
+            out_sep=out_sep,
+            out_header=out_header,
+            mode=mode,
+            profile=profile,
+            overwrite=overwrite,
+            backup=backup,
+            dry_run=output.is_dry_run(ctx),
+        )
+
+    try:
+        report = run(overwrite or confirm)
+    except WriteOverSource:
+        output.require_confirmation(ctx, f"Write over the source '{source}'", confirm)
+        report = run(True)
+    output.emit_success(ctx, report.to_dict(), render_human=render_warnings if to_stdout else render_report)

@@ -1,7 +1,9 @@
 """The expected failures of the CLI and the library: one `CliError` subclass per code.
 
 Each error has a code, a message, an action and an exit code; `output.guard`
-puts it in the error envelope. `DataioError` is the family of read and write failures.
+puts it in the error envelope. `DataioError` is the family of read and write failures,
+the protection of a target among them: a write over the source (`WriteOverSource`) and
+a backup that is not kept (`BackupNotFound`).
 """
 
 from __future__ import annotations
@@ -264,6 +266,32 @@ class TargetExists(DataioError):
         )
 
 
+class WriteOverSource(DataioError):
+    """The target is the source itself: allowed only on request, as an error there costs most (docs/adr/0005)."""
+
+    def __init__(self, address: str) -> None:
+        super().__init__(
+            "TARGET_EXISTS",
+            f"Target '{address}' is the source itself: the write would replace the data it reads.",
+            action="Pass overwrite=True / --confirm to write over the source; a backup is kept.",
+            exit_code=1,
+        )
+
+
+class BackupNotFound(DataioError):
+    """No kept backup has this id, or none is kept: the action lists the ids there are."""
+
+    def __init__(self, backup_id: str | None, kept: list[str]) -> None:
+        super().__init__(
+            "SOURCE_NOT_FOUND",
+            f"Backup '{backup_id}' does not exist." if backup_id else "No backups are kept.",
+            action=f"Pass one of the kept backup ids: {', '.join(kept)}."
+            if kept
+            else "A replace of an existing target keeps a backup; there is none yet.",
+            exit_code=2,
+        )
+
+
 class ReadFailed(DataioError):
     def __init__(self, address: str, cause: Exception) -> None:
         super().__init__(
@@ -286,15 +314,3 @@ class WriteFailed(DataioError):
 
 class InvalidParameter(DataioError, InvalidArguments):
     """A library parameter with a value it cannot take: `INVALID_ARGUMENTS`, caught as a DataioError too."""
-
-
-class NotAvailableYet(DataioError):
-    """A capability this release declares but does not have yet: the command is there, its behaviour comes later."""
-
-    def __init__(self, capability: str) -> None:
-        super().__init__(
-            "NOT_AVAILABLE",
-            f"{capability} is not available in this release yet.",
-            action=f"Run '{_CLI} --version' and update {_DIST} when a newer release has it.",
-            exit_code=1,
-        )

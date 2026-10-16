@@ -3,40 +3,45 @@
 from __future__ import annotations
 
 import io
+from collections.abc import Iterable
 from pathlib import Path
 
 import pandas as pd
 
 from ..core.dataio.options import Mode, ReadOptions, WriteOptions
 from ..core.dataio.report import column_names
-from . import FormatAdapter, Loaded
-from .csv import ENCODING, append_text, decode, existing_text
+from . import Loaded, TextAdapter
+from .csv import append_text, existing_text
 
 COLUMN = "text"
 
 
-class TxtAdapter(FormatAdapter):
+def lines_table(lines: Iterable[str]) -> Loaded:
+    """The column `text` of the lines; a blank line is an empty row, and the values stay text."""
+    values = pd.Series([line if line.strip() else None for line in lines], name=COLUMN, dtype="str")
+    return Loaded(values.to_frame(), infers_types=False)
+
+
+class TxtAdapter(TextAdapter):
     name = "txt"
     extensions = (".txt",)
     options = ("encoding",)
     appends = True
-    infers_types = False  # a phrase list stays text, whatever the lines look like
 
-    def read(self, path: Path, options: ReadOptions) -> Loaded:
-        text, encoding = decode(path.read_bytes(), options.encoding)
-        lines = [line.rstrip("\n") for line in io.StringIO(text)]
-        values = pd.Series([line if line.strip() else None for line in lines], name=COLUMN, dtype="str")
-        return Loaded(values.to_frame(), encoding)
+    def parse(self, text: str, options: ReadOptions) -> Loaded:
+        return lines_table(line.rstrip("\n") for line in io.StringIO(text))
 
-    def write(self, frame: pd.DataFrame, path: Path, options: WriteOptions) -> None:
+    def render(self, frame: pd.DataFrame, options: WriteOptions) -> str:
         if frame.shape[1] != 1:
             raise ValueError(f"txt holds one column, the data has {frame.shape[1]}: {column_names(frame)}.")
-        text = "".join(f"{value}\n" for value in frame.iloc[:, 0].fillna(""))
+        return "".join(f"{value}\n" for value in frame.iloc[:, 0].fillna(""))
+
+    def write(self, frame: pd.DataFrame, path: Path, options: WriteOptions) -> None:
         existing = existing_text(path, options) if options.mode is Mode.APPEND else None
         if existing is None:
-            path.write_bytes(text.encode(options.encoding or ENCODING))
+            super().write(frame, path, options)
         else:
-            append_text(path, existing, text)
+            append_text(path, existing, self.render(frame, options))
 
 
 ADAPTER = TxtAdapter()

@@ -5,12 +5,17 @@
 
  Options both sides have take --in- (the source) or --out- (the target).
  With --dry-run the report comes back and nothing is written.
+ A TARGET that is the SOURCE itself asks first: --confirm skips the question.
+ SOURCE - is stdin, its format comes from the content; TARGET - is stdout:
+ CSV, one value per line for one column, or --out-format; under --json the
+ data is inside the envelope as data.
 
  Example: dataio convert a.csv b.csv --json
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
-│ *    source      <str>  Address of the source, e.g. a.csv or book.xlsx#Sheet1. [required]        │
-│ *    target      <str>  Address of the target, e.g. b.csv. [required]                            │
+│ *    source      <str>  Address of the source, e.g. a.csv or book.xlsx#Sheet1; - is stdin.       │
+│                         [required]                                                               │
+│ *    target      <str>  Address of the target, e.g. b.csv; - is stdout. [required]               │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
 │ --in-format                          <str>                   Source: Format name; wins over the  │
@@ -58,6 +63,9 @@
 │                                                              [default: backup]                   │
 │ --dry-run                                                    Show what would happen without      │
 │                                                              making changes.                     │
+│ --confirm                                                    Confirm a destructive action        │
+│                                                              (required together with             │
+│                                                              --non-interactive).                 │
 │ --json                                                       Emit machine-readable JSON output.  │
 │ --quiet                                                      Suppress non-essential output.      │
 │ --help                                                       Show this message and exit.         │
