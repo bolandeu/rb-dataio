@@ -1,7 +1,7 @@
 ---
 id: DATAIO-023
 title: 'Write to an empty remote part: no backup of a part with no columns'
-status: in_review
+status: publish
 attempts: 0
 blocked: false
 blocked_reason: null
