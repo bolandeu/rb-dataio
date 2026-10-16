@@ -2,7 +2,7 @@
 id: DATAIO-001
 title: 'Core frame: read/write/convert/info/formats through the address, the format
   registry and the report, with the full CLI surface'
-status: queue
+status: in_progress
 attempts: 0
 blocked: false
 blocked_reason: null
