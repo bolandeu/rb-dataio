@@ -4,7 +4,7 @@ A new format is one new module here and nothing else: `adapters()` finds every
 module of this package, and `formats()` and the `FORMAT_UNKNOWN` list come from it.
 An adapter has a read ability when it defines `read`, a write ability when it
 defines `write`; `appends` and `options` it states itself, and a format that only reads
-names in `written_as` the format that writes its kind of file. A write the format refuses
+names in `written_as` the format that writes its kind of file, or states in `read_only` why nothing writes it (http). A write the format refuses
 before it writes raises `WriteRefused`, with the action to take instead. A `TextAdapter` is a
 format of plain text: it defines `parse` and `render`, and the same two serve its
 files, stdin and stdout, and the in-memory text of `write()`. A `ContainerAdapter` is a
@@ -120,6 +120,7 @@ class FormatAdapter:
     schemes: ClassVar[tuple[str, ...]] = ()  # the address schemes it takes (https, gsheet); a file format none
     appends: ClassVar[bool] = False
     written_as: ClassVar[str | None] = None  # a format that cannot write: the one that writes its kind of file
+    read_only: ClassVar[str | None] = None  # a format that cannot write, whatever the file: why it is read only
 
     def read(self, path: Path, options: ReadOptions) -> Loaded:
         raise NotImplementedError
