@@ -2,8 +2,8 @@
 id: DATAIO-001
 title: 'Core frame: read/write/convert/info/formats through the address, the format
   registry and the report, with the full CLI surface'
-status: in_progress
-attempts: 0
+status: queue
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -138,3 +138,13 @@ Already fixed on main in commit e2a34e5 (regex [A-Z]{2,12}). Run 'git cherry-pic
 ### Blocked: diff_too_large (files 22 > 10)
 
 Size limits raised by the Human for the product start; config and test fix (e2a34e5) cherry-picked into the branch.
+
+### Attempt 1: file docstring
+
+- add a docstring to src/rb_dataio/cli.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/backups.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/convert.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/formats.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/info.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/restore.py: what it holds and why
+- add a docstring to src/rb_dataio/core/errors.py: what it holds and why
