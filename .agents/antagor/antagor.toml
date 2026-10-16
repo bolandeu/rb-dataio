@@ -11,3 +11,19 @@ required_types = ["feature", "bugfix"]  # chore and docs: the short path without
 versioning = "semver"
 changelog = "CHANGELOG.md"
 deploy_command = "sh scripts/deploy.sh"
+
+[connector]
+kind = "plane"
+base_url = "https://homeserver.tailee01ab.ts.net:8443"
+workspace = "products"
+project_id = "f301b8df-b315-4348-97c6-54c5fb09a53f"
+humans = ["r.bolandau@gmail.com"]
+
+[connector.states]
+ideas = "Backlog"
+queue = "Todo"
+in_progress = "In Progress"
+in_review = "In Review"
+publish = "Publishing"
+done = "Done"
+cancelled = "Cancelled"
