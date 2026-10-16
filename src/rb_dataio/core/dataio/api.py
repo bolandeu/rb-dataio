@@ -35,7 +35,7 @@ def read(
 
     `format`, `sheet` and `table` win over what the address says; `limit` keeps the first rows.
     """
-    frame, _ = pipeline.read_frame(os.fspath(source), ReadOptions.taken_from(locals()))
+    frame, _, _ = pipeline.read_frame(os.fspath(source), ReadOptions.taken_from(locals()))
     return frame
 
 
@@ -92,9 +92,9 @@ def convert(
     The options both sides have take `in_` (the source) or `out_` (the target).
     """
     arguments = locals()
-    frame, source_part = pipeline.read_frame(os.fspath(source), ReadOptions.taken_from(arguments, "in"))
+    frame, source_part, read_warnings = pipeline.read_frame(os.fspath(source), ReadOptions.taken_from(arguments, "in"))
     report = pipeline.write_frame(frame, os.fspath(target), WriteOptions.taken_from(arguments, "out"))
-    return report.model_copy(update={"source": source_part})
+    return report.model_copy(update={"source": source_part, "warnings": [*read_warnings, *report.warnings]})
 
 
 def info(

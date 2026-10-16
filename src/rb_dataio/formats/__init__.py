@@ -3,7 +3,7 @@
 A new format is one new module here and nothing else: `adapters()` finds every
 module of this package, and `formats()` and the `FORMAT_UNKNOWN` list come from it.
 An adapter has a read ability when it defines `read`, a write ability when it
-defines `write`; `appends` and `options` it states itself.
+defines `write`; `appends`, `infers_types` and `options` it states itself.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ class FormatAdapter:
     extensions: ClassVar[tuple[str, ...]]  # lower case, with the dot
     options: ClassVar[tuple[str, ...]]  # the parameters this format honours
     appends: ClassVar[bool] = False
+    infers_types: ClassVar[bool] = True  # False: value normalisation keeps the text columns as they are
 
     def read(self, path: Path, options: ReadOptions) -> Loaded:
         raise NotImplementedError

@@ -155,7 +155,7 @@ def test_formats_json_lists_every_format() -> None:
         "extensions": [".csv"],
         "read": True,
         "write": True,
-        "append": False,
+        "append": True,
         "options": ["encoding", "sep"],
     } in payload["formats"]
 

@@ -41,7 +41,8 @@ def _unable(format_name: str, ability: str) -> FormatUnsupported:
     )
 
 
-def read_frame(source: str, options: ReadOptions) -> tuple[pd.DataFrame, SourcePart]:
+def read_frame(source: str, options: ReadOptions) -> tuple[pd.DataFrame, SourcePart, list[str]]:
+    """The table, the source part of the report and the warnings of the read."""
     address, path = _local(source, options)
     if not path.exists():
         raise SourceNotFound(source)
@@ -50,9 +51,9 @@ def read_frame(source: str, options: ReadOptions) -> tuple[pd.DataFrame, SourceP
         raise _unable(adapter.name, "read")
     try:
         loaded = adapter.read(path, options)
+        frame, warnings = values.normalise(loaded.frame, options, infer=adapter.infers_types)
     except (ValueError, OSError) as exc:  # pandas parse and decode errors are ValueErrors
         raise ReadFailed(source, exc) from exc
-    frame = values.normalise(loaded.frame, options)
     if options.limit is not None:
         frame = frame.head(options.limit)
     part = SourcePart(
@@ -63,7 +64,7 @@ def read_frame(source: str, options: ReadOptions) -> tuple[pd.DataFrame, SourceP
         rows=len(frame),
         columns=column_names(frame),
     )
-    return frame, part
+    return frame, part, warnings
 
 
 def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Report:
@@ -88,7 +89,7 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
 
 
 def describe_source(source: str, options: ReadOptions) -> Info:
-    frame, part = read_frame(source, options)
+    frame, part, _ = read_frame(source, options)
     # to_json: missing values become null and dates ISO strings; without a path it returns the text
     preview = cast(str, frame.head(PREVIEW_ROWS).to_json(orient="records", force_ascii=False, date_format="iso"))
     return Info(
