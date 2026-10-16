@@ -26,9 +26,14 @@ class WarningLimits(_Section):
     row_drop_share: float
 
 
+class XlsxLayout(_Section):
+    column_padding: int
+
+
 class Settings(_Section):
     backup: BackupLimits
     warnings: WarningLimits
+    xlsx: XlsxLayout
 
 
 @functools.cache
