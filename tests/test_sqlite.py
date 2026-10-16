@@ -182,3 +182,9 @@ def test_formats_lists_sqlite_with_read_write_and_append(workdir: Path) -> None:
     [entry] = [entry for entry in invoke_json("formats")["formats"] if entry["name"] == "sqlite"]
     assert (entry["read"], entry["write"], entry["append"]) == (True, True, True)
     assert entry["extensions"] == [".sqlite", ".sqlite3", ".db"]
+
+
+def test_backups_human_view_names_the_table(workdir: Path) -> None:
+    write(pd.DataFrame({"phrase": ["сосна"], "freq": [9]}), "x.sqlite#t")
+    result = runner.invoke(app, ["backups"])
+    assert "x.sqlite#t  2 rows" in result.stdout.replace("\n", "")

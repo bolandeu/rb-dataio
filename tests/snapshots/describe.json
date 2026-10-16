@@ -1003,7 +1003,7 @@
       },
       {
         "name": "backups",
-        "description": "List the kept backups, newest first: id, time, target and rows.\n\nExample: dataio backups --json",
+        "description": "List the kept backups, newest first: id, time, target (`file#table` for a table of a base) and rows.\n\nExample: dataio backups --json",
         "options": [
           {
             "name": "--json",
