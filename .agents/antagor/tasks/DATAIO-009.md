@@ -1,7 +1,7 @@
 ---
 id: DATAIO-009
 title: 'Excel books: read xlsx/xls/xlsb/ods, write xlsx sheets with a usable layout'
-status: queue
+status: in_review
 attempts: 0
 blocked: false
 blocked_reason: null
@@ -20,6 +20,12 @@ owns_paths:
 - src/rb_dataio/formats/_excel.py
 - tests/test_excel.py
 - tests/data/excel/
+- pyproject.toml
+- src/rb_dataio/core/dataio/pipeline.py
+- src/rb_dataio/core/errors.py
+- src/rb_dataio/formats/__init__.py
+- src/rb_dataio/formats/csv.py
+- uv.lock
 test_paths:
 - tests/test_excel.py
 docs: none
