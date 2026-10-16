@@ -3,7 +3,7 @@ id: DATAIO-014
 title: 'Remote sources in the core: the Google key and auth status, gsheet and http(s)
   addresses, start/value_input, confirmation for a non-empty remote part'
 status: queue
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -26,12 +26,15 @@ owns_paths:
 - tests/snapshots/
 - tests/test_parity.py
 - tests/test_auth.py
+- pyproject.toml
+- uv.lock
 test_paths:
 - tests/test_remote_core.py
 - tests/test_google_auth.py
 - tests/test_parity.py
 - tests/test_auth.py
 - tests/test_describe.py
+- tests/conftest.py
 docs: none
 tools: []
 worker_args: null
@@ -94,3 +97,10 @@ The template credentials and providers layers (Provider, health checks, auth sta
 ## Out of scope
 
 - The real Google Sheets and http(s) formats; creating spreadsheets; OAuth user login; S3.
+
+## Feedback
+
+### Attempt 1: file docstring
+
+- add a docstring to src/rb_dataio/credentials/manager.py: what it holds and why
+- add a docstring to src/rb_dataio/providers/base.py: what it holds and why
