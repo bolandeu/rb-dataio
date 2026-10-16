@@ -1,0 +1,1 @@
+{"n": 1, "ts": "2026-10-16T13:38:52+00:00", "type": "finding", "text": "DATAIO-009: openpyxl stores a text value that starts with '=' as a formula, so write(df, 'x.xlsx') turns the text '=1+1' into a formula. The task keeps formulas out of scope; a later task may store such values as text (cell.data_type = 's'), as SPEC story 75 asks for Google Sheets.", "status": "open"}
