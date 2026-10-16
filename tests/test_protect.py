@@ -137,11 +137,12 @@ def test_cli_convert_over_the_source_asks_first(workdir: Path) -> None:
     assert len(backups()) == 1
 
 
-def test_cli_convert_over_the_source_reads_the_source_once(workdir: Path, reads: list[Path]) -> None:
+def test_cli_convert_over_the_source_reads_nothing_when_declined(workdir: Path, reads: list[Path]) -> None:
     args = ["convert", "a.csv", "a.csv", "--out-sep", ";", "--no-backup"]
     assert CliRunner().invoke(app, args, input="n\n").exit_code == 1
+    assert reads == []
     assert CliRunner().invoke(app, args, input="y\n").exit_code == 0
-    assert len(reads) == 1
+    assert len(reads) == 2  # the source, then the old target for the loss warnings
 
 
 # --- loss warnings --------------------------------------------------------------
@@ -161,6 +162,13 @@ def test_a_replace_that_keeps_half_the_rows_does_not_warn(workdir: Path) -> None
 def test_a_replace_that_loses_columns_names_them(workdir: Path) -> None:
     frame = pd.DataFrame({"phrase": ["a", "b", "c"]})
     assert write(frame, "a.csv").warnings == ["columns lost: freq"]
+
+
+def test_a_replace_without_backup_still_warns_about_the_loss(workdir: Path) -> None:
+    (workdir / "out.csv").write_text("phrase,freq\n" + "a,1\n" * 10, encoding="utf-8")
+    report = write(pd.DataFrame({"phrase": ["a"]}), "out.csv", backup=False).to_dict()
+    assert report["warnings"] == ["replacing 10 rows with 1", "columns lost: freq"]
+    assert backups() == []
 
 
 # --- dry run --------------------------------------------------------------------

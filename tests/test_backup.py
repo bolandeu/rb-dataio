@@ -281,6 +281,19 @@ def test_an_object_over_the_limit_is_not_parsed(
     assert report["warnings"] == ["no backup of 'out.csv': it is 1 MB, over the 0 MB limit"]
 
 
-def test_backup_false_does_not_parse_the_old_target(workdir: Path, reads: list[Path]) -> None:
-    write(NEW, "out.csv", backup=False)
+def test_an_object_over_the_limit_is_not_parsed_without_backup(
+    workdir: Path, monkeypatch: pytest.MonkeyPatch, reads: list[Path]
+) -> None:
+    lower_limit(monkeypatch, max_object_mb=0)
+    report = write(NEW, "out.csv", backup=False).to_dict()
     assert reads == []
+    assert report["warnings"] == []
+
+
+def test_restore_finds_a_backup_whose_content_is_named_after_the_target(workdir: Path) -> None:
+    write(NEW, "out.csv")
+    [entry] = backups()
+    folder = backup_store._store() / entry.id
+    (folder / "content").rename(folder / "out.csv")  # the layout before the fixed name
+    restore(entry.id)
+    assert (workdir / "out.csv").read_text(encoding="utf-8") == OLD

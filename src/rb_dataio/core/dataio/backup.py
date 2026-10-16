@@ -1,6 +1,6 @@
 """The backup store: the old content of each replaced target, kept so that `restore` can bring it back.
 
-One folder per entry in the user data dir: the old content under a fixed name (`content`)
+One folder per entry in the user data dir: the old content under a fixed name (`content`; entries made before it keep the target's file name)
 and `entry.json` (the `Backup`). The entry file comes last and in one step, so a listing
 never sees half an entry, and two processes never share a folder. The old content is
 always a real copy, so an in-place edit of the target never reaches it.
@@ -39,8 +39,9 @@ def _store() -> Path:
 
 
 def content(entry: Backup) -> Path:
-    """The file that holds the old content of `entry`."""
-    return _store() / entry.id / CONTENT
+    """The file that holds the old content of `entry`; older entries keep it under the target's file name."""
+    fixed = _store() / entry.id / CONTENT
+    return fixed if fixed.exists() else fixed.with_name(Path(entry.target).name)
 
 
 def entries() -> list[Backup]:
@@ -102,7 +103,7 @@ def _keep(path: Path, format_name: str, before: TargetState) -> Backup:
     )
     folder = _store() / entry.id
     folder.mkdir(parents=True)
-    shutil.copy2(path, content(entry))
+    shutil.copy2(path, folder / CONTENT)
     write_atomically(folder / ENTRY, lambda into: into.write_text(entry.model_dump_json(), encoding="utf-8"))
     return entry
 
