@@ -137,6 +137,13 @@ def test_cli_convert_over_the_source_asks_first(workdir: Path) -> None:
     assert len(backups()) == 1
 
 
+def test_cli_convert_over_the_source_reads_the_source_once(workdir: Path, reads: list[Path]) -> None:
+    args = ["convert", "a.csv", "a.csv", "--out-sep", ";", "--no-backup"]
+    assert CliRunner().invoke(app, args, input="n\n").exit_code == 1
+    assert CliRunner().invoke(app, args, input="y\n").exit_code == 0
+    assert len(reads) == 1
+
+
 # --- loss warnings --------------------------------------------------------------
 
 

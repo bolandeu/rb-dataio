@@ -102,10 +102,10 @@ def convert(
     A target that is the source itself needs `overwrite=True`.
     """
     arguments = locals()
+    write_options = WriteOptions.taken_from(arguments, "out")
+    pipeline.refuse_over_source(os.fspath(source), os.fspath(target), write_options)
     frame, source_part, read_warnings = pipeline.read_frame(os.fspath(source), ReadOptions.taken_from(arguments, "in"))
-    report = pipeline.write_frame(
-        frame, os.fspath(target), WriteOptions.taken_from(arguments, "out"), source=os.fspath(source)
-    )
+    report = pipeline.write_frame(frame, os.fspath(target), write_options)
     return report.model_copy(update={"source": source_part, "warnings": [*read_warnings, *report.warnings]})
 
 

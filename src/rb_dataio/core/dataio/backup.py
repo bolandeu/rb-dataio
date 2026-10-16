@@ -1,10 +1,9 @@
 """The backup store: the old content of each replaced target, kept so that `restore` can bring it back.
 
-One folder per entry in the user data dir: the old content under the target's file name
+One folder per entry in the user data dir: the old content under a fixed name (`content`)
 and `entry.json` (the `Backup`). The entry file comes last and in one step, so a listing
-never sees half an entry, and two processes never share a folder. The old content is a
-hard link when the store and the target share a file system (the write then puts a new
-file in the target's place and the old one stays as it was), a copy otherwise.
+never sees half an entry, and two processes never share a folder. The old content is
+always a real copy, so an in-place edit of the target never reaches it.
 Limits (data/settings.toml): entries, age and total size; a target over the object limit
 is not kept, with a warning.
 """
@@ -12,7 +11,6 @@ is not kept, with a warning.
 from __future__ import annotations
 
 import math
-import os
 import secrets
 import shutil
 import time
@@ -31,6 +29,7 @@ from .report import Backup
 from .settings import settings
 
 ENTRY = "entry.json"
+CONTENT = "content"
 MB = 2**20
 DAY = 86_400  # seconds
 
@@ -41,7 +40,7 @@ def _store() -> Path:
 
 def content(entry: Backup) -> Path:
     """The file that holds the old content of `entry`."""
-    return _store() / entry.id / Path(entry.target).name
+    return _store() / entry.id / CONTENT
 
 
 def entries() -> list[Backup]:
@@ -64,16 +63,23 @@ def find(backup_id: str | None) -> Backup:
     raise BackupNotFound(backup_id, [entry.id for entry in kept])
 
 
+def over_limit(path: Path, uri: str) -> str | None:
+    """The warning for a target over the object limit (only its size is read), else None."""
+    limit = settings().backup.max_object_mb
+    size = path.stat().st_size
+    if size <= limit * MB:
+        return None
+    return f"no backup of '{uri}': it is {math.ceil(size / MB)} MB, over the {limit} MB limit"
+
+
 @contextmanager
 def kept(path: Path, format_name: str, before: TargetState, uri: str) -> Generator[list[str]]:
     """Keep a backup of what `path` holds for the write inside; a failed write drops it again.
 
     Yields the warnings: a target over the object limit is not kept.
     """
-    limit = settings().backup.max_object_mb
-    size = path.stat().st_size
-    if size > limit * MB:
-        yield [f"no backup of '{uri}': it is {math.ceil(size / MB)} MB, over the {limit} MB limit"]
+    if warning := over_limit(path, uri):
+        yield [warning]
         return
     entry = _keep(path, format_name, before)
     try:
@@ -96,10 +102,7 @@ def _keep(path: Path, format_name: str, before: TargetState) -> Backup:
     )
     folder = _store() / entry.id
     folder.mkdir(parents=True)
-    try:
-        os.link(path, content(entry))
-    except OSError:  # another file system, or one without hard links
-        shutil.copyfile(path, content(entry))
+    shutil.copy2(path, content(entry))
     write_atomically(folder / ENTRY, lambda into: into.write_text(entry.model_dump_json(), encoding="utf-8"))
     return entry
 

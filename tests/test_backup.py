@@ -16,6 +16,9 @@ from typer.testing import CliRunner
 
 from rb_dataio import DataioError, backups, restore, write
 from rb_dataio.cli import app
+from rb_dataio.core.dataio import backup as backup_store
+from rb_dataio.core.dataio.options import WriteOptions
+from rb_dataio.formats import TextAdapter
 
 OLD = "phrase,freq\nёлка,5\nель,2\n"
 NEW = pd.DataFrame({"phrase": ["сосна", "пихта", "кедр"], "freq": [1, 2, 3]})
@@ -39,6 +42,13 @@ def invoke_json(*args: str) -> tuple[int, dict]:
     lines = result.stdout.splitlines()
     assert len(lines) == 1, f"stdout must be one JSON object; got {result.stdout!r}, stderr {result.stderr!r}"
     return result.exit_code, json.loads(lines[0])
+
+
+def lower_limit(monkeypatch: pytest.MonkeyPatch, **limits: int) -> None:
+    """A backup limit of the settings (`max_object_mb`, `max_total_mb`), lowered for the test."""
+    current = backup_store.settings()
+    lowered = current.model_copy(update={"backup": current.backup.model_copy(update=limits)})
+    monkeypatch.setattr(backup_store, "settings", lambda: lowered)
 
 
 def sparse(path: Path, size_mb: int) -> None:
@@ -214,11 +224,12 @@ def test_an_entry_older_than_14_days_is_pruned(workdir: Path, monkeypatch: pytes
     assert entry.rows == 3
 
 
-def test_more_than_2_gb_prunes_the_oldest(workdir: Path) -> None:
-    for _ in range(5):  # 5 x 410 MB = 2050 MB, over 2048 MB
-        sparse(workdir / "out.csv", 410)
+def test_more_than_the_total_limit_prunes_the_oldest(workdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    lower_limit(monkeypatch, max_total_mb=1)
+    for _ in range(5):  # 5 x 0.4 MB = 2 MB, over 1 MB
+        (workdir / "out.csv").write_text("n\n" + "1\n" * 200_000, encoding="utf-8")
         write(NEW, "out.csv")
-    assert len(backups()) == 4
+    assert len(backups()) == 2
 
 
 def test_an_object_over_500_mb_is_not_copied(workdir: Path) -> None:
@@ -227,3 +238,49 @@ def test_an_object_over_500_mb_is_not_copied(workdir: Path) -> None:
     assert backups() == []
     assert report["warnings"] == ["no backup of 'out.csv': it is 501 MB, over the 500 MB limit"]
     assert (workdir / "out.csv").stat().st_size == len(NEW_TEXT.encode())
+
+
+# --- the safety of the kept copy ------------------------------------------------
+
+
+def test_a_target_named_like_the_entry_file_is_kept_twice(workdir: Path) -> None:
+    target = workdir / "entry.json"
+    target.write_text('[{"n": 1}]', encoding="utf-8")
+    write(pd.DataFrame({"n": [2]}), "entry.json")
+    write(pd.DataFrame({"n": [3]}), "entry.json")
+    kept = backups()
+    assert len(kept) == 2
+    restore(kept[-1].id)
+    assert json.loads(target.read_text(encoding="utf-8")) == [{"n": 1}]
+
+
+def test_an_in_place_edit_of_the_target_during_the_write_does_not_change_the_backup(
+    workdir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = TextAdapter.write
+
+    def edit_then_write(self: TextAdapter, frame: pd.DataFrame, path: Path, options: WriteOptions) -> None:
+        with (workdir / "out.csv").open("r+", encoding="utf-8") as file:  # another process, same inode
+            file.write("XXXXXX")
+        original(self, frame, path, options)
+
+    monkeypatch.setattr(TextAdapter, "write", edit_then_write)
+    write(NEW, "out.csv")
+    [entry] = backups()
+    restore(entry.id)
+    assert (workdir / "out.csv").read_text(encoding="utf-8") == OLD
+
+
+def test_an_object_over_the_limit_is_not_parsed(
+    workdir: Path, monkeypatch: pytest.MonkeyPatch, reads: list[Path]
+) -> None:
+    lower_limit(monkeypatch, max_object_mb=0)
+    report = write(NEW, "out.csv").to_dict()
+    assert reads == []
+    assert backups() == []
+    assert report["warnings"] == ["no backup of 'out.csv': it is 1 MB, over the 0 MB limit"]
+
+
+def test_backup_false_does_not_parse_the_old_target(workdir: Path, reads: list[Path]) -> None:
+    write(NEW, "out.csv", backup=False)
+    assert reads == []
