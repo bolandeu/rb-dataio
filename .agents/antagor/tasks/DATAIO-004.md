@@ -2,10 +2,10 @@
 id: DATAIO-004
 title: 'Protection: backups, restore, atomic writes, write modes, safety checks and
   loss warnings'
-status: queue
+status: in_progress
 attempts: 0
-blocked: false
-blocked_reason: null
+blocked: true
+blocked_reason: needs_scope
 phase: null
 tests_hash: null
 publish_stage: null
@@ -24,10 +24,22 @@ owns_paths:
 - tests/test_backup.py
 - tests/test_protect.py
 - tests/snapshots/describe.json
+- src/rb_dataio/data/settings.toml
+- src/rb_dataio/commands/convert.py
+- src/rb_dataio/core/dataio/api.py
+- src/rb_dataio/core/dataio/options.py
+- src/rb_dataio/core/dataio/protection.py
+- src/rb_dataio/core/dataio/report.py
+- src/rb_dataio/core/dataio/settings.py
+- src/rb_dataio/core/errors.py
 test_paths:
 - tests/test_backup.py
 - tests/test_protect.py
 - tests/test_describe.py
+- tests/conftest.py
+- tests/snapshots/help/restore.txt
+- tests/test_cli_frame.py
+- tests/test_frame.py
 docs:
 - src/rb_dataio/data/SKILL.md
 tools: []
