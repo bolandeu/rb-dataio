@@ -53,8 +53,9 @@ uv tool install "rb-dataio @ git+ssh://git@github.com/bolandeu/rb-dataio.git@vX.
   explicit sign-off, then `--confirm --non-interactive`. Never chain
   straight to `--confirm` without a human having seen the dry-run.
   In dataio these are `restore` (it replaces a target with a backup) and a
-  `convert` whose target is its own source (refused with `TARGET_EXISTS`
-  until confirmed): get the user's sign-off before `--confirm`.
+  `convert` whose target is its own source (it asks first; under
+  `--non-interactive` it is refused until `--confirm`): get the user's
+  sign-off before `--confirm`.
 - **Every replace keeps a backup.** Before a write replaces an existing
   target, dataio keeps its old content; `backups --json` lists them and
   `restore ID` brings one back. Read `warnings` in the report: a replace

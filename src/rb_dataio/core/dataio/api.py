@@ -12,8 +12,7 @@ import os
 
 import pandas as pd
 
-from ..errors import NotAvailableYet
-from . import pipeline, registry
+from . import backup, pipeline, registry
 from .options import ReadOptions, WriteOptions
 from .report import Backup, FormatInfo, Info, Report
 
@@ -90,10 +89,13 @@ def convert(
     """Read a source and write it to a target: `convert("a.csv", "b.csv")`; the report has both sides.
 
     The options both sides have take `in_` (the source) or `out_` (the target).
+    A target that is the source itself needs `overwrite=True`.
     """
     arguments = locals()
     frame, source_part = pipeline.read_frame(os.fspath(source), ReadOptions.taken_from(arguments, "in"))
-    report = pipeline.write_frame(frame, os.fspath(target), WriteOptions.taken_from(arguments, "out"))
+    report = pipeline.write_frame(
+        frame, os.fspath(target), WriteOptions.taken_from(arguments, "out"), source=os.fspath(source)
+    )
     return report.model_copy(update={"source": source_part})
 
 
@@ -120,10 +122,14 @@ def formats() -> list[FormatInfo]:
 
 
 def backups() -> list[Backup]:
-    """The kept backups, newest first. None yet: backups come with the protection task."""
-    return []
+    """The kept backups, newest first: every replace of an existing target keeps one."""
+    return backup.entries()
 
 
-def restore(id: str | None = None) -> Report:
-    """Bring back the backup `id` (the newest without one). Not available yet: it comes with the protection task."""
-    raise NotAvailableYet("restore")
+def restore(id: str | None = None, *, dry_run: bool = False) -> Report:
+    """Bring back the backup `id` (the newest without one) into its target.
+
+    What the target holds now is kept as a new backup first, so a restore can be undone.
+    `dry_run` returns the report and changes nothing.
+    """
+    return pipeline.restore_target(id, dry_run)

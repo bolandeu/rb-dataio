@@ -1,7 +1,8 @@
 """The `convert` command: read a source, write a target, report both sides.
 
 It maps the flags to one `convert()` call. The options both sides have take
-`--in-` / `--out-`. `render_report` is the human view of a report, shared with `restore`.
+`--in-` / `--out-`. A target that is the source itself asks first (`--confirm` skips the
+question). `render_report` is the human view of a report, shared with `restore`.
 """
 
 from __future__ import annotations
@@ -12,11 +13,13 @@ from rich.markup import escape
 from .. import output
 from ..core.dataio import api
 from ..core.dataio.options import Mode
+from ..core.dataio.report import Report
+from ..core.errors import WriteOverSource
 from ._parameters import option, pairs
 
 
 def render_report(report: dict) -> None:
-    for side in ("source", "target"):
+    for side in ("source", "backup", "target"):
         if side in report:
             output.human.key_values(side.capitalize(), report[side])
     for warning in report["warnings"]:
@@ -48,6 +51,7 @@ def convert(
     overwrite: bool = option("overwrite", False),
     backup: bool = option("backup", True),
     dry_run: bool = output.DryRunOption,
+    confirm: bool = output.ConfirmOption,
     json_output: bool = output.JsonOption,
     quiet: bool = output.QuietOption,
 ) -> None:
@@ -55,31 +59,40 @@ def convert(
 
     Options both sides have take --in- (the source) or --out- (the target).
     With --dry-run the report comes back and nothing is written.
+    A TARGET that is the SOURCE itself asks first: --confirm skips the question.
 
     Example: {cli} convert a.csv b.csv --json
     """
-    report = api.convert(
-        source,
-        target,
-        in_format=in_format,
-        in_sheet=in_sheet,
-        in_table=in_table,
-        in_encoding=in_encoding,
-        in_sep=in_sep,
-        in_header=in_header,
-        as_text=as_text,
-        dtypes=pairs(dtypes),
-        limit=limit,
-        out_format=out_format,
-        out_sheet=out_sheet,
-        out_table=out_table,
-        out_encoding=out_encoding,
-        out_sep=out_sep,
-        out_header=out_header,
-        mode=mode,
-        profile=profile,
-        overwrite=overwrite,
-        backup=backup,
-        dry_run=output.is_dry_run(ctx),
-    )
+
+    def run(overwrite: bool) -> Report:
+        return api.convert(
+            source,
+            target,
+            in_format=in_format,
+            in_sheet=in_sheet,
+            in_table=in_table,
+            in_encoding=in_encoding,
+            in_sep=in_sep,
+            in_header=in_header,
+            as_text=as_text,
+            dtypes=pairs(dtypes),
+            limit=limit,
+            out_format=out_format,
+            out_sheet=out_sheet,
+            out_table=out_table,
+            out_encoding=out_encoding,
+            out_sep=out_sep,
+            out_header=out_header,
+            mode=mode,
+            profile=profile,
+            overwrite=overwrite,
+            backup=backup,
+            dry_run=output.is_dry_run(ctx),
+        )
+
+    try:
+        report = run(overwrite or confirm)
+    except WriteOverSource:
+        output.require_confirmation(ctx, f"Write over the source '{source}'", confirm)
+        report = run(True)
     output.emit_success(ctx, report.to_dict(), render_human=render_report)

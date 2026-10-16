@@ -87,7 +87,7 @@ def kept(path: Path, format_name: str, before: TargetState, uri: str) -> Generat
 def _keep(path: Path, format_name: str, before: TargetState) -> Backup:
     now = datetime.fromtimestamp(time.time(), UTC)
     entry = Backup(
-        id=f"{now:%Y%m%d-%H%M%S}-{secrets.token_hex(2)}",
+        id=f"{now:%Y%m%d-%H%M%S}-{secrets.token_hex(4)}",  # unique even for many writes a second
         time=now.isoformat(timespec="microseconds"),
         target=str(path.absolute()),
         format=format_name,

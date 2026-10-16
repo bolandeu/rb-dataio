@@ -320,7 +320,7 @@
       },
       {
         "name": "convert",
-        "description": "Read a table from SOURCE and write it to TARGET; report both sides.\n\nOptions both sides have take --in- (the source) or --out- (the target).\nWith --dry-run the report comes back and nothing is written.\n\nExample: dataio convert a.csv b.csv --json",
+        "description": "Read a table from SOURCE and write it to TARGET; report both sides.\n\nOptions both sides have take --in- (the source) or --out- (the target).\nWith --dry-run the report comes back and nothing is written.\nA TARGET that is the SOURCE itself asks first: --confirm skips the question.\n\nExample: dataio convert a.csv b.csv --json",
         "options": [
           {
             "name": "--in-format",
@@ -647,6 +647,20 @@
           {
             "name": "--dry-run",
             "description": "Show what would happen without making changes.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--confirm",
+            "description": "Confirm a destructive action (required together with --non-interactive).",
             "metadata": [
               {
                 "name": "x-rb-type",

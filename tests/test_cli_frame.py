@@ -1,4 +1,4 @@
-"""The core frame through the CLI: convert, info, formats, backups, restore under --json (CliRunner)."""
+"""The core frame through the CLI: convert, info, formats, backups under --json (CliRunner); restore: test_backup.py."""
 
 from __future__ import annotations
 
@@ -166,16 +166,9 @@ def test_formats_human_output() -> None:
     assert "csv" in result.stdout.split()
 
 
-# --- backups / restore ----------------------------------------------------------
+# --- backups -------------------------------------------------------------------
 
 
-def test_backups_is_an_empty_list() -> None:
+def test_backups_is_an_empty_list(data_dir: Path) -> None:
     assert invoke_json("backups") == (0, {"ok": True, "backups": []})
     assert runner.invoke(app, ["backups"]).exit_code == 0
-
-
-def test_restore_is_not_available_yet() -> None:
-    code, payload = invoke_json("restore")
-    assert code == 1
-    assert payload["error"]["code"] == "NOT_AVAILABLE"
-    assert payload["error"]["action"]

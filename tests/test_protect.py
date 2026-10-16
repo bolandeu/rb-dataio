@@ -1,19 +1,22 @@
 """Protection of a write through the library (write, convert): the atomic write, the write modes,
-the write over the source, the loss warnings and the dry run.
+the write over the source, the loss warnings and the dry run; the write over the source through the CLI too.
 
 The user data dir is a temporary folder (the `data_dir` fixture), so the backup store starts empty.
 """
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
 
 import pandas as pd
 import pytest
+from typer.testing import CliRunner
 
 from rb_dataio import DataioError, backups, convert, write
+from rb_dataio.cli import app
 
 PHRASES = "phrase,freq\nкупить ёлку,10\nёлка цена,7\nискусственная ёлка,3\n"
 
@@ -106,6 +109,32 @@ def test_convert_over_the_source_with_overwrite_keeps_a_backup(workdir: Path) ->
     assert (workdir / "a.csv").read_text(encoding="utf-8") == PHRASES.replace(",", ";")
     [entry] = backups()
     assert (entry.target, entry.rows) == (str(workdir / "a.csv"), 3)
+
+
+def test_cli_convert_over_the_source_without_confirm_is_refused_under_non_interactive(workdir: Path) -> None:
+    result = CliRunner().invoke(app, ["--non-interactive", "convert", "a.csv", "a.csv", "--json"])
+    assert result.exit_code == 2
+    assert json.loads(result.stdout)["error"]["code"] == "INVALID_ARGUMENTS"
+    assert (workdir / "a.csv").read_text(encoding="utf-8") == PHRASES
+    assert backups() == []
+
+
+def test_cli_convert_over_the_source_with_confirm_keeps_a_backup(workdir: Path) -> None:
+    result = CliRunner().invoke(app, ["convert", "a.csv", "a.csv", "--out-sep", ";", "--confirm", "--json"])
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["target"]["rows"] == 3
+    assert (workdir / "a.csv").read_text(encoding="utf-8") == PHRASES.replace(",", ";")
+    assert [entry.rows for entry in backups()] == [3]
+
+
+def test_cli_convert_over_the_source_asks_first(workdir: Path) -> None:
+    declined = CliRunner().invoke(app, ["convert", "a.csv", "a.csv", "--out-sep", ";"], input="n\n")
+    assert declined.exit_code == 1
+    assert (workdir / "a.csv").read_text(encoding="utf-8") == PHRASES
+    accepted = CliRunner().invoke(app, ["convert", "a.csv", "a.csv", "--out-sep", ";"], input="y\n")
+    assert accepted.exit_code == 0
+    assert (workdir / "a.csv").read_text(encoding="utf-8") == PHRASES.replace(",", ";")
+    assert len(backups()) == 1
 
 
 # --- loss warnings --------------------------------------------------------------
