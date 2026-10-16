@@ -34,6 +34,9 @@ visual: null
 depends_on:
 - DATAIO-008
 - DATAIO-011
+- DATAIO-014
+- DATAIO-015
+- DATAIO-016
 budget_usd: null
 epic: E-005
 spec_refs: []
