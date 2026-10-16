@@ -14,7 +14,7 @@ from pathlib import PurePath
 
 FILE = "file"
 STDIO = "stdio"
-_STDIO_TEXT = "-"
+STDIO_TEXT = "-"
 _SCHEME = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*)://")
 _PLACEHOLDER = re.compile(r"\{(\w+)\}")
 
@@ -33,7 +33,7 @@ class Address:
 
 
 def parse(text: str, *, sheet: str | None = None, table: str | None = None) -> Address:
-    if text == _STDIO_TEXT:
+    if text == STDIO_TEXT:
         scheme, rest = STDIO, text
     elif match := _SCHEME.match(text):
         scheme, rest = match[1].lower(), text[match.end() :]

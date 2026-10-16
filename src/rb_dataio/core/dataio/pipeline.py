@@ -1,42 +1,47 @@
 """The read and the write pipelines.
 
-    read:    resolve the address -> adapter read -> value normalisation -> limit
+    read:    resolve the source -> adapter read -> value normalisation -> limit
     write:   resolve the target -> dry run -> safety checks -> backup -> atomic write -> report
     restore: find the backup -> dry run -> backup of the current content -> atomic write -> report
 
-Only local paths resolve in this release; `-` and the other schemes are recognised
-and refused with FORMAT_UNSUPPORTED until their tasks.
+A source is an address, a text or a Python object (objects.py); a target is an address,
+or none for `write()` to return the data. `-` is stdin or stdout (stdio.py); local paths
+are the files; the other schemes are recognised and refused with FORMAT_UNSUPPORTED until their tasks.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from collections.abc import Callable
 from contextlib import nullcontext
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pandas as pd
 
+from ...formats import Loaded
+from ...formats import txt as txt_format
 from ..errors import DataioError, FormatUnsupported, ReadFailed, SourceNotFound, TargetExists, WriteFailed
-from . import backup, protection, registry, values
-from .address import FILE, Address, parse
+from . import backup, objects, protection, registry, stdio, values
+from .address import FILE, STDIO, Address, parse
 from .options import Mode, ReadOptions, SharedOptions, WriteOptions
 from .protection import MISSING, TargetState
 from .report import Info, PlannedTarget, Report, SourcePart, TargetPart, column_names
 
 PREVIEW_ROWS = 5  # the first rows `info()` shows
+IN_MEMORY = "<object>"  # how a report and an error name the target of `write()` with none
 
 
-def _local(text: str, options: SharedOptions) -> tuple[Address, Path]:
+def _address(text: str, options: SharedOptions) -> Address:
     address = parse(text, sheet=options.sheet, table=options.table)
-    if address.scheme != FILE:
+    if address.scheme not in (FILE, STDIO):
         raise FormatUnsupported(
             f"'{text}': addresses of the scheme '{address.scheme}' are not supported in this release.",
-            action="Pass the path of a local file.",
+            action="Pass the path of a local file or -.",
         )
-    return address, Path(address.path)
+    return address
 
 
 def _unable(format_name: str, ability: str) -> FormatUnsupported:
@@ -46,34 +51,61 @@ def _unable(format_name: str, ability: str) -> FormatUnsupported:
     )
 
 
-def read_frame(source: str, options: ReadOptions) -> tuple[pd.DataFrame, SourcePart]:
-    address, path = _local(source, options)
-    if not path.exists():
-        raise SourceNotFound(source)
-    adapter = registry.resolve(address, options.format)
-    if not adapter.reads:
-        raise _unable(adapter.name, "read")
+def read_frame(source: object, options: ReadOptions) -> tuple[pd.DataFrame, SourcePart, list[str]]:
+    """The table, the source part of the report and the warnings of the read."""
+    uri = _source_name(source)
     try:
-        loaded = adapter.read(path, options)
+        format_name, loaded = _load(source, options)
+        frame, warnings = values.normalise(loaded.frame, options, infer=loaded.infers_types)
     except (ValueError, OSError) as exc:  # pandas parse and decode errors are ValueErrors
-        raise ReadFailed(source, exc) from exc
-    frame = values.normalise(loaded.frame, options)
+        raise ReadFailed(uri, exc) from exc
     if options.limit is not None:
         frame = frame.head(options.limit)
     part = SourcePart(
-        uri=source,
-        format=adapter.name,
+        uri=uri,
+        format=format_name,
         encoding=loaded.encoding,
         delimiter=loaded.delimiter,
         rows=len(frame),
         columns=column_names(frame),
     )
-    return frame, part
+    return frame, part, warnings
+
+
+def _source_name(source: object) -> str:
+    """How the report and the errors name a source: its address, else `<text>` or the kind of the object."""
+    if isinstance(source, str) and "\n" in source:
+        return "<text>"
+    if isinstance(source, str | os.PathLike):
+        return os.fspath(source)
+    return f"<{type(source).__name__}>"
+
+
+def _load(source: object, options: ReadOptions) -> tuple[str, Loaded]:
+    """The format name and the table of a source."""
+    if not isinstance(source, str | os.PathLike):
+        return type(source).__name__, objects.loaded(source)
+    text = os.fspath(source)
+    if objects.is_text(text, options):
+        return registry.TEXT, txt_format.ADAPTER.parse(text, options)
+    address = _address(text, options)
+    if address.scheme == STDIO:
+        return stdio.read(options)
+    path = Path(address.path)
+    if not path.exists():
+        raise SourceNotFound(text)
+    adapter = registry.resolve(address, options.format)
+    if not adapter.reads:
+        raise _unable(adapter.name, "read")
+    return adapter.name, adapter.read(path, options)
 
 
 def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions, source: str | None = None) -> Report:
     """Write `frame` to `target`; `source` is the address `convert` read, so a write over it is caught."""
-    address, path = _local(target, options)
+    address = _address(target, options)
+    if address.scheme == STDIO:
+        return _write_stdout(frame, target, options)
+    path = Path(address.path)
     adapter = registry.resolve(address, options.format)
     if not adapter.writes:
         raise _unable(adapter.name, "write")
@@ -97,6 +129,26 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions, source:
     return Report(target=part, warnings=warnings)
 
 
+def frame_data(frame: pd.DataFrame, options: WriteOptions) -> Any:
+    """`frame` as the object or the text of `format=` (records when none): `write()` with no target."""
+    try:
+        return objects.rendered(frame, options.format or objects.RECORDS, options, IN_MEMORY)
+    except ValueError as exc:
+        raise WriteFailed(IN_MEMORY, exc) from exc
+
+
+def _write_stdout(frame: pd.DataFrame, target: str, options: WriteOptions) -> Report:
+    format_name = stdio.format_of(frame, options)
+    part = TargetPart(uri=target, format=format_name, mode=options.mode, rows=len(frame), columns=column_names(frame))
+    if options.dry_run:
+        return Report(target=_planned(part, MISSING))
+    try:
+        data = stdio.write(frame, format_name, options)
+    except ValueError as exc:
+        raise WriteFailed(target, exc) from exc
+    return Report(target=part, data=data)
+
+
 def restore_target(backup_id: str | None, dry_run: bool) -> Report:
     """Put the content of a backup back in its target, after a backup of what the target holds now."""
     entry = backup.find(backup_id)
@@ -115,7 +167,7 @@ def _state(target: str, path: Path, options: SharedOptions) -> TargetState:
     if not path.exists():
         return MISSING
     try:
-        frame, _ = read_frame(target, ReadOptions.reading_back(options))
+        frame, _, _ = read_frame(target, ReadOptions.reading_back(options))
     except DataioError:  # not a table dataio can read: it is still replaced and kept
         return TargetState(exists=True, rows=None, columns=None)
     return TargetState(exists=True, rows=len(frame), columns=column_names(frame))
@@ -143,7 +195,7 @@ def _replace(
 
 
 def describe_source(source: str, options: ReadOptions) -> Info:
-    frame, part = read_frame(source, options)
+    frame, part, _ = read_frame(source, options)
     # to_json: missing values become null and dates ISO strings; without a path it returns the text
     preview = cast(str, frame.head(PREVIEW_ROWS).to_json(orient="records", force_ascii=False, date_format="iso"))
     return Info(

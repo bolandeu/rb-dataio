@@ -64,6 +64,7 @@ class Report(_Part):
     target: SerializeAsAny[TargetPart] | None = None  # a PlannedTarget in a dry run
     backup: Backup | None = None  # the backup a restore brings back
     warnings: list[str] = Field(default_factory=list)
+    data: Any = None  # the data of an object format written to `-` (records under the CLI's --json)
 
     def to_dict(self) -> dict[str, Any]:
         """A side that took no part (no source in `write()`) is left out."""

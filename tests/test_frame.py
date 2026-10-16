@@ -16,6 +16,7 @@ from rb_dataio.core.dataio import address
 
 # The package root's `formats` is the function; the formats package is reached through importlib.
 format_modules = importlib.import_module("rb_dataio.formats")
+csv_module = importlib.import_module("rb_dataio.formats.csv")
 
 PHRASES = "phrase,freq\nкупить ёлку,10\nёлка цена,7\nискусственная ёлка,3\n"
 FORMATS_FIXTURE = Path(__file__).parent / "data" / "frame" / "formats"
@@ -131,7 +132,7 @@ def test_placeholders_are_parsed() -> None:
     assert address.parse("out/{region}/part_{n}.csv").placeholders == ("region", "n")
 
 
-@pytest.mark.parametrize("source", ["-", "gsheet://1AbC", "https://example.com/a.csv"])
+@pytest.mark.parametrize("source", ["gsheet://1AbC", "https://example.com/a.csv"])
 def test_other_schemes_are_not_supported_yet(source: str) -> None:
     with pytest.raises(DataioError) as caught:
         read(source)
@@ -158,7 +159,7 @@ def test_unknown_format_parameter_lists_the_known_formats(workdir: Path) -> None
 
 
 def test_unreadable_source_is_read_failed(workdir: Path) -> None:
-    (workdir / "bad.csv").write_bytes("phrase\nёлка\n".encode("cp1251"))
+    (workdir / "bad.csv").write_bytes(b"\x00\x01phrase\xff\xfe")
     with pytest.raises(DataioError) as caught:
         read("bad.csv")
     assert (caught.value.code, caught.value.exit_code) == ("READ_FAILED", 1)
@@ -180,7 +181,8 @@ def test_mode_error_refuses_an_existing_target(workdir: Path) -> None:
     assert (workdir / "b.csv").read_text(encoding="utf-8") == "old\n"
 
 
-def test_append_is_refused_by_a_format_that_cannot_append(workdir: Path) -> None:
+def test_append_is_refused_by_a_format_that_cannot_append(workdir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(csv_module.CsvAdapter, "appends", False)
     with pytest.raises(DataioError) as caught:
         convert("a.csv", "b.csv", mode="append")
     assert (caught.value.code, caught.value.exit_code) == ("FORMAT_UNSUPPORTED", 2)
@@ -212,7 +214,7 @@ def test_formats_lists_csv_with_its_abilities() -> None:
         "extensions": [".csv"],
         "read": True,
         "write": True,
-        "append": False,
+        "append": True,
         "options": ["encoding", "sep"],
     }
 
