@@ -38,3 +38,16 @@ x
 ## Out of scope
 
 - x
+
+## Feedback
+
+### Answer to question #1
+
+> Task DATAIO-021 has the body 'x' and out-of-scope 'x'; no change to tests/test_scripts.py is described.
+> Question: What must change in tests/test_scripts.py?
+> Options:
+> 1. Give a real task body
+> 2. Cancel the task as a placeholder
+> Recommended: Cancel the task as a placeholder
+
+Not needed: DATAIO-008 fixed the test. The task is cancelled.
