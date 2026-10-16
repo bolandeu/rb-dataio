@@ -1,7 +1,7 @@
 ---
 id: DATAIO-009
 title: 'Excel books: read xlsx/xls/xlsb/ods, write xlsx sheets with a usable layout'
-status: ideas
+status: queue
 attempts: 0
 blocked: false
 blocked_reason: null
@@ -9,7 +9,7 @@ phase: null
 tests_hash: null
 publish_stage: null
 created_by: architect
-approved_by: null
+approved_by: human
 worker: claude-code
 type: feature
 owns_paths:
