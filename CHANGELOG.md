@@ -5,6 +5,12 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.20 — 2026-10-16
+
+### Outside epics
+
+- Small defects after E-002..E-005: int stays int when stacking, error actions fit the case, RAW '=' text in xlsx, mode=error per part, batch edge cases (DATAIO-022)
+
 ## v0.1.19 — 2026-10-16
 
 ### E-005 — dataio bulk: merge many files, split one table, batch convert (0.6)
