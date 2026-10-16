@@ -2,7 +2,7 @@
 id: DATAIO-020
 title: 'Batch convert: many files one to one with {stem}, stop or keep going, dry-run
   and per-file backups'
-status: publish
+status: done
 attempts: 0
 blocked: false
 blocked_reason: null
