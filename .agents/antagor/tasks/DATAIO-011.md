@@ -2,7 +2,7 @@
 id: DATAIO-011
 title: 'Bases and SQL in the core: query= over any source, table writes in one transaction,
   table backups as parquet'
-status: queue
+status: in_review
 attempts: 0
 blocked: false
 blocked_reason: null
@@ -23,6 +23,8 @@ owns_paths:
 - tests/data/bases_core/
 - tests/snapshots/
 - tests/test_parity.py
+- src/rb_dataio/formats/csv.py
+- src/rb_dataio/formats/parquet.py
 test_paths:
 - tests/test_query.py
 - tests/test_bases_core.py
