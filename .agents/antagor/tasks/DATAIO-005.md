@@ -14,9 +14,10 @@ worker: claude-code
 type: bugfix
 owns_paths:
 - src/rb_dataio/core/dataio/
-- src/rb_dataio/commands/convert.py
+- src/rb_dataio/commands/
 - tests/test_backup.py
 - tests/test_protect.py
+- tests/snapshots/
 test_paths:
 - tests/test_backup.py
 - tests/test_protect.py
