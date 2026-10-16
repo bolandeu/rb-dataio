@@ -2,10 +2,10 @@
 id: DATAIO-012
 title: 'SQLite bases: x.sqlite#table read and write with modes, transactions and safe
   concurrent appends'
-status: queue
+status: in_progress
 attempts: 0
-blocked: false
-blocked_reason: null
+blocked: true
+blocked_reason: scope_held
 phase: null
 tests_hash: null
 publish_stage: null
@@ -17,8 +17,15 @@ owns_paths:
 - src/rb_dataio/formats/sqlite.py
 - tests/test_sqlite.py
 - tests/data/sqlite/
+- src/rb_dataio/commands/info.py
+- src/rb_dataio/core/dataio/containers.py
+- src/rb_dataio/core/dataio/report.py
+- src/rb_dataio/core/dataio/pipeline.py
+- src/rb_dataio/core/errors.py
+- src/rb_dataio/formats/__init__.py
 test_paths:
 - tests/test_sqlite.py
+- tests/data/bases_core/formats/testbase.py
 docs: none
 tools: []
 worker_args: null
