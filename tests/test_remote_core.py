@@ -208,6 +208,18 @@ def test_the_cli_replaces_with_confirm_and_keeps_a_backup(sheets: FakeSheets, so
     assert sheets.rows("Sheet1") == ["купить ёлку", "ёлка цена"]
 
 
+def test_a_replace_of_a_sheet_with_no_columns_succeeds_and_keeps_no_backup(sheets: FakeSheets) -> None:
+    sheets.books["ID"]["Empty"] = (7, pd.DataFrame())
+    write(NEW, "gsheet://ID#Empty", overwrite=True)
+    assert sheets.rows("Empty") == ["ёлка", "шар", "гирлянда"]
+    assert backups() == []
+
+
+def test_a_replace_of_a_sheet_with_one_row_keeps_a_backup(sheets: FakeSheets) -> None:
+    write(NEW, "gsheet://ID#Data", overwrite=True)
+    assert [(entry.table, entry.rows) for entry in backups()] == [("Data", 1)]
+
+
 def test_the_cli_dry_run_shows_the_rows_before_and_after_and_changes_nothing(
     sheets: FakeSheets, source_csv: str
 ) -> None:
