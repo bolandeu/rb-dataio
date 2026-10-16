@@ -2,7 +2,7 @@
 id: DATAIO-019
 title: 'Split one table: by a column or by row count into files or sheets, with safe
   names'
-status: in_review
+status: publish
 attempts: 0
 blocked: false
 blocked_reason: null
