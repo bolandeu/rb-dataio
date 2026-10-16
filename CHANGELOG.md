@@ -5,6 +5,12 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.6 — 2026-10-16
+
+### Outside epics
+
+- Release installs the new tag on this Mac (DATAIO-007)
+
 ## v0.1.5 — 2026-10-16
 
 ### E-001 — dataio core: the connector and its contract (0.2)
