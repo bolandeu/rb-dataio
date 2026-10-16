@@ -2,7 +2,7 @@
 id: DATAIO-016
 title: 'http(s) sources: CSV and JSON links, including Google ''Publish to web'',
   read directly'
-status: in_review
+status: publish
 attempts: 0
 blocked: false
 blocked_reason: null
