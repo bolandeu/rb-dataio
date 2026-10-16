@@ -26,7 +26,10 @@ _HELP = {
     "query": "SQL whose result is read: inside a base its tables, over any other source the table data.",
     "mode": "Write mode: what to do with the data the target already has.",
     "profile": "Write profile, e.g. excel.",
-    "overwrite": "Allow a write over the source itself.",
+    "credentials": "Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+    "start": "Top-left cell of the table in a sheet of a service, e.g. A5 (default A1).",
+    "value_input": "How a sheet of a service takes the values: raw as they are, user as if typed.",
+    "overwrite": "Allow a write over the source itself, or a replace of a sheet with rows that asks first.",
     "backup": "Keep a backup of the target before it is replaced.",
 }
 _SIDE = {None: "", "in": "Source: ", "out": "Target: "}

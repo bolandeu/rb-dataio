@@ -320,7 +320,7 @@
       },
       {
         "name": "convert",
-        "description": "Read a table from SOURCE and write it to TARGET; report both sides.\n\nOptions both sides have take --in- (the source) or --out- (the target).\n--query is SQL over the source whose result is written: inside a base\nit names its tables, over any other source the table is data.\nWith --dry-run the report comes back and nothing is written.\nA TARGET that is the SOURCE itself asks first: --confirm skips the question.\nSOURCE - is stdin, its format comes from the content; TARGET - is stdout:\nCSV, one value per line for one column, or --out-format; under --json the\ndata is inside the envelope as data.\n\nExample: dataio convert a.csv b.csv --json",
+        "description": "Read a table from SOURCE and write it to TARGET; report both sides.\n\nOptions both sides have take --in- (the source) or --out- (the target).\n--query is SQL over the source whose result is written: inside a base\nit names its tables, over any other source the table is data.\nWith --dry-run the report comes back and nothing is written.\nA TARGET that is the SOURCE itself, or a sheet with rows of a Google\nspreadsheet that the write replaces, asks first: --confirm skips the question.\n--start and --value-input place and pass the values in a sheet of a service.\nSOURCE - is stdin, its format comes from the content; TARGET - is stdout:\nCSV, one value per line for one column, or --out-format; under --json the\ndata is inside the envelope as data.\n\nExample: dataio convert a.csv b.csv --json",
         "options": [
           {
             "name": "--in-format",
@@ -416,6 +416,22 @@
               {
                 "name": "x-rb-default",
                 "value": true
+              }
+            ]
+          },
+          {
+            "name": "--in-credentials",
+            "arguments": [
+              {
+                "name": "IN_CREDENTIALS",
+                "required": true
+              }
+            ],
+            "description": "Source: Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
               }
             ]
           },
@@ -586,6 +602,22 @@
             ]
           },
           {
+            "name": "--out-credentials",
+            "arguments": [
+              {
+                "name": "OUT_CREDENTIALS",
+                "required": true
+              }
+            ],
+            "description": "Target: Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
             "name": "--mode",
             "arguments": [
               {
@@ -611,6 +643,46 @@
             ]
           },
           {
+            "name": "--start",
+            "arguments": [
+              {
+                "name": "START",
+                "required": true
+              }
+            ],
+            "description": "Top-left cell of the table in a sheet of a service, e.g. A5 (default A1).",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--value-input",
+            "arguments": [
+              {
+                "name": "VALUE_INPUT",
+                "required": true,
+                "acceptedValues": [
+                  "raw",
+                  "user"
+                ]
+              }
+            ],
+            "description": "How a sheet of a service takes the values: raw as they are, user as if typed.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "choice"
+              },
+              {
+                "name": "x-rb-default",
+                "value": "raw"
+              }
+            ]
+          },
+          {
             "name": "--profile",
             "arguments": [
               {
@@ -631,7 +703,7 @@
             "aliases": [
               "--no-overwrite"
             ],
-            "description": "Allow a write over the source itself.",
+            "description": "Allow a write over the source itself, or a replace of a sheet with rows that asks first.",
             "metadata": [
               {
                 "name": "x-rb-type",
@@ -725,7 +797,7 @@
               "minimum": 1,
               "maximum": 1
             },
-            "description": "Address of the source, e.g. a.csv or book.xlsx#Sheet1; - is stdin.",
+            "description": "Address of the source, e.g. a.csv, book.xlsx#Sheet1, gsheet://ID#Sheet1 or an https URL; - is stdin.",
             "metadata": [
               {
                 "name": "x-rb-type",
@@ -740,7 +812,7 @@
               "minimum": 1,
               "maximum": 1
             },
-            "description": "Address of the target, e.g. b.csv; - is stdout.",
+            "description": "Address of the target, e.g. b.csv or gsheet://ID#Sheet1; - is stdout.",
             "metadata": [
               {
                 "name": "x-rb-type",
@@ -752,7 +824,7 @@
       },
       {
         "name": "info",
-        "description": "Describe a source: format, encoding, delimiter, rows, column types, the first 5 rows, the sheets or tables.\n\nWith --query it describes the result of the SQL: inside a base it names\nits tables, over any other source the table is data.\n\nExample: dataio info a.csv --json",
+        "description": "Describe a source: format, encoding, delimiter, rows, column types, the first 5 rows, the sheets or tables.\n\nWith --query it describes the result of the SQL: inside a base it names\nits tables, over any other source the table is data. A Google spreadsheet\nlists its sheets; --credentials is the key file to reach it with.\n\nExample: dataio info a.csv --json",
         "options": [
           {
             "name": "--format",
@@ -848,6 +920,22 @@
               {
                 "name": "x-rb-default",
                 "value": true
+              }
+            ]
+          },
+          {
+            "name": "--credentials",
+            "arguments": [
+              {
+                "name": "CREDENTIALS",
+                "required": true
+              }
+            ],
+            "description": "Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
               }
             ]
           },
@@ -957,7 +1045,7 @@
               "minimum": 1,
               "maximum": 1
             },
-            "description": "Address of the source, e.g. a.csv or book.xlsx#Sheet1.",
+            "description": "Address of the source, e.g. a.csv, book.xlsx#Sheet1, gsheet://ID#Sheet1 or an https URL.",
             "metadata": [
               {
                 "name": "x-rb-type",
@@ -1389,7 +1477,7 @@
           },
           {
             "name": "login",
-            "description": "Store a credential for a provider.\n\nExample: dataio auth login --provider default",
+            "description": "Store a credential for a provider; with --credentials, the fields of a key file.\n\nExample: dataio auth login --provider google --credentials key.json",
             "options": [
               {
                 "name": "--provider",
@@ -1408,6 +1496,22 @@
                   {
                     "name": "x-rb-default",
                     "value": "default"
+                  }
+                ]
+              },
+              {
+                "name": "--credentials",
+                "arguments": [
+                  {
+                    "name": "KEY_FILE",
+                    "required": true
+                  }
+                ],
+                "description": "Key file (JSON) to store the provider's fields from, e.g. a Google service-account key.",
+                "metadata": [
+                  {
+                    "name": "x-rb-type",
+                    "value": "str"
                   }
                 ]
               },
@@ -1631,7 +1735,29 @@
       },
       {
         "name": "x-rb-env",
-        "value": []
+        "value": [
+          {
+            "name": "DATAIO_GOOGLE_CLIENT_EMAIL",
+            "purpose": "credential",
+            "provider": "google",
+            "field": "client_email",
+            "required": false
+          },
+          {
+            "name": "DATAIO_GOOGLE_PRIVATE_KEY",
+            "purpose": "credential",
+            "provider": "google",
+            "field": "private_key",
+            "required": false
+          },
+          {
+            "name": "GOOGLE_APPLICATION_CREDENTIALS",
+            "purpose": "credential",
+            "provider": "google",
+            "description": "Path of a key file (JSON) with the fields; looked up last.",
+            "required": false
+          }
+        ]
       },
       {
         "name": "x-rb-data",

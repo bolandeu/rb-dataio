@@ -5,33 +5,40 @@
  or tables.
 
  With --query it describes the result of the SQL: inside a base it names
- its tables, over any other source the table is data.
+ its tables, over any other source the table is data. A Google spreadsheet
+ lists its sheets; --credentials is the key file to reach it with.
 
  Example: dataio info a.csv --json
 
 ╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
-│ *    source      <str>  Address of the source, e.g. a.csv or book.xlsx#Sheet1. [required]        │
+│ *    source      <str>  Address of the source, e.g. a.csv, book.xlsx#Sheet1, gsheet://ID#Sheet1  │
+│                         or an https URL.                                                         │
+│                         [required]                                                               │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
-│ --format                      <str>               Format name; wins over the extension (see the  │
-│                                                   formats command).                              │
-│ --sheet                       <str>               Sheet name; wins over the part of the address  │
-│                                                   after #.                                       │
-│ --table                       <str>               Table name; wins over the part of the address  │
-│                                                   after #.                                       │
-│ --encoding                    <str>               Text encoding, e.g. utf-8 or cp1251.           │
-│ --sep                         <str>               Field delimiter, e.g. ';' or '|'.              │
-│ --header      --no-header                         The first row holds the column names.          │
-│                                                   [default: header]                              │
-│ --as-text     --no-as-text                        Read every value as text.                      │
-│                                                   [default: no-as-text]                          │
-│ --dtypes                      COLUMN=TYPE         Type of one column as COLUMN=TYPE, e.g.        │
-│                                                   freq=int; repeatable.                          │
-│ --limit                       <int range> [x>=0]  Read at most this many rows.                   │
-│ --query                       <str>               SQL whose result is read: inside a base its    │
-│                                                   tables, over any other source the table data.  │
-│ --json                                            Emit machine-readable JSON output.             │
-│ --quiet                                           Suppress non-essential output.                 │
-│ --help                                            Show this message and exit.                    │
+│ --format                         <str>               Format name; wins over the extension (see   │
+│                                                      the formats command).                       │
+│ --sheet                          <str>               Sheet name; wins over the part of the       │
+│                                                      address after #.                            │
+│ --table                          <str>               Table name; wins over the part of the       │
+│                                                      address after #.                            │
+│ --encoding                       <str>               Text encoding, e.g. utf-8 or cp1251.        │
+│ --sep                            <str>               Field delimiter, e.g. ';' or '|'.           │
+│ --header         --no-header                         The first row holds the column names.       │
+│                                                      [default: header]                           │
+│ --credentials                    <str>               Key file (JSON) of the service, e.g. a      │
+│                                                      Google service-account key; default: the    │
+│                                                      standard order.                             │
+│ --as-text        --no-as-text                        Read every value as text.                   │
+│                                                      [default: no-as-text]                       │
+│ --dtypes                         COLUMN=TYPE         Type of one column as COLUMN=TYPE, e.g.     │
+│                                                      freq=int; repeatable.                       │
+│ --limit                          <int range> [x>=0]  Read at most this many rows.                │
+│ --query                          <str>               SQL whose result is read: inside a base its │
+│                                                      tables, over any other source the table     │
+│                                                      data.                                       │
+│ --json                                               Emit machine-readable JSON output.          │
+│ --quiet                                              Suppress non-essential output.              │
+│ --help                                               Show this message and exit.                 │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 

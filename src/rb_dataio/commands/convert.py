@@ -1,8 +1,9 @@
 """The `convert` command: read a source, write a target, report both sides.
 
 It maps the flags to one `convert()` call. The options both sides have take
-`--in-` / `--out-`; `--query` is of the source. A target that is the source itself
-asks first (`--confirm` skips the question). With the target `-` stdout is the data:
+`--in-` / `--out-`; `--query` is of the source, `--start` and `--value-input` of the target.
+A replace that needs confirmation (a target that is the source itself, a part with rows
+of a remote container) asks first (`--confirm` skips the question). With the target `-` stdout is the data:
 the human report is left out, and under `--json` the data is records inside the
 envelope. `render_report` is the human view of a report, shared with `restore`.
 """
@@ -16,9 +17,9 @@ from .. import output
 from ..core.dataio import api
 from ..core.dataio.address import STDIO_TEXT
 from ..core.dataio.objects import RECORDS
-from ..core.dataio.options import Mode
+from ..core.dataio.options import Mode, ValueInput
 from ..core.dataio.report import Report
-from ..core.errors import WriteOverSource
+from ..core.errors import ConfirmationRequired
 from ._parameters import option, pairs
 
 
@@ -37,14 +38,17 @@ def render_warnings(report: dict) -> None:
 @output.guard
 def convert(
     ctx: typer.Context,
-    source: str = typer.Argument(..., help="Address of the source, e.g. a.csv or book.xlsx#Sheet1; - is stdin."),
-    target: str = typer.Argument(..., help="Address of the target, e.g. b.csv; - is stdout."),
+    source: str = typer.Argument(
+        ..., help="Address of the source, e.g. a.csv, book.xlsx#Sheet1, gsheet://ID#Sheet1 or an https URL; - is stdin."
+    ),
+    target: str = typer.Argument(..., help="Address of the target, e.g. b.csv or gsheet://ID#Sheet1; - is stdout."),
     in_format: str | None = option("format", None, "in"),
     in_sheet: str | None = option("sheet", None, "in"),
     in_table: str | None = option("table", None, "in"),
     in_encoding: str | None = option("encoding", None, "in"),
     in_sep: str | None = option("sep", None, "in"),
     in_header: bool = option("header", True, "in"),
+    in_credentials: str | None = option("credentials", None, "in"),
     as_text: bool = option("as_text", False),
     dtypes: list[str] | None = option("dtypes", None, metavar="COLUMN=TYPE"),
     limit: int | None = option("limit", None, min=0),
@@ -55,7 +59,10 @@ def convert(
     out_encoding: str | None = option("encoding", None, "out"),
     out_sep: str | None = option("sep", None, "out"),
     out_header: bool = option("header", True, "out"),
+    out_credentials: str | None = option("credentials", None, "out"),
     mode: Mode = option("mode", Mode.REPLACE),
+    start: str | None = option("start", None),
+    value_input: ValueInput = option("value_input", ValueInput.RAW),
     profile: str | None = option("profile", None),
     overwrite: bool = option("overwrite", False),
     backup: bool = option("backup", True),
@@ -70,7 +77,9 @@ def convert(
     --query is SQL over the source whose result is written: inside a base
     it names its tables, over any other source the table is data.
     With --dry-run the report comes back and nothing is written.
-    A TARGET that is the SOURCE itself asks first: --confirm skips the question.
+    A TARGET that is the SOURCE itself, or a sheet with rows of a Google
+    spreadsheet that the write replaces, asks first: --confirm skips the question.
+    --start and --value-input place and pass the values in a sheet of a service.
     SOURCE - is stdin, its format comes from the content; TARGET - is stdout:
     CSV, one value per line for one column, or --out-format; under --json the
     data is inside the envelope as data.
@@ -91,6 +100,7 @@ def convert(
             in_encoding=in_encoding,
             in_sep=in_sep,
             in_header=in_header,
+            in_credentials=in_credentials,
             as_text=as_text,
             dtypes=pairs(dtypes),
             limit=limit,
@@ -101,7 +111,10 @@ def convert(
             out_encoding=out_encoding,
             out_sep=out_sep,
             out_header=out_header,
+            out_credentials=out_credentials,
             mode=mode,
+            start=start,
+            value_input=value_input,
             profile=profile,
             overwrite=overwrite,
             backup=backup,
@@ -110,7 +123,7 @@ def convert(
 
     try:
         report = run(overwrite or confirm)
-    except WriteOverSource:
-        output.require_confirmation(ctx, f"Write over the source '{source}'", confirm)
+    except ConfirmationRequired as needed:
+        output.require_confirmation(ctx, needed.question, confirm)
         report = run(True)
     output.emit_success(ctx, report.to_dict(), render_human=render_warnings if to_stdout else render_report)

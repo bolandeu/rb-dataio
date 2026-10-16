@@ -2,8 +2,9 @@
 
 Each error has a code, a message, an action and an exit code; `output.guard`
 puts it in the error envelope. `DataioError` is the family of read and write failures,
-the protection of a target among them: a write over the source (`WriteOverSource`) and
-a backup that is not kept (`BackupNotFound`). A file of sheets or tables without the
+the protection of a target among them: a replace that needs confirmation (`ConfirmationRequired`:
+a write over the source, `WriteOverSource`, or the replace of a non-empty part, `NonEmptyPartReplace`)
+and a backup that is not kept (`BackupNotFound`). A key file that cannot be read is `KeyFileUnreadable`. A file of sheets or tables without the
 named one is `PartNotFound`, with the parts it has in the action.
 """
 
@@ -67,11 +68,25 @@ class ProjectNotInitialized(CliError):
 
 
 class AuthRequired(CliError):
-    def __init__(self, provider: str) -> None:
+    """`login_options`: what `auth login` needs besides the provider, e.g. `--credentials <key.json>`."""
+
+    def __init__(self, provider: str, *, login_options: str = "") -> None:
         super().__init__(
             "AUTH_REQUIRED",
             f"Authentication is required for provider '{provider}'.",
-            action=f"Run '{_CLI} auth login --provider {provider}'.",
+            action=f"Run '{_CLI} auth login --provider {provider}{f' {login_options}' if login_options else ''}'.",
+            exit_code=3,
+        )
+
+
+class KeyFileUnreadable(CliError):
+    """A key file named by a flag or an env var is missing or no JSON object of fields."""
+
+    def __init__(self, path: str, reason: str) -> None:
+        super().__init__(
+            "AUTH_REQUIRED",
+            f"The key file '{path}' cannot be read: {reason}",
+            action="Pass the path of a key file (JSON) as the service gives it, e.g. a Google service-account key.",
             exit_code=3,
         )
 
@@ -279,15 +294,41 @@ class TargetExists(DataioError):
         )
 
 
-class WriteOverSource(DataioError):
-    """The target is the source itself: allowed only on request, as an error there costs most (docs/adr/0005)."""
+class ConfirmationRequired(DataioError):
+    """A replace allowed only on request, as an error there costs most (docs/adr/0005).
+
+    The library asks for `overwrite=True`; the CLI asks `question` first (`--confirm` skips it).
+    """
+
+    def __init__(self, message: str, *, question: str, what: str) -> None:
+        super().__init__(
+            "TARGET_EXISTS",
+            message,
+            action=f"Pass overwrite=True / --confirm to {what}; a backup is kept.",
+            exit_code=1,
+        )
+        self.question = question
+
+
+class WriteOverSource(ConfirmationRequired):
+    """The target is the source itself."""
 
     def __init__(self, address: str) -> None:
         super().__init__(
-            "TARGET_EXISTS",
             f"Target '{address}' is the source itself: the write would replace the data it reads.",
-            action="Pass overwrite=True / --confirm to write over the source; a backup is kept.",
-            exit_code=1,
+            question=f"Write over the source '{address}'",
+            what="write over the source",
+        )
+
+
+class NonEmptyPartReplace(ConfirmationRequired):
+    """A replace of a part with rows, in a container whose format asks first (a sheet of a Google spreadsheet)."""
+
+    def __init__(self, address: str, rows: int) -> None:
+        super().__init__(
+            f"Target '{address}' has {rows} rows: a replace of them needs confirmation.",
+            question=f"Replace the {rows} rows of '{address}'",
+            what="replace it",
         )
 
 

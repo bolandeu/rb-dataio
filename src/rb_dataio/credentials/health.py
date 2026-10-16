@@ -23,6 +23,8 @@ CHECK_TIMEOUT = 10.0  # seconds per provider (standard §8) — enforced by the 
 # there but wrong. Anything else only counts against required providers.
 ALWAYS_PROBLEMS = frozenset({"invalid", "expired"})
 HEALTHY = frozenset({"ok", "unchecked"})
+_SOURCE_ORDER = ("env", "keychain", "file")  # what wins when the fields come from several places
+_PLACE_LABEL = {"env": "", "keychain": "keychain service ", "file": "key file "}
 
 
 def _now() -> datetime:
@@ -69,25 +71,23 @@ def _entry(provider_cls: type[Provider], check: bool, target: str | None = None)
     fields = list(provider_cls.credential_fields)
     legacy = provider_cls.legacy_env
     shared = provider_cls.shared_namespaces
-    located = manager.locate_fields(
-        name, fields, legacy_env=legacy, legacy_env_first=provider_cls.legacy_env_first, shared_namespaces=shared
-    )
-    secrets = [value for value, _, _ in located.values()]
+    located = manager.locate_fields(name, fields, lookup=manager.Lookup.of(provider_cls))
+    secrets = [value for field, (value, _, _) in located.items() if field not in provider_cls.public_fields]
     env_refs = [
         manager.env_var_name(name, field) + (f" (or {legacy[field]})" if field in legacy else "") for field in fields
     ]
     keychain_ref = f"keychain service {manager.keychain_service(name)}" + "".join(
         f" or {manager.keychain_service(name, ns)}" for ns in shared
     )
+    key_file_ref = f" or the key file that {provider_cls.key_file_env} names" if provider_cls.key_file_env else ""
     missing = [field for field in fields if field not in located]
-    sources = {source for _, source, _ in located.values()}
 
     entry: dict = {
         "provider": name,
         "required": provider_cls.required,
         "fields": fields,
         "source": "missing",
-        "source_ref": f"{', '.join(env_refs)} or {keychain_ref}",
+        "source_ref": f"{', '.join(env_refs)} or {keychain_ref}{key_file_ref}",
         "status": "missing",
         "expires_at": None,
         "quota": None,
@@ -97,16 +97,15 @@ def _entry(provider_cls: type[Provider], check: bool, target: str | None = None)
         entry["message"] = f"not set: {', '.join(missing)}"
         return entry
 
-    # Env vars override the keychain field by field; a mix is reported as env
-    # (what wins) with every place named in source_ref (standard §8: no "mixed").
-    used_env = list(dict.fromkeys(located[f][2] for f in fields if located[f][1] == "env"))
-    services = list(dict.fromkeys(located[f][2] for f in fields if located[f][1] == "keychain"))
-    used_keychain = "keychain service " + ", ".join(services) if services else ""
-    if sources == {"keychain"}:
-        entry.update(source="keychain", source_ref=used_keychain)
-    else:
-        refs = ", ".join(used_env) + (f"; rest from {used_keychain}" if services else "")
-        entry.update(source="env", source_ref=refs)
+    # Env vars override the keychain, and both the key file, field by field; a mix is reported
+    # as what wins with every place named in source_ref (standard §8: no "mixed").
+    places = {
+        source: ", ".join(dict.fromkeys(located[f][2] for f in fields if located[f][1] == source))
+        for source in _SOURCE_ORDER
+    }
+    used = [f"{_PLACE_LABEL[source]}{places[source]}" for source in _SOURCE_ORDER if places[source]]
+    winner = next(source for source in _SOURCE_ORDER if places[source])
+    entry.update(source=winner, source_ref="; rest from ".join(used))
 
     if not check:
         entry["status"] = "unchecked"

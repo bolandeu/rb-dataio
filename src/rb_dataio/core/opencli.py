@@ -176,6 +176,16 @@ def env_vars() -> list[dict]:
                 if fallbacks:
                     entry["fallbacks"] = [name.replace("_TARGET_", "_<TARGET>_") for name in fallbacks]
                 found.append(entry)
+            if provider.key_file_env:
+                found.append(
+                    {
+                        "name": provider.key_file_env,
+                        "purpose": "credential",
+                        "provider": provider.name,
+                        "description": "Path of a key file (JSON) with the fields; looked up last.",
+                        "required": False,
+                    }
+                )
     if module_exists(f"{_PACKAGE_NAME}.core.db"):
         db = importlib.import_module(f"{_PACKAGE_NAME}.core.db")
         found += [

@@ -98,3 +98,16 @@ def test_query_is_a_source_option_without_a_prefix(command: str) -> None:
     assert "query" in _keywords(read)
     assert "--query" in _flag_params(command)["query"].opts
     assert "in_query" not in _flag_params(command)
+
+
+def test_start_and_value_input_are_target_options_without_a_prefix() -> None:
+    assert {"start", "value_input"} <= _keywords(write).keys() - _keywords(read).keys()
+    flags = _flag_params("convert")
+    assert (flags["start"].opts[0], flags["value_input"].opts[0]) == ("--start", "--value-input")
+    assert _keywords(write)["value_input"].default == flags["value_input"].default == "raw"
+
+
+def test_credentials_is_an_option_of_both_sides() -> None:
+    assert "credentials" in _keywords(read).keys() & _keywords(write).keys()
+    flags = _flag_params("convert")
+    assert {"--in-credentials", "--out-credentials"} == {*flags["in_credentials"].opts, *flags["out_credentials"].opts}

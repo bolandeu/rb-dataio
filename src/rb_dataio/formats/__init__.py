@@ -14,6 +14,10 @@ writes one, and the core gives every container the same choice of the part
 SQL inside the base and writes a table in place, in one transaction. Any adapter may run
 `query=` on its file itself (`query`) and may claim a file by its signature (`claims`),
 so that formats that share an extension (`.db`) tell their files apart.
+A format of a service names the address `schemes` it takes, instead of extensions: a
+`RemoteAdapter` reads the whole address (an https URL), a `RemoteContainerAdapter` is a
+container whose location is a `Remote` place (a Google spreadsheet). A container with
+`confirms_replace` replaces a part that has rows only on request (`overwrite=True` / `--confirm`).
 A module whose name starts with `_` is a helper, not a format.
 """
 
@@ -25,10 +29,11 @@ import pkgutil
 import re
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Generic, TypeVar
 
 import pandas as pd
 
+from ..core.dataio.address import Address
 from ..core.dataio.options import ReadOptions, WriteOptions
 from ..core.errors import InvalidParameter
 
@@ -36,6 +41,7 @@ ENCODING = "utf-8"
 BOM_ENCODING = "utf-8-sig"
 FALLBACK_ENCODING = "cp1251"
 _BINARY = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
+Location = TypeVar("Location", bound="Path | Remote")  # where a container's parts are: a file or a `Remote` place
 
 
 def decode(data: bytes, encoding: str | None) -> tuple[str, str]:
@@ -87,6 +93,7 @@ class FormatAdapter:
     name: ClassVar[str]
     extensions: ClassVar[tuple[str, ...]]  # lower case, with the dot
     options: ClassVar[tuple[str, ...]]  # the parameters this format honours
+    schemes: ClassVar[tuple[str, ...]] = ()  # the address schemes it takes (https, gsheet); a file format none
     appends: ClassVar[bool] = False
     written_as: ClassVar[str | None] = None  # a format that cannot write: the one that writes its kind of file
 
@@ -137,23 +144,25 @@ class TextAdapter(FormatAdapter):
         path.write_bytes(self.render(frame, options).encode(options.encoding or ENCODING))
 
 
-class ContainerAdapter(FormatAdapter):
-    """A format of a file with named parts (sheets, tables): the core picks the part, the adapter reads or writes it.
+class ContainerAdapter(FormatAdapter, Generic[Location]):
+    """A format of named parts (sheets, tables): the core picks the part, the adapter reads or writes it.
 
+    The location is the file (a `Path`), or for a remote container the `Remote` place.
     `write_part` gets a copy of the current file (no file for a new one) and changes only `part`;
     it returns the warnings of the write, for example what the format may lose.
     """
 
     first_part: ClassVar[str]  # the name of the part a new file gets when the address names none
     part_required: ClassVar[bool] = False  # a read of a file of several parts must name the part
+    confirms_replace: ClassVar[bool] = False  # a replace of a part with rows needs overwrite=True / --confirm
 
-    def parts(self, path: Path) -> list[str]:
+    def parts(self, location: Location, /) -> list[str]:
         raise NotImplementedError
 
-    def read_part(self, path: Path, part: str, options: ReadOptions) -> Loaded:
+    def read_part(self, location: Location, /, part: str, options: ReadOptions) -> Loaded:
         raise NotImplementedError
 
-    def write_part(self, frame: pd.DataFrame, path: Path, part: str, options: WriteOptions) -> list[str]:
+    def write_part(self, frame: pd.DataFrame, location: Location, /, part: str, options: WriteOptions) -> list[str]:
         raise NotImplementedError
 
     @property
@@ -165,7 +174,7 @@ class ContainerAdapter(FormatAdapter):
         return type(self).write_part is not ContainerAdapter.write_part
 
 
-class BaseAdapter(ContainerAdapter):
+class BaseAdapter(ContainerAdapter[Path]):
     """A format of a base: a database file whose parts are tables.
 
     `query` runs the SQL inside the base, where the tables have their own names. `write_part`
@@ -180,6 +189,41 @@ class BaseAdapter(ContainerAdapter):
     def row_counts(self, path: Path) -> dict[str, int]:
         """The rows of every table of the base by its name, in the order of `parts`; `info` shows them."""
         raise NotImplementedError
+
+
+@dataclass(frozen=True)
+class Remote:
+    """Where a remote container is: its address, and the key file to reach it with (None: the standard order)."""
+
+    address: Address
+    credentials: str | None
+
+
+class RemoteAdapter(FormatAdapter):
+    """A format of a service, not of a file, at the addresses of its `schemes` (an https URL): it reads the address."""
+
+    extensions: ClassVar[tuple[str, ...]] = ()
+
+    def read_address(self, address: Address, options: ReadOptions) -> Loaded:
+        raise NotImplementedError
+
+    @property
+    def reads(self) -> bool:
+        return type(self).read_address is not RemoteAdapter.read_address
+
+
+class RemoteContainerAdapter(ContainerAdapter[Remote]):
+    """A service of named parts at the addresses of its `schemes` (the sheets of a Google spreadsheet).
+
+    Like a base, a part is written in place, and its backup holds the old rows of that part only.
+    `part_named` is the part the address names: its fragment, unless the format names parts
+    another way too (the gid of a Google Sheets URL).
+    """
+
+    extensions: ClassVar[tuple[str, ...]] = ()
+
+    def part_named(self, location: Remote) -> str | None:
+        return location.address.fragment
 
 
 def adapters() -> list[FormatAdapter]:

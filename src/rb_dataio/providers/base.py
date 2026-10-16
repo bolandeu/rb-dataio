@@ -66,7 +66,14 @@ class Provider:
     # provider's credential from after our own — e.g. wordstat reading the
     # key `serp auth login` stored: shared_namespaces = ("serp",). Read-only.
     shared_namespaces: ClassVar[tuple[str, ...]] = ()
+    # An env var that names a key file (JSON) holding the fields — e.g.
+    # GOOGLE_APPLICATION_CREDENTIALS; looked up last, reported as source `file`.
+    key_file_env: ClassVar[str | None] = None
+    # Fields that are no secret (an account's email): `auth status` may show them in `message`.
+    public_fields: ClassVar[tuple[str, ...]] = ()
     target: str | None = None
+    # A key file passed for this one call (`--credentials`): it alone gives the fields.
+    key_file: str | None = None
 
     def credential(self) -> dict[str, str] | None:
         """This provider's credential, resolved with all of the options above (use it in auth_headers()).
@@ -80,11 +87,7 @@ class Provider:
             return None
         manager = importlib.import_module(manager_module)
         return manager.get_credential(
-            self.credential_name,
-            env_fields=list(self.credential_fields),
-            legacy_env=self.legacy_env,
-            legacy_env_first=self.legacy_env_first,
-            shared_namespaces=self.shared_namespaces,
+            self.credential_name, env_fields=list(self.credential_fields), lookup=manager.Lookup.of(self)
         )
 
     @classmethod

@@ -4,7 +4,8 @@ One folder per entry in the user data dir: the old content under a fixed name (`
 and `entry.json` (the `Backup`). The entry file comes last and in one step, so a listing
 never sees half an entry, and two processes never share a folder. The old content is
 always a real copy, so an in-place edit of the target never reaches it. For a table of a
-base (`kept_rows`) it is the old rows of that table only, as parquet; `kept_table_rows` reads them back.
+base or of a remote container (`kept_rows`) it is the old rows of that part only, as parquet;
+`kept_table_rows` reads them back.
 Limits (data/settings.toml): entries, age and total size; a target over the object limit
 is not kept, with a warning.
 """
@@ -84,13 +85,15 @@ def kept(path: Path, format_name: str, before: TargetState, uri: str) -> Generat
     if warning := over_limit(path.stat().st_size, uri):
         yield [warning]
         return
-    with _kept(_keep(path, format_name, before, lambda into: shutil.copy2(path, into))):
+    with _kept(_keep(str(path.absolute()), format_name, before, lambda into: shutil.copy2(path, into))):
         yield []
 
 
 @contextmanager
-def kept_rows(rows: pd.DataFrame, path: Path, format_name: str, table: str, uri: str) -> Generator[list[str]]:
-    """Keep the old `rows` of the table `table` of the base `path`, as parquet, for the write inside.
+def kept_rows(rows: pd.DataFrame, target: str, format_name: str, table: str, uri: str) -> Generator[list[str]]:
+    """Keep the old `rows` of the part `table` of `target`, as parquet, for the write inside.
+
+    `target` is how `restore` finds it again: the absolute path of a base, the place of a remote container.
 
     Yields the warnings: rows over the object limit (by their size in memory) are not kept.
     """
@@ -98,7 +101,7 @@ def kept_rows(rows: pd.DataFrame, path: Path, format_name: str, table: str, uri:
         yield [warning]
         return
     before = TargetState(exists=True, rows=len(rows), columns=column_names(rows))
-    with _kept(_keep(path, format_name, before, lambda into: parquet.write_file(rows, into), table=table)):
+    with _kept(_keep(target, format_name, before, lambda into: parquet.write_file(rows, into), table=table)):
         yield []
 
 
@@ -119,14 +122,14 @@ def _kept(entry: Backup) -> Generator[None]:
 
 
 def _keep(
-    path: Path, format_name: str, before: TargetState, fill: Callable[[Path], object], table: str | None = None
+    target: str, format_name: str, before: TargetState, fill: Callable[[Path], object], table: str | None = None
 ) -> Backup:
-    """A new entry for the target `path`; `fill` writes its old content into the file it gets."""
+    """A new entry for `target`; `fill` writes its old content into the file it gets."""
     now = datetime.fromtimestamp(time.time(), UTC)
     entry = Backup(
         id=f"{now:%Y%m%d-%H%M%S}-{secrets.token_hex(4)}",  # unique even for many writes a second
         time=now.isoformat(timespec="microseconds"),
-        target=str(path.absolute()),
+        target=target,
         format=format_name,
         rows=before.rows,
         columns=before.columns,
