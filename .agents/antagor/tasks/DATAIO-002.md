@@ -2,10 +2,10 @@
 id: DATAIO-002
 title: 'CSV, TSV and txt: encoding and delimiter detection, the excel profile, and
   value normalisation'
-status: queue
+status: in_progress
 attempts: 0
-blocked: false
-blocked_reason: null
+blocked: true
+blocked_reason: scope_held
 phase: null
 tests_hash: null
 publish_stage: null
@@ -21,9 +21,14 @@ owns_paths:
 - tests/test_csv.py
 - tests/test_values.py
 - tests/data/csv/
+- src/rb_dataio/core/dataio/api.py
+- src/rb_dataio/core/dataio/pipeline.py
+- src/rb_dataio/formats/__init__.py
 test_paths:
 - tests/test_csv.py
 - tests/test_values.py
+- tests/test_cli_frame.py
+- tests/test_frame.py
 docs: none
 tools: []
 worker_args: null
