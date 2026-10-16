@@ -1,7 +1,7 @@
 ---
 id: DATAIO-009
 title: 'Excel books: read xlsx/xls/xlsb/ods, write xlsx sheets with a usable layout'
-status: in_review
+status: queue
 attempts: 1
 blocked: false
 blocked_reason: null
@@ -86,3 +86,20 @@ The container contract of the core (DATAIO-008); python-calamine for reading, op
 ## Out of scope
 
 - Styling beyond autowidth, frozen header and autofilter; writing xls/xlsb/ods; formulas (values only); streaming of large books; Parquet.
+
+## Feedback
+
+### Attempt 1: the Architect's verdict
+
+The review found blockers; close each:
+
+- [blocker] C11 src/rb_dataio/formats/_excel.py: the change adds new readers and a writer, but no error of the Excel libraries reaches the core error handling. `python_calamine.CalamineError` (base of `ZipError`) is not a `ValueError` or `OSError`, so `pipeline.py:67` and `:230` do not catch it. Checked: `read('bad.xlsx')` and `write(df, 'bad.xlsx')` on a file with the text "junk" raise a raw `ZipError`, not `READ_FAILED` or `WRITE_FAILED`. The CLI shows a traceback. `zipfile.BadZipFile` from `_losable` and openpyxl `InvalidFileException` have the same path. The adapter must convert them to `ValueError` (or the core must catch them), with a test.
+- [blocker] [wrong] A corrupt or non-book file with an Excel extension gives a raw library exception, not a stable error code — «Errors have a stable code and a next action, in the library and in the CLI alike» (docs/SPEC.md:14). See the C11 remark above.
+
+Minor remarks of the review: optional, if they do not widen the task:
+
+- [minor] C7 src/rb_dataio/formats/xlsx.py: `MAX_ROWS`, `MAX_WIDTH`, `PADDING` are literals in code. `MAX_ROWS` and `MAX_WIDTH` are fixed Excel limits, so this is a judgement call; `PADDING` is a tunable layout value.
+- [minor] C5 src/rb_dataio/formats/xlsx.py: xlsx imports the header check from `csv.py` (`require_same_header`) and `plain` from `json.py`. One adapter depends on two others (Shotgun Surgery risk). A shared helper module would be cleaner.
+- [minor] C1 src/rb_dataio/formats/_excel.py: `EMPTY_CELL`/`_value` are clear. No `_Avoid_` word found. No other C1 remark.
+- [minor] [wrong] Append to an existing but empty sheet: `sheet[1]` gives `[None]` as the header, so the append fails with a header mismatch instead of adding the rows — «Given mode='append' to book.xlsx#A with the same header, When written, Then the rows go below the old ones». Edge case, not in the acceptance list.
+- [minor] [wrong] `_value` turns every whole float into `int`, so a float cell `1e20` becomes a huge Python int. Edge case. Not covered by a test.
