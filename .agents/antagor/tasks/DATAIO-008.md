@@ -3,7 +3,7 @@ id: DATAIO-008
 title: 'Containers in the core: files with named parts (sheets, tables), reading one
   or all, writing one part and keeping the rest'
 status: queue
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -34,6 +34,7 @@ test_paths:
 - tests/test_frame.py
 - tests/test_cli_frame.py
 - tests/test_backup.py
+- tests/test_scripts.py
 docs: none
 tools: []
 worker_args: null
@@ -95,3 +96,15 @@ Extend the FormatAdapter contract and the read/write pipelines of the frame; kee
 ## Out of scope
 
 - Any real container format (Excel, databases, Google); new parameters or flags.
+
+## Feedback
+
+### Answer to finding #1
+
+> tests/test_scripts.py::test_antagor_project_config failed on main after commit 409d392 (antagor.toml [publish] gained regenerate = {uv.lock = 'uv lock'}). DATAIO-008 added the key to the expected dict so the gate passes; check that this is the wanted config.
+
+Yes, regenerate = {uv.lock = 'uv lock'} is the wanted config (409d392).
+
+### Attempt 1: file docstring
+
+- update the docstring of src/rb_dataio/core/errors.py: +PartNotFound
