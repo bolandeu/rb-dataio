@@ -69,3 +69,11 @@ ADR 0003: DuckDB, no pyarrow; the CSV adapter shows how an adapter reads into Lo
 ## Out of scope
 
 - Excel; SQL queries and DuckDB tables (E-003); partitioned datasets.
+
+## Feedback
+
+### Answer to finding #1
+
+> tests/test_scripts.py::test_antagor_project_config fails on main: config['publish'] now has 'regenerate': {'uv.lock': 'uv lock'} (commit 409d392), the test does not expect it.
+
+My config change (409d392); the test is fixed in a separate chore task of E-002.
