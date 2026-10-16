@@ -2,7 +2,7 @@
 id: DATAIO-015
 title: 'Google Sheets: read and write sheets by URL or gsheet://, RAW values, batches,
   backoff, backups'
-status: queue
+status: done
 attempts: 0
 blocked: false
 blocked_reason: null
