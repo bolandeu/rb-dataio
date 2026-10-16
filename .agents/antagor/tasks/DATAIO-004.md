@@ -2,10 +2,10 @@
 id: DATAIO-004
 title: 'Protection: backups, restore, atomic writes, write modes, safety checks and
   loss warnings'
-status: in_progress
+status: queue
 attempts: 0
-blocked: true
-blocked_reason: needs_scope
+blocked: false
+blocked_reason: null
 phase: null
 tests_hash: null
 publish_stage: null
@@ -129,3 +129,7 @@ Backup store in platformdirs.user_data_path (the template's way), declared in co
 > Recommended: Add output.ConfirmOption to convert: --confirm (or a yes at the prompt via require_confirmation) passes overwrite=True; keep --overwrite as the library parity flag
 
 Option 1, per SPEC (Confirmation section) and ADR 0005: add the template ConfirmOption to convert and use require_confirmation for convert-over-source; --confirm (or yes at the prompt) passes overwrite=True; keep --overwrite as the library parity flag. The action text: 'pass overwrite=True / --confirm'. Owns now include the convert and restore help snapshots.
+
+### Blocked: needs_scope (entries [{'n': 1, 'text': "DATAIO-004 acceptance wants convert-over-source refused with action 'pass overwrite=True / --confirm', but the convert command has --overwrite and no --confirm, and new CLI flags are out of scope.\nQue"}])
+
+Inbox #1 answered: option 1 (--confirm via require_confirmation).
