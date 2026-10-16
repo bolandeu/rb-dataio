@@ -1,7 +1,7 @@
 ---
 id: DATAIO-007
 title: Release installs the new tag on this Mac
-status: queue
+status: in_review
 attempts: 0
 blocked: false
 blocked_reason: null
