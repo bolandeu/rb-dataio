@@ -2,7 +2,7 @@
 id: DATAIO-018
 title: 'Merge many sources: globs, folders and lists into one table with _source and
   _sheet'
-status: publish
+status: done
 attempts: 0
 blocked: false
 blocked_reason: null

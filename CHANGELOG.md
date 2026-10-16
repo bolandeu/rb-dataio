@@ -5,6 +5,15 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.17 — 2026-10-16
+
+### E-005 — dataio bulk: merge many files, split one table, batch convert (0.6)
+
+One address merges globs, folders and lists with _source and _sheet; a template in the target address splits by a column or by row count into files or sheets; {stem} converts many files one to one; the batch report and failure handling are the same in the library and the CLI.
+Time: 1.6h since the epic was approved
+
+- Merge many sources: globs, folders and lists into one table with _source and _sheet (DATAIO-018)
+
 ## v0.1.16 — 2026-10-16
 
 ### E-005 — dataio bulk: merge many files, split one table, batch convert (0.6)
