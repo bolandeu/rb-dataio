@@ -2,7 +2,7 @@
 id: DATAIO-008
 title: 'Containers in the core: files with named parts (sheets, tables), reading one
   or all, writing one part and keeping the rest'
-status: ideas
+status: queue
 attempts: 0
 blocked: false
 blocked_reason: null
@@ -10,7 +10,7 @@ phase: null
 tests_hash: null
 publish_stage: null
 created_by: architect
-approved_by: null
+approved_by: human
 worker: claude-code
 type: feature
 owns_paths:
