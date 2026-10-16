@@ -2,7 +2,7 @@
 id: DATAIO-017
 title: 'Batch surface in the core: merge/split/batch parameters, the batch report,
   SCHEMA_MISMATCH, and one module per batch behaviour'
-status: publish
+status: done
 attempts: 0
 blocked: false
 blocked_reason: null

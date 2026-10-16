@@ -5,6 +5,15 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.16 — 2026-10-16
+
+### E-005 — dataio bulk: merge many files, split one table, batch convert (0.6)
+
+One address merges globs, folders and lists with _source and _sheet; a template in the target address splits by a column or by row count into files or sheets; {stem} converts many files one to one; the batch report and failure handling are the same in the library and the CLI.
+Time: 1.6h since the epic was approved
+
+- Batch surface in the core: merge/split/batch parameters, the batch report, SCHEMA_MISMATCH, and one module per batch behaviour (DATAIO-017)
+
 ## v0.1.15 — 2026-10-16
 
 ### E-004 — dataio google-http: Google Sheets and http(s) sources (0.5)
