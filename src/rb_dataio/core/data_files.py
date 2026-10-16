@@ -17,4 +17,12 @@ class DataFile:
     description: str
 
 
-DATA_FILES: tuple[DataFile, ...] = ()
+BACKUP_DIR = "backups"  # the backup store: one folder per entry (core/dataio/backup.py)
+
+DATA_FILES: tuple[DataFile, ...] = (
+    DataFile(
+        path=f"{BACKUP_DIR}/*/*",
+        kind="data",
+        description="Backups: the old content of each replaced target and its entry (id, time, target, rows)",
+    ),
+)

@@ -1,0 +1,10 @@
+# The defaults this package ships: the limits of the backup store and the threshold of the loss warning.
+
+[backup]
+max_entries = 50     # the oldest entries go beyond this count
+max_age_days = 14    # entries older than this go
+max_total_mb = 2048  # the oldest entries go while the store holds more than this
+max_object_mb = 500  # a target bigger than this is replaced without a backup, with a warning
+
+[warnings]
+row_drop_share = 0.5  # a replace that keeps fewer than this share of the rows warns

@@ -991,7 +991,7 @@
       },
       {
         "name": "restore",
-        "description": "Bring a target back from a backup. Not available in this release yet.\n\nExample: dataio restore --dry-run --json",
+        "description": "Bring a target back from a backup (the newest without ID); what it holds now is backed up first.\n\nIt replaces the target, so it asks first: --confirm skips the question.\nWith --dry-run the report shows the target before and after, and nothing changes.\n\nExample: dataio restore --dry-run --json",
         "options": [
           {
             "name": "--dry-run",
@@ -1592,7 +1592,13 @@
         "value": {
           "user_data_dir": {
             "appname": "dataio",
-            "files": []
+            "files": [
+              {
+                "path": "backups/*/*",
+                "kind": "data",
+                "description": "Backups: the old content of each replaced target and its entry (id, time, target, rows)"
+              }
+            ]
           }
         }
       },
