@@ -19,7 +19,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..core.dataio.options import Mode, ReadOptions, WriteOptions
-from . import BaseAdapter, Loaded
+from . import AppendRefused, BaseAdapter, Loaded
 from .json import plain
 
 SIGNATURE = b"SQLite format 3\x00"
@@ -86,7 +86,7 @@ def _bindable(frame: pd.DataFrame) -> pd.DataFrame:
 def _require_known_columns(frame: pd.DataFrame, declared: dict[str, str], table: str) -> None:
     extra = [str(column) for column in frame.columns if str(column) not in declared]
     if extra:
-        raise ValueError(
+        raise AppendRefused(
             f"the table '{table}' has no column {', '.join(repr(name) for name in extra)}: an append does not change its schema."
         )
 

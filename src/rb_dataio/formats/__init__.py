@@ -5,7 +5,7 @@ module of this package, and `formats()` and the `FORMAT_UNKNOWN` list come from 
 An adapter has a read ability when it defines `read`, a write ability when it
 defines `write`; `appends` and `options` it states itself, and a format that only reads
 names in `written_as` the format that writes its kind of file, or states in `read_only` why nothing writes it (http). A write the format refuses
-before it writes raises `WriteRefused`, with the action to take instead. A `TextAdapter` is a
+before it writes raises `WriteRefused`, with the action to take instead (`AppendRefused`: data that does not fit the target's columns). A `TextAdapter` is a
 format of plain text: it defines `parse` and `render`, and the same two serve its
 files, stdin and stdout, and the in-memory text of `write()`. A `ContainerAdapter` is a
 format of a file with named parts (sheets, tables): it lists the parts, reads one and
@@ -111,6 +111,13 @@ class WriteRefused(ValueError):
     def __init__(self, message: str, *, action: str) -> None:
         super().__init__(message)
         self.action = action
+
+
+class AppendRefused(WriteRefused):
+    """An append whose data does not fit the columns of the target."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, action="Give the data the columns of the target, or replace the target instead.")
 
 
 class FormatAdapter:

@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..errors import SchemaMismatch, SourceNotFound
-from . import pipeline
+from . import pipeline, values
 from .address import FILE, parse
 from .options import ReadOptions
 from .report import SourcePart, column_names
@@ -69,7 +69,7 @@ def read_many(source: object, options: ReadOptions) -> tuple[pd.DataFrame, Sourc
     frames = [frame for _, frame, _, _ in reads]
     if options.source_column is not None:
         frames = [_named(frame, options.source_column, name) for name, frame, _, _ in reads]
-    merged = pd.concat(frames, ignore_index=True)
+    merged = values.stack(frames)
     if options.limit is not None:
         merged = merged.head(options.limit)
     warnings = [f"{name}: {warning}" for name, _, _, found in reads for warning in found]

@@ -20,7 +20,7 @@ from ..core.dataio.address import STDIO_TEXT
 from ..core.dataio.objects import RECORDS
 from ..core.dataio.options import SOURCE_COLUMN, Mode, ValueInput
 from ..core.dataio.report import Report
-from ..core.errors import CliError, ConfirmationRequired
+from ..core.errors import CliError, ConfirmationRequired, LibraryAction
 from ._parameters import option, pairs
 
 
@@ -95,6 +95,8 @@ def convert(
     different columns fail with SCHEMA_MISMATCH. A TARGET with {column} or {n} splits
     the table (--split-by, --chunk-rows, --drop-split-column). A batch reports its
     targets; --keep-going goes on after a failure and lists the errors (exit 1).
+    Sources that would be written to one target (a/x.csv, b/x.csv for {stem}) are refused first.
+    The action of SCHEMA_MISMATCH and TARGET_EXISTS names the flag to change (--strict, --mode).
     --start and --value-input place and pass the values in a sheet of a service.
     SOURCE - is stdin, its format comes from the content; TARGET - is stdout:
     CSV, one value per line for one column, or --out-format; under --json the
@@ -144,10 +146,13 @@ def convert(
         )
 
     try:
-        report = run(overwrite or confirm)
-    except ConfirmationRequired as needed:
-        output.require_confirmation(ctx, needed.question, confirm)
-        report = run(True)
+        try:
+            report = run(overwrite or confirm)
+        except ConfirmationRequired as needed:
+            output.require_confirmation(ctx, needed.question, confirm)
+            report = run(True)
+    except LibraryAction as error:
+        raise error.for_cli() from error
     first = report.errors[0] if report.errors else None
     problem = CliError(first.code, first.message, exit_code=1) if first else None
     output.emit_report(ctx, report.to_dict(), render_warnings if to_stdout else render_report, problem)

@@ -14,6 +14,8 @@
  different columns fail with SCHEMA_MISMATCH. A TARGET with {column} or {n} splits
  the table (--split-by, --chunk-rows, --drop-split-column). A batch reports its
  targets; --keep-going goes on after a failure and lists the errors (exit 1).
+ Sources that would be written to one target (a/x.csv, b/x.csv for {stem}) are refused first.
+ The action of SCHEMA_MISMATCH and TARGET_EXISTS names the flag to change (--strict, --mode).
  --start and --value-input place and pass the values in a sheet of a service.
  SOURCE - is stdin, its format comes from the content; TARGET - is stdout:
  CSV, one value per line for one column, or --out-format; under --json the

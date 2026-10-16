@@ -6,7 +6,7 @@ the header too). Every written sheet gets a frozen header row, an autofilter and
 as wide as their longest value plus the padding of the settings (data/settings.toml).
 A sheet over `MAX_ROWS` is refused before the write. openpyxl does not keep every part of
 a book: a book with charts or pivot tables warns that they may be lost. Values only, no
-formulas.
+formulas: a text that starts with `=` is written as text.
 """
 
 from __future__ import annotations
@@ -55,6 +55,14 @@ def _replaced_sheet(book: Workbook, part: str) -> Worksheet:
     return book.create_sheet(part, index)
 
 
+def _append_row(sheet: Worksheet, row: Iterable[object]) -> None:
+    """Add a row of values; a text that starts with `=` stays a string, openpyxl would make it a formula."""
+    sheet.append(row)
+    for cell in sheet[sheet.max_row]:
+        if cell.data_type == "f":
+            cell.data_type = "s"
+
+
 def _is_empty(sheet: Worksheet) -> bool:
     return (sheet.max_row, sheet.max_column) == (1, 1) and sheet["A1"].value is None
 
@@ -92,7 +100,7 @@ class XlsxAdapter(ExcelAdapter):
             book = openpyxl.load_workbook(path) if existing else _new_book()
         sheet = self._sheet(book, part, frame, options)
         for row in plain(frame).itertuples(index=False, name=None):
-            sheet.append(row)
+            _append_row(sheet, row)
         _lay_out(sheet, options.header)
         book.save(path)
         return warnings
@@ -109,7 +117,7 @@ class XlsxAdapter(ExcelAdapter):
         _require_room(int(options.header) + len(frame))
         sheet = _replaced_sheet(book, part)
         if options.header:
-            sheet.append(column_names(frame))
+            _append_row(sheet, column_names(frame))
         return sheet
 
 

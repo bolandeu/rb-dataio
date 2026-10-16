@@ -4,7 +4,8 @@ Header repair (empty and duplicate names, `col<N>` for a headerless table), empt
 dropped, then the type of every text column: `dtypes` for the named columns, `as_text`
 for all, else inferred. NA words never turn into missing values (the adapter reads them
 as text); only an empty cell is missing. A column stays text when it could be an ID:
-a value with a leading zero or `+`, or with more than 15 digits.
+a value with a leading zero or `+`, or with more than 15 digits. `stack` joins tables of different
+columns: a whole-number column stays whole (a nullable int) where a table lacks it.
 """
 
 from __future__ import annotations
@@ -49,6 +50,18 @@ def normalise(frame: pd.DataFrame, options: ReadOptions, *, infer: bool = True) 
         elif infer and pd.api.types.is_string_dtype(frame[name]):
             frame[name] = _infer(frame[name])
     return frame, warnings
+
+
+def stack(frames: list[pd.DataFrame]) -> pd.DataFrame:
+    """The tables one below the other; a column of whole numbers in every table that has it stays int, not float."""
+    stacked = pd.concat(frames, ignore_index=True)
+    if not stacked.columns.is_unique:
+        return stacked
+    for name in stacked.columns:
+        owners = [frame[name] for frame in frames if name in frame.columns]
+        if pd.api.types.is_float_dtype(stacked[name]) and all(pd.api.types.is_integer_dtype(c) for c in owners):
+            stacked[name] = stacked[name].astype("Int64")
+    return stacked
 
 
 def _require_known(frame: pd.DataFrame, dtypes: dict[str, str]) -> None:

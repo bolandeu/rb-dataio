@@ -7,7 +7,8 @@
  With --query it describes the result of the SQL: inside a base it names
  its tables, over any other source the table is data. A Google spreadsheet
  lists its sheets; an address of many sources is described as the merged table
- (--source-column, --strict); --credentials is the key file to reach it with.
+ (--source-column, --strict, which fails with SCHEMA_MISMATCH); --credentials is the key file to
+ reach it with.
 
  Example: dataio info a.csv --json
 

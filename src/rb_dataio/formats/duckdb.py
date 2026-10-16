@@ -19,7 +19,7 @@ import pandas as pd
 from pandas.api import types
 
 from ..core.dataio.options import Mode, ReadOptions, WriteOptions
-from . import BaseAdapter, Loaded, WriteRefused
+from . import AppendRefused, BaseAdapter, Loaded, WriteRefused
 
 SIGNATURE = b"DUCK"  # the four bytes after the 8-byte checksum of the file header
 SIGNATURE_OFFSET = 8
@@ -102,7 +102,7 @@ def _check_append(connection: duckdb.DuckDBPyConnection, table: str, frame: pd.D
     known = {name.lower() for name in _columns(connection, table)}
     extra = [str(name) for name in frame.columns if str(name).lower() not in known]
     if extra:
-        raise ValueError(f"table '{table}' has no column {', '.join(extra)}; append never changes the schema.")
+        raise AppendRefused(f"table '{table}' has no column {', '.join(extra)}; append never changes the schema.")
 
 
 class DuckdbAdapter(BaseAdapter):
