@@ -1,5 +1,5 @@
 # The defaults this package ships: the limits of the backup store, the threshold of the loss warning,
-# the layout of a written xlsx sheet and the Google endpoints.
+# the layout of a written xlsx sheet, the Google endpoints and the limits of Google Sheets calls.
 
 [backup]
 max_entries = 50     # the oldest entries go beyond this count
@@ -16,3 +16,10 @@ column_padding = 2  # characters a written column has beyond its longest value
 [google]
 token_uri = "https://oauth2.googleapis.com/token"  # where a service-account key gets its access tokens
 scopes = ["https://www.googleapis.com/auth/spreadsheets"]  # what the tokens allow
+
+[gsheet]
+batch_rows = 10000        # the rows one write call sends
+max_cells = 10000000      # the cells a spreadsheet holds at most: a bigger table is refused before any write
+retries = 5               # the repeats of a call that Google answers with 429 or 5xx
+backoff_seconds = 1.0     # the wait before the first repeat; it doubles for each next one
+timeout_seconds = 60.0    # how long one call waits for Google

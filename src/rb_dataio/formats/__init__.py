@@ -18,6 +18,7 @@ A format of a service names the address `schemes` it takes, instead of extension
 `RemoteAdapter` reads the whole address (an https URL), a `RemoteContainerAdapter` is a
 container whose location is a `Remote` place (a Google spreadsheet). A container with
 `confirms_replace` replaces a part that has rows only on request (`overwrite=True` / `--confirm`).
+`from_cells` is the table of the cells of a sheet, as a book or a service gives them.
 A module whose name starts with `_` is a helper, not a format.
 """
 
@@ -29,7 +30,7 @@ import pkgutil
 import re
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar
 
 import pandas as pd
 
@@ -41,6 +42,8 @@ ENCODING = "utf-8"
 BOM_ENCODING = "utf-8-sig"
 FALLBACK_ENCODING = "cp1251"
 _BINARY = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
+EMPTY_CELL = ""  # how a book or a service gives a cell with no value
+EXACT_WHOLE_NUMBERS = 2**53  # a float holds every whole number below this exactly
 Location = TypeVar("Location", bound="Path | Remote")  # where a container's parts are: a file or a `Remote` place
 
 
@@ -79,6 +82,27 @@ class Loaded:
     delimiter: str | None = None
     infers_types: bool = True
     warnings: tuple[str, ...] = ()
+
+
+def _cell_value(cell: Any) -> Any:
+    if isinstance(cell, str) and cell == EMPTY_CELL:
+        return None
+    if isinstance(cell, float) and cell.is_integer() and abs(cell) < EXACT_WHOLE_NUMBERS:
+        return int(cell)
+    return cell
+
+
+def from_cells(cells: list[list[Any]], header: bool) -> Loaded:
+    """The table of the rows of cells of a sheet, the first row its header when `header`.
+
+    A cell keeps its type, but an empty one is missing and a whole float is an int.
+    """
+    rows = [[_cell_value(cell) for cell in row] for row in cells]
+    if header and rows:
+        return Loaded(pd.DataFrame(rows[1:], columns=rows[0]))
+    frame = pd.DataFrame(rows)
+    frame.columns = pd.RangeIndex(frame.shape[1])  # no names: value normalisation calls them col1..colN
+    return Loaded(frame)
 
 
 class WriteRefused(ValueError):

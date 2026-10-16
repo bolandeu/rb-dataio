@@ -4,7 +4,8 @@ Each error has a code, a message, an action and an exit code; `output.guard`
 puts it in the error envelope. `DataioError` is the family of read and write failures,
 the protection of a target among them: a replace that needs confirmation (`ConfirmationRequired`:
 a write over the source, `WriteOverSource`, or the replace of a non-empty part, `NonEmptyPartReplace`)
-and a backup that is not kept (`BackupNotFound`). A key file that cannot be read is `KeyFileUnreadable`. A file of sheets or tables without the
+and a backup that is not kept (`BackupNotFound`). A Google spreadsheet the service account may not
+open or change is `SheetNotShared`, which names the email to share it with. A key file that cannot be read is `KeyFileUnreadable`. A file of sheets or tables without the
 named one is `PartNotFound`, with the parts it has in the action.
 """
 
@@ -343,6 +344,18 @@ class BackupNotFound(DataioError):
             if kept
             else "A replace of an existing target keeps a backup; there is none yet.",
             exit_code=2,
+        )
+
+
+class SheetNotShared(DataioError):
+    """A Google spreadsheet not shared with the service account (a 403): the action names whom to share it with."""
+
+    def __init__(self, address: str, email: str) -> None:
+        super().__init__(
+            "AUTH_REQUIRED",
+            f"The service account {email} may not open or change '{address}'.",
+            action=f"Share the sheet with {email} as Editor.",
+            exit_code=3,
         )
 
 
