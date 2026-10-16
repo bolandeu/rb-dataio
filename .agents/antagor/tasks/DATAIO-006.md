@@ -1,7 +1,7 @@
 ---
 id: DATAIO-006
 title: Loss warnings come back for --no-backup; old backup entries stay restorable
-status: publish
+status: done
 attempts: 0
 blocked: false
 blocked_reason: null
