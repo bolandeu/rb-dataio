@@ -27,13 +27,16 @@ def _render(described: dict) -> None:
 @output.guard
 def info(
     ctx: typer.Context,
-    source: str = typer.Argument(..., help="Address of the source, e.g. a.csv or book.xlsx#Sheet1."),
+    source: str = typer.Argument(
+        ..., help="Address of the source, e.g. a.csv, book.xlsx#Sheet1, gsheet://ID#Sheet1 or an https URL."
+    ),
     format: str | None = option("format", None),
     sheet: str | None = option("sheet", None),
     table: str | None = option("table", None),
     encoding: str | None = option("encoding", None),
     sep: str | None = option("sep", None),
     header: bool = option("header", True),
+    credentials: str | None = option("credentials", None),
     as_text: bool = option("as_text", False),
     dtypes: list[str] | None = option("dtypes", None, metavar="COLUMN=TYPE"),
     limit: int | None = option("limit", None, min=0),
@@ -44,7 +47,8 @@ def info(
     """Describe a source: format, encoding, delimiter, rows, column types, the first 5 rows, the sheets or tables.
 
     With --query it describes the result of the SQL: inside a base it names
-    its tables, over any other source the table is data.
+    its tables, over any other source the table is data. A Google spreadsheet
+    lists its sheets; --credentials is the key file to reach it with.
 
     Example: {cli} info a.csv --json
     """
@@ -56,6 +60,7 @@ def info(
         encoding=encoding,
         sep=sep,
         header=header,
+        credentials=credentials,
         as_text=as_text,
         dtypes=pairs(dtypes),
         limit=limit,

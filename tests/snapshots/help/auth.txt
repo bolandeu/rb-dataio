@@ -9,7 +9,7 @@
 ╭─ Commands ───────────────────────────────────────────────────────────────────────────────────────╮
 │ status  Report every provider's credential: where it comes from and whether it works. Never      │
 │         prints values.                                                                           │
-│ login   Store a credential for a provider.                                                       │
+│ login   Store a credential for a provider; with --credentials, the fields of a key file.         │
 │ logout  Remove a stored credential.                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 

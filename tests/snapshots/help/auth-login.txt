@@ -1,12 +1,14 @@
 
  Usage: dataio auth login [OPTIONS]
 
- Store a credential for a provider.
+ Store a credential for a provider; with --credentials, the fields of a key file.
 
- Example: dataio auth login --provider default
+ Example: dataio auth login --provider google --credentials key.json
 
 ╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
 │ --provider               <str>  Provider/profile name. [default: default]                        │
+│ --credentials            <str>  Key file (JSON) to store the provider's fields from, e.g. a      │
+│                                 Google service-account key.                                      │
 │ --non-interactive               Never prompt; fail instead.                                      │
 │ --json                          Emit machine-readable JSON output.                               │
 │ --quiet                         Suppress non-essential output.                                   │

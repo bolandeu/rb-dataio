@@ -44,7 +44,10 @@ uv tool install "rb-dataio @ git+ssh://git@github.com/bolandeu/rb-dataio.git@vX.
   structured error instead of hanging.
 - **Credentials** live in the OS keychain or env vars
   (`DATAIO_<PROVIDER>_<FIELD>`), never in arguments or
-  config. `auth status --check --json` reports every provider (source,
+  config. A provider with a key file (Google: a service-account key) also
+  takes its path: `--in-credentials` / `--out-credentials`, the env var
+  `GOOGLE_APPLICATION_CREDENTIALS`, or once into the keychain with
+  `auth login --provider google --credentials <key.json>`. `auth status --check --json` reports every provider (source,
   status, expiry, quota — never values; exit 3 if a required one isn't
   ok); log in with `auth login`; never ask the user to paste a secret into
   a command line.
@@ -53,9 +56,9 @@ uv tool install "rb-dataio @ git+ssh://git@github.com/bolandeu/rb-dataio.git@vX.
   explicit sign-off, then `--confirm --non-interactive`. Never chain
   straight to `--confirm` without a human having seen the dry-run.
   In dataio these are `restore` (it replaces a target with a backup) and a
-  `convert` whose target is its own source (it asks first; under
-  `--non-interactive` it is refused until `--confirm`): get the user's
-  sign-off before `--confirm`.
+  `convert` whose target is its own source or a Google sheet that has rows
+  (it asks first; under `--non-interactive` it is refused until `--confirm`):
+  get the user's sign-off before `--confirm`.
 - **Every replace keeps a backup.** Before a write replaces an existing
   target, dataio keeps its old content; `backups --json` lists them and
   `restore ID` brings one back. Read `warnings` in the report: a replace

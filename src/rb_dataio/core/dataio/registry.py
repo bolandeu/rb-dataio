@@ -1,7 +1,7 @@
 """The format registry: the adapter of an address, the text format of data with no file, the formats list.
 
-`resolve` picks the adapter of an address by `format=` or the extension; of the formats that
-share an extension, the one whose signature the file has (`claims`). `text_adapter` picks a
+`resolve` picks the adapter of an address by its scheme (https, gsheet), else by `format=` or the
+extension; of the formats that share an extension, the one whose signature the file has (`claims`). `text_adapter` picks a
 text format by name for stdin, stdout and the in-memory text of `write()` (`text` is txt).
 """
 
@@ -14,21 +14,29 @@ from pathlib import Path
 # `formats` is the public function, which hides the subpackage of the same name.
 from ...formats import FormatAdapter, TextAdapter, adapters
 from ...formats import txt as txt_format
-from ..errors import FormatUnknown
-from .address import Address
+from ..errors import FormatUnknown, FormatUnsupported
+from .address import FILE, Address
 from .report import FormatInfo
 
 TEXT = "text"  # the in-memory name of txt: a string read as text, a table written one value per line
 
 
 def resolve(address: Address, format_name: str | None) -> FormatAdapter:
-    """The adapter named by `format=`, else the one of the address's extension.
+    """The adapter of a scheme address by its scheme; of a file, the one `format=` names, else its extension's.
 
     Formats that share the extension claim an existing file by its signature; a file that
     none or several claim, or a new file, has no format of its own (pass `format=`).
+    A scheme no format takes is FORMAT_UNSUPPORTED.
     """
     known = adapters()
-    if format_name:
+    if address.scheme != FILE:
+        matching = [adapter for adapter in known if address.scheme in adapter.schemes]
+        if not matching:
+            raise FormatUnsupported(
+                f"'{address.text}': addresses of the scheme '{address.scheme}' are not supported in this release.",
+                action="Pass the path of a local file or -.",
+            )
+    elif format_name:
         matching = [adapter for adapter in known if adapter.name == format_name]
     else:
         matching = [adapter for adapter in known if address.suffix in adapter.extensions]

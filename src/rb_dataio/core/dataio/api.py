@@ -30,6 +30,7 @@ def read(
     encoding: str | None = None,
     sep: str | None = None,
     header: bool = True,
+    credentials: str | None = None,
     as_text: bool = False,
     dtypes: dict[str, str] | None = None,
     limit: int | None = None,
@@ -43,6 +44,8 @@ def read(
     A string with a line break is text; `format="text"` reads a one-line string as text too.
     `query` is SQL whose result is returned: inside a base it names the base's tables, over any
     other source the table is `data` (DuckDB reads a csv or parquet file itself).
+    A Google Sheets URL names the sheet by its gid, `gsheet://<id>#Sheet1` by its name; `credentials`
+    is a key file for such a source (else the google key is found in the standard order).
     """
     frame, _, _ = pipeline.read_frame(source, ReadOptions.taken_from(locals()))
     return frame
@@ -58,7 +61,10 @@ def write(
     encoding: str | None = None,
     sep: str | None = None,
     header: bool = True,
+    credentials: str | None = None,
     mode: str = "replace",
+    start: str | None = None,
+    value_input: str = "raw",
     profile: str | None = None,
     overwrite: bool = False,
     backup: bool = True,
@@ -69,6 +75,9 @@ def write(
     `mode` is the write mode (`replace`, `append`, `error`); `dry_run` returns the report and writes nothing.
     With no target nothing is written: the data comes back as `format` says, `records` (the default),
     `list`, `dict`, or the text of `text`, `csv`, `json` and the other text formats.
+    In a sheet of a service, `start` is the top-left cell (A1 when None) and `value_input` how it takes
+    the values: `raw` as they are, `user` as if typed. A replace of a part with rows in a container that
+    asks first (a Google sheet) needs `overwrite=True`; `credentials` is a key file for such a target.
     """
     options = WriteOptions.taken_from(locals())
     if target is None:
@@ -86,6 +95,7 @@ def convert(
     in_encoding: str | None = None,
     in_sep: str | None = None,
     in_header: bool = True,
+    in_credentials: str | None = None,
     as_text: bool = False,
     dtypes: dict[str, str] | None = None,
     limit: int | None = None,
@@ -96,7 +106,10 @@ def convert(
     out_encoding: str | None = None,
     out_sep: str | None = None,
     out_header: bool = True,
+    out_credentials: str | None = None,
     mode: str = "replace",
+    start: str | None = None,
+    value_input: str = "raw",
     profile: str | None = None,
     overwrite: bool = False,
     backup: bool = True,
@@ -104,8 +117,9 @@ def convert(
 ) -> Report:
     """Read a source and write it to a target: `convert("a.csv", "b.csv")`; the report has both sides.
 
-    The options both sides have take `in_` (the source) or `out_` (the target); `query` is of the source.
-    A target that is the source itself needs `overwrite=True`.
+    The options both sides have take `in_` (the source) or `out_` (the target); `query` is of the source,
+    `start` and `value_input` of the target. A target that is the source itself, or a part with rows in a
+    container that asks first (a Google sheet), needs `overwrite=True`.
     """
     arguments = locals()
     write_options = WriteOptions.taken_from(arguments, "out")
@@ -124,6 +138,7 @@ def info(
     encoding: str | None = None,
     sep: str | None = None,
     header: bool = True,
+    credentials: str | None = None,
     as_text: bool = False,
     dtypes: dict[str, str] | None = None,
     limit: int | None = None,

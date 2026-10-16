@@ -1,7 +1,8 @@
 """The settings of the table connector, read from the settings file the package ships (data/settings.toml).
 
 `settings()` gives one section per concern: `BackupLimits` (the backup store), `WarningLimits`
-(the loss warning) and `XlsxLayout` (the layout of a written xlsx sheet).
+(the loss warning), `XlsxLayout` (the layout of a written xlsx sheet) and `GoogleEndpoints`
+(where and for what a service-account key gets its tokens).
 """
 
 from __future__ import annotations
@@ -34,10 +35,16 @@ class XlsxLayout(_Section):
     column_padding: int
 
 
+class GoogleEndpoints(_Section):
+    token_uri: str
+    scopes: list[str]
+
+
 class Settings(_Section):
     backup: BackupLimits
     warnings: WarningLimits
     xlsx: XlsxLayout
+    google: GoogleEndpoints
 
 
 @functools.cache

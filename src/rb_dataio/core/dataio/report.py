@@ -53,11 +53,11 @@ class Backup(_Part):
 
     id: str
     time: str  # ISO 8601, UTC
-    target: str  # the absolute path of the replaced target
+    target: str  # the absolute path of the replaced target, or the place of a remote container (gsheet://<id>)
     format: str
     rows: int | None  # None when dataio could not read the old content
     columns: list[str] | None
-    table: str | None = None  # a table of a base: the content is its old rows only, as parquet
+    table: str | None = None  # a table of a base or a part of a remote container: its old rows only, as parquet
 
 
 class Report(_Part):

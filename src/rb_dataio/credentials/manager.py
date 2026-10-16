@@ -1,16 +1,33 @@
+"""The credential store: where a provider's credential fields are found, stored and removed.
+
+A credential is a small bag of named fields per provider. It is found field by field in env vars
+(`<NAMESPACE>_<PROVIDER>_<FIELD>`), the OS keychain, a legacy env var and a key file
+(`Lookup`: the places besides env and keychain; `locate_fields` for the order), so secrets never
+live in a project file. `get_credential` resolves the bag, `locate_fields` tells `auth status`
+where each field came from, `read_key_file` reads a key file (JSON), and `store_credential` /
+`delete_credential` write the keychain. `get_secret` and the other `*_secret` helpers cover the
+one-field case.
+"""
+
 from __future__ import annotations
 
 import json
 import logging
 import os
 import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import keyring
 import keyring.errors
 from keyring.backends import fail
 
-from ..core.errors import CredentialStoreUnavailable
+from ..core.errors import CredentialStoreUnavailable, KeyFileUnreadable
 from ..core.version import cli_name
+
+if TYPE_CHECKING:
+    from ..providers import Provider
 
 log = logging.getLogger(__name__)
 
@@ -98,13 +115,34 @@ def _stored(provider: str, namespace: str = NAMESPACE) -> dict[str, str]:
     return json.loads(stored_raw) if stored_raw else {}
 
 
+@dataclass(frozen=True)
+class Lookup:
+    """Where else a provider's fields may be: the `Provider` attributes of the same names.
+
+    `key_file`: a key file (JSON) passed for this one call (`--credentials`); it alone gives
+    the fields. `key_file_env`: an env var that names a key file, looked up last.
+    """
+
+    legacy_env: dict[str, str] | None = None
+    legacy_env_first: bool = False
+    shared_namespaces: tuple[str, ...] = ()
+    key_file: str | None = None
+    key_file_env: str | None = None
+
+    @classmethod
+    def of(cls, provider: Provider | type[Provider]) -> Lookup:
+        """The places a provider (or its class, which passes no key file) declares."""
+        return cls(
+            legacy_env=provider.legacy_env,
+            legacy_env_first=provider.legacy_env_first,
+            shared_namespaces=provider.shared_namespaces,
+            key_file=provider.key_file,
+            key_file_env=provider.key_file_env,
+        )
+
+
 def get_credential(
-    provider: str,
-    *,
-    env_fields: list[str] | None = None,
-    legacy_env: dict[str, str] | None = None,
-    legacy_env_first: bool = False,
-    shared_namespaces: tuple[str, ...] = (),
+    provider: str, *, env_fields: list[str] | None = None, lookup: Lookup | None = None
 ) -> dict[str, str] | None:
     """Resolve the full credential bag for a provider.
 
@@ -112,53 +150,57 @@ def get_credential(
     can override a single field (e.g. a rotated token) without touching the
     rest. `env_fields` lets a multi-field provider (session cookies, host
     credentials, ...) declare its field names explicitly, so env vars are
-    checked even before anything has ever been stored. The other keyword
-    arguments mirror the `Provider` attributes of the same names (see
-    `locate_fields` for the order); providers call `Provider.credential()`.
+    checked even before anything has ever been stored. `lookup` holds the
+    other places (see `locate_fields` for the order); providers call
+    `Provider.credential()`.
     """
+    lookup = lookup or Lookup()
+    if lookup.key_file:
+        return read_key_file(lookup.key_file) or None
     stored = _stored(provider)
     fields = env_fields or list(stored.keys()) or ["api_key"]
-    located = _locate(provider, fields, legacy_env, legacy_env_first, shared_namespaces, stored)
+    located = _locate(provider, fields, lookup, stored)
     merged = {**stored, **{field: value for field, (value, _, _) in located.items()}}
     return merged or None
 
 
-def locate_fields(
-    provider: str,
-    fields: list[str],
-    *,
-    legacy_env: dict[str, str] | None = None,
-    legacy_env_first: bool = False,
-    shared_namespaces: tuple[str, ...] = (),
-) -> dict[str, tuple[str, str, str]]:
-    """Map each present field to (value, source "env" | "keychain", where: the env var or keychain service).
+def locate_fields(provider: str, fields: list[str], *, lookup: Lookup | None = None) -> dict[str, tuple[str, str, str]]:
+    """Map each present field to (value, source "env" | "keychain" | "file", where: the env var, service or file).
 
     Order per field, first hit wins:
     1. env var `<NAMESPACE>_<PROVIDER>_<FIELD>`, then the same for each shared namespace;
     2. keychain `<namespace>:<provider>`, own namespace first, then shared ones;
     3. the field's legacy env var (`legacy_env`) — or right after 1 with
        `legacy_env_first` (for a tool whose users still set only the old name
-       while a stale keychain entry exists).
+       while a stale keychain entry exists);
+    4. the key file that the env var `key_file_env` names.
     For `auth status`, which reports the source and must never print the value.
     """
-    return _locate(provider, fields, legacy_env, legacy_env_first, shared_namespaces, _stored(provider))
+    return _locate(provider, fields, lookup or Lookup(), _stored(provider))
+
+
+def read_key_file(path: str) -> dict[str, str]:
+    """The fields of a key file: a JSON object, as a service gives it (a Google service-account key)."""
+    try:
+        fields = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise KeyFileUnreadable(path, str(exc)) from exc
+    if not isinstance(fields, dict):
+        raise KeyFileUnreadable(path, "it is not a JSON object of fields.")
+    return {str(field): str(value) for field, value in fields.items()}
 
 
 def _locate(
-    provider: str,
-    fields: list[str],
-    legacy_env: dict[str, str] | None,
-    legacy_env_first: bool,
-    shared_namespaces: tuple[str, ...],
-    own_stored: dict[str, str],
+    provider: str, fields: list[str], lookup: Lookup, own_stored: dict[str, str]
 ) -> dict[str, tuple[str, str, str]]:
-    namespaces = (NAMESPACE, *shared_namespaces)
-    stored = {NAMESPACE: own_stored, **{ns: _stored(provider, ns) for ns in shared_namespaces}}
+    namespaces = (NAMESPACE, *lookup.shared_namespaces)
+    stored = {NAMESPACE: own_stored, **{ns: _stored(provider, ns) for ns in lookup.shared_namespaces}}
+    legacy_env = lookup.legacy_env or {}
     located: dict[str, tuple[str, str, str]] = {}
     for field in fields:
         env_names = [_env_var_name(provider, field, ns) for ns in namespaces]
-        legacy = [(legacy_env or {})[field]] if field in (legacy_env or {}) else []
-        env_first = env_names + legacy if legacy_env_first else env_names
+        legacy = [legacy_env[field]] if field in legacy_env else []
+        env_first = env_names + legacy if lookup.legacy_env_first else env_names
         for name in env_first:
             if (value := os.environ.get(name)) is not None:
                 located[field] = (value, "env", name)
@@ -169,11 +211,22 @@ def _locate(
                     located[field] = (stored[ns][field], "keychain", _service_name(provider, ns))
                     break
             else:
-                for name in [] if legacy_env_first else legacy:
+                for name in [] if lookup.legacy_env_first else legacy:
                     if (value := os.environ.get(name)) is not None:
                         located[field] = (value, "env", name)
+    located |= _from_key_file_env([field for field in fields if field not in located], lookup.key_file_env)
     _warn_if_keychain_mattered(provider, [field for field in fields if field not in located])
     return located
+
+
+def _from_key_file_env(missing: list[str], key_file_env: str | None) -> dict[str, tuple[str, str, str]]:
+    """The `missing` fields from the key file that the env var `key_file_env` names, if it is set."""
+    path = os.environ.get(key_file_env) if key_file_env and missing else None
+    if path is None:
+        return {}
+    fields = read_key_file(path)
+    where = f"{path} ({key_file_env})"
+    return {field: (fields[field], "file", where) for field in missing if field in fields}
 
 
 def _warn_if_keychain_mattered(provider: str, missing: list[str]) -> None:

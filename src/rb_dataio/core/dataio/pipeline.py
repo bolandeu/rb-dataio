@@ -6,14 +6,17 @@
 A write to a container (containers.py) starts from a copy of the current file and changes
 only its part, so the backup and the atomic write are of the whole file. A base (a
 `BaseAdapter`) is written in place instead, in its one transaction: the file is not
-copied, and the backup holds the old rows of the table only.
+copied, and the backup holds the old rows of the table only. A remote container (a
+`RemoteContainerAdapter`, a Google spreadsheet) is written in place the same way. A container
+that `confirms_replace` replaces a part with rows only with `overwrite=True` (NonEmptyPartReplace).
     restore: find the backup -> dry run -> backup of the current content -> atomic write -> report
 (of a table: a write of its old rows to it). `query=` (query.py) runs on the file itself
 when its format can, else over the table read.
 
 A source is an address, a text or a Python object (objects.py); a target is an address,
 or none for `write()` to return the data. `-` is stdin or stdout (stdio.py); local paths
-are the files; the other schemes are recognised and refused with FORMAT_UNSUPPORTED until their tasks.
+are the files; any other scheme goes to the format that takes it (registry.py), and a
+scheme no format takes is FORMAT_UNSUPPORTED.
 `refuse_over_source` stops `convert` before it reads a source that is also its target.
 """
 
@@ -30,12 +33,30 @@ from typing import Any, cast
 
 import pandas as pd
 
-from ...formats import BaseAdapter, ContainerAdapter, FormatAdapter, Loaded, WriteRefused
+from ...formats import (
+    BaseAdapter,
+    ContainerAdapter,
+    FormatAdapter,
+    Loaded,
+    Location,
+    Remote,
+    RemoteAdapter,
+    RemoteContainerAdapter,
+    WriteRefused,
+)
 from ...formats import txt as txt_format
-from ..errors import DataioError, FormatUnsupported, ReadFailed, SourceNotFound, TargetExists, WriteFailed
+from ..errors import (
+    DataioError,
+    FormatUnsupported,
+    NonEmptyPartReplace,
+    ReadFailed,
+    SourceNotFound,
+    TargetExists,
+    WriteFailed,
+)
 from . import backup, containers, objects, protection, query, registry, stdio, values
 from .address import FILE, STDIO, Address, parse
-from .options import Mode, ReadOptions, SharedOptions, WriteOptions
+from .options import Mode, ReadOptions, SharedOptions, ValueInput, WriteOptions
 from .protection import MISSING, TargetState
 from .report import Backup, Info, PlannedTarget, Report, SourcePart, TargetPart, column_names
 
@@ -44,13 +65,7 @@ IN_MEMORY = "<object>"  # how a report and an error name the target of `write()`
 
 
 def _address(text: str, options: SharedOptions) -> Address:
-    address = parse(text, sheet=options.sheet, table=options.table)
-    if address.scheme not in (FILE, STDIO):
-        raise FormatUnsupported(
-            f"'{text}': addresses of the scheme '{address.scheme}' are not supported in this release.",
-            action="Pass the path of a local file or -.",
-        )
-    return address
+    return parse(text, sheet=options.sheet, table=options.table)
 
 
 def _unable(format_name: str, ability: str, instead: str | None = None) -> FormatUnsupported:
@@ -104,7 +119,21 @@ def _load(source: object, options: ReadOptions) -> tuple[str, Loaded]:
     if address.scheme == STDIO:
         format_name, loaded = stdio.read(options)
         return format_name, query.over_table(loaded, options)
-    return _load_file(address, options)
+    if address.scheme == FILE:
+        return _load_file(address, options)
+    return _load_remote(address, options)
+
+
+def _load_remote(address: Address, options: ReadOptions) -> tuple[str, Loaded]:
+    adapter = registry.resolve(address, options.format)
+    if isinstance(adapter, RemoteContainerAdapter) and adapter.reads:
+        remote = Remote(address, options.credentials)
+        loaded = containers.read(adapter, remote, adapter.part_named(remote), options, address.text)
+    elif isinstance(adapter, RemoteAdapter) and adapter.reads:
+        loaded = adapter.read_address(address, options)
+    else:
+        raise _unable(adapter.name, "read")
+    return adapter.name, query.over_table(loaded, options)
 
 
 def _load_file(address: Address, options: ReadOptions) -> tuple[str, Loaded]:
@@ -134,21 +163,25 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
     address = _address(target, options)
     if address.scheme == STDIO:
         return _write_stdout(frame, target, options)
-    path = Path(address.path)
     adapter = registry.resolve(address, options.format)
     if not adapter.writes:
         raise _unable(adapter.name, "write", adapter.written_as)
     if options.mode is Mode.APPEND and not adapter.appends:
         raise _unable(adapter.name, "append")
+    part = TargetPart(uri=target, format=adapter.name, mode=options.mode, rows=len(frame), columns=column_names(frame))
+    if isinstance(adapter, RemoteContainerAdapter):
+        remote = Remote(address, options.credentials)
+        return _write_in_place(adapter, remote, adapter.part_named(remote), frame, part, options)
+    path = Path(address.path)
     if options.mode is Mode.ERROR and path.exists():
         raise TargetExists(target)
-    part = TargetPart(uri=target, format=adapter.name, mode=options.mode, rows=len(frame), columns=column_names(frame))
     if isinstance(adapter, BaseAdapter):
-        return _write_table(adapter, frame, address, part, options)
+        return _write_in_place(adapter, path, address.fragment, frame, part, options)
     keep = options.backup and options.mode is Mode.REPLACE
     before = _state(target, path, options)
     if options.dry_run:
         return Report(target=_planned(part, before))
+    _confirm_replace(adapter, before, part, options)
     write, written = _writer(adapter, frame, address, options)
     warnings = protection.loss_warnings(frame, before, options.mode)
     from_copy = options.mode is Mode.APPEND or isinstance(adapter, ContainerAdapter)
@@ -156,32 +189,54 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
     return Report(target=part, warnings=[*warnings, *written])
 
 
-def _write_table(
-    adapter: BaseAdapter, frame: pd.DataFrame, address: Address, part: TargetPart, options: WriteOptions
+def _write_in_place(
+    adapter: ContainerAdapter[Location],
+    location: Location,
+    named: str | None,
+    frame: pd.DataFrame,
+    part: TargetPart,
+    options: WriteOptions,
 ) -> Report:
-    """Write a table of a base in place, in the adapter's one transaction, after a backup of its old rows only."""
-    path = Path(address.path)
-    table = containers.part_to_write(adapter, path, address.fragment)
-    old = _old_rows(adapter, path, table, options, part.uri)
+    """Write a part in place, after a backup of its old rows only: a table of a base, in the adapter's one
+    transaction, or a part of a remote container. Under mode `error` an existing part is TARGET_EXISTS."""
+    table = containers.part_to_write(adapter, location, named)
+    old = _old_rows(adapter, location, table, options, part.uri)
     before = MISSING if old is None else TargetState(exists=True, rows=len(old), columns=column_names(old))
+    if options.mode is Mode.ERROR and before.exists:
+        raise TargetExists(part.uri)
     if options.dry_run:
         return Report(target=_planned(part, before))
+    _confirm_replace(adapter, before, part, options)
     keeping = (
-        backup.kept_rows(old, path, adapter.name, table, part.uri)
+        backup.kept_rows(old, _backup_target(location), adapter.name, table, part.uri)
         if old is not None and options.backup and options.mode is Mode.REPLACE
         else nullcontext([])
     )
     written: list[str] = []
-    warnings = _written(part.uri, keeping, lambda: written.extend(adapter.write_part(frame, path, table, options)))
+    warnings = _written(part.uri, keeping, lambda: written.extend(adapter.write_part(frame, location, table, options)))
     return Report(target=part, warnings=[*protection.loss_warnings(frame, before, options.mode), *warnings, *written])
 
 
-def _old_rows(adapter: BaseAdapter, path: Path, table: str, options: WriteOptions, uri: str) -> pd.DataFrame | None:
-    """The rows the table holds now, as the base stores them; None when the base has no such table."""
+def _backup_target(location: Path | Remote) -> str:
+    """How a backup names the target it brings back: the absolute path of a file, the place of a remote container."""
+    return location.address.place if isinstance(location, Remote) else str(location.absolute())
+
+
+def _confirm_replace(adapter: FormatAdapter, before: TargetState, part: TargetPart, options: WriteOptions) -> None:
+    """Raise NonEmptyPartReplace for a replace of a part with rows, in a container that asks first, without overwrite."""
+    asks = isinstance(adapter, ContainerAdapter) and adapter.confirms_replace and not options.overwrite
+    if asks and options.mode is Mode.REPLACE and before.rows:
+        raise NonEmptyPartReplace(part.uri, before.rows)
+
+
+def _old_rows(
+    adapter: ContainerAdapter[Location], location: Location, table: str, options: WriteOptions, uri: str
+) -> pd.DataFrame | None:
+    """The rows the part holds now, as the container stores them; None when it has no such part."""
     try:
-        if not path.exists() or table not in adapter.parts(path):
+        if table not in containers.existing_parts(adapter, location):
             return None
-        return adapter.read_part(path, table, replace(ReadOptions.reading_back(options), as_text=False)).frame
+        return adapter.read_part(location, table, replace(ReadOptions.reading_back(options), as_text=False)).frame
     except (ValueError, OSError) as exc:
         raise WriteFailed(uri, exc) from exc
 
@@ -223,7 +278,9 @@ def restore_target(backup_id: str | None, dry_run: bool) -> Report:
     if entry.table is not None:
         return _restore_table(entry, dry_run)
     path = Path(entry.target)
-    reading = SharedOptions(format=entry.format, sheet=None, table=None, encoding=None, sep=None, header=True)
+    reading = SharedOptions(
+        format=entry.format, sheet=None, table=None, encoding=None, sep=None, header=True, credentials=None
+    )
     before = _state(entry.target, path, reading)
     part = TargetPart(uri=entry.target, format=entry.format, mode=Mode.REPLACE, rows=entry.rows, columns=entry.columns)
     if dry_run:
@@ -235,7 +292,8 @@ def restore_target(backup_id: str | None, dry_run: bool) -> Report:
 
 
 def _restore_table(entry: Backup, dry_run: bool) -> Report:
-    """Put the old rows of a table back: a replace of the table with them, which keeps its current rows first."""
+    """Put the old rows of a part written in place back: a replace of the part with them, which keeps its current
+    rows first. The restore is the confirmation a replace of a part with rows may need."""
     options = WriteOptions(
         format=entry.format,
         sheet=None,
@@ -243,9 +301,12 @@ def _restore_table(entry: Backup, dry_run: bool) -> Report:
         encoding=None,
         sep=None,
         header=True,
+        credentials=None,
         mode=Mode.REPLACE,
+        start=None,
+        value_input=ValueInput.RAW,
         profile=None,
-        overwrite=False,
+        overwrite=True,
         backup=True,
         dry_run=dry_run,
     )
@@ -304,41 +365,36 @@ def _written(uri: str, keeping: AbstractContextManager[list[str]], write: Callab
 
 
 def describe_source(source: str, options: ReadOptions) -> Info:
-    base = _base(source, options)
-    part_rows = base[0].row_counts(Path(base[1].path)) if base else {}
-    if base and base[1].fragment is None and not options.query and len(part_rows) > 1:
+    adapter, location, named = _container(source, options) or (None, None, None)
+    is_base = isinstance(adapter, BaseAdapter) and isinstance(location, Path)
+    part_rows = adapter.row_counts(location) if is_base else {}
+    if adapter and named is None and not options.query and len(part_rows) > 1:
         # several tables and none named: info lists them instead of failing the read
-        part = SourcePart(uri=source, format=base[0].name, encoding=None, delimiter=None, rows=0, columns=[])
+        part = SourcePart(uri=source, format=adapter.name, encoding=None, delimiter=None, rows=0, columns=[])
         return Info(source=part, parts=list(part_rows), part_rows=part_rows, types={}, preview=[])
     frame, part, _ = read_frame(source, options)
     # to_json: missing values become null and dates ISO strings; without a path it returns the text
     preview = cast(str, frame.head(PREVIEW_ROWS).to_json(orient="records", force_ascii=False, date_format="iso"))
     return Info(
         source=part,
-        parts=_parts(source, options),
+        parts=adapter.parts(location) if adapter else [],
         types={str(column): str(dtype) for column, dtype in frame.dtypes.items()},
         preview=json.loads(preview),
         part_rows=part_rows,
     )
 
 
-def _container(source: str, options: ReadOptions) -> tuple[ContainerAdapter, Address] | None:
-    """The adapter and the address of a source that is a container file; None for any other source."""
+def _container(source: str, options: ReadOptions) -> tuple[ContainerAdapter[Any], Path | Remote, str | None] | None:
+    """The adapter, the location and the named part of a source that is a container; None for any other source."""
     if objects.is_text(source, options):
         return None
     address = _address(source, options)
-    if address.scheme != FILE:
+    if address.scheme == STDIO:
         return None
     adapter = registry.resolve(address, options.format)
-    return (adapter, address) if isinstance(adapter, ContainerAdapter) else None
-
-
-def _base(source: str, options: ReadOptions) -> tuple[BaseAdapter, Address] | None:
-    found = _container(source, options)
-    return (found[0], found[1]) if found and isinstance(found[0], BaseAdapter) else None
-
-
-def _parts(source: str, options: ReadOptions) -> list[str]:
-    """The parts of a container file; none for any other source."""
-    found = _container(source, options)
-    return found[0].parts(Path(found[1].path)) if found else []
+    if isinstance(adapter, RemoteContainerAdapter):
+        remote = Remote(address, options.credentials)
+        return adapter, remote, adapter.part_named(remote)
+    if isinstance(adapter, ContainerAdapter):
+        return adapter, Path(address.path), address.fragment
+    return None
