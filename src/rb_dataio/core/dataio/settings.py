@@ -1,8 +1,9 @@
 """The settings of the table connector, read from the settings file the package ships (data/settings.toml).
 
 `settings()` gives one section per concern: `BackupLimits` (the backup store), `WarningLimits`
-(the loss warning), `XlsxLayout` (the layout of a written xlsx sheet) and `GoogleEndpoints`
-(where and for what a service-account key gets its tokens).
+(the loss warning), `XlsxLayout` (the layout of a written xlsx sheet), `GoogleEndpoints`
+(where and for what a service-account key gets its tokens) and `SheetsCalls` (the batches,
+the cell limit, the backoff and the timeout of the calls to Google Sheets).
 """
 
 from __future__ import annotations
@@ -40,11 +41,20 @@ class GoogleEndpoints(_Section):
     scopes: list[str]
 
 
+class SheetsCalls(_Section):
+    batch_rows: int
+    max_cells: int
+    retries: int
+    backoff_seconds: float
+    timeout_seconds: float
+
+
 class Settings(_Section):
     backup: BackupLimits
     warnings: WarningLimits
     xlsx: XlsxLayout
     google: GoogleEndpoints
+    gsheet: SheetsCalls
 
 
 @functools.cache
