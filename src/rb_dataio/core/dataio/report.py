@@ -1,4 +1,8 @@
-"""The report: what dataio read and wrote. The library returns it, the CLI puts it in its success envelope."""
+"""The report: what dataio read and wrote. The library returns it, the CLI puts it in its success envelope.
+
+A dry run reports the target as a `PlannedTarget` (whether it exists, its rows before and after);
+a `Backup` is one entry of the backup store, listed by `backups()` and named in a restore report.
+"""
 
 from __future__ import annotations
 
