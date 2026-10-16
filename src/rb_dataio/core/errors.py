@@ -3,7 +3,8 @@
 Each error has a code, a message, an action and an exit code; `output.guard`
 puts it in the error envelope. `DataioError` is the family of read and write failures,
 the protection of a target among them: a write over the source (`WriteOverSource`) and
-a backup that is not kept (`BackupNotFound`).
+a backup that is not kept (`BackupNotFound`). A file of sheets or tables without the
+named one is `PartNotFound`, with the parts it has in the action.
 """
 
 from __future__ import annotations
