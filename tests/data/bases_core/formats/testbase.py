@@ -52,6 +52,10 @@ class TbaseAdapter(BaseAdapter):
     def parts(self, path: Path) -> list[str]:
         return _rows(path, "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")["name"].tolist()
 
+    def row_counts(self, path: Path) -> dict[str, int]:
+        counts = {part: _rows(path, f"SELECT COUNT(*) AS n FROM {_name(part)}") for part in self.parts(path)}  # noqa: S608
+        return {part: int(frame["n"][0]) for part, frame in counts.items()}
+
     def read_part(self, path: Path, part: str, options: ReadOptions) -> Loaded:
         return Loaded(_rows(path, f"SELECT * FROM {_name(part)}"), infers_types=False)  # noqa: S608 -- a quoted name
 

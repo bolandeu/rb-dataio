@@ -10,7 +10,7 @@ format of plain text: it defines `parse` and `render`, and the same two serve it
 files, stdin and stdout, and the in-memory text of `write()`. A `ContainerAdapter` is a
 format of a file with named parts (sheets, tables): it lists the parts, reads one and
 writes one, and the core gives every container the same choice of the part
-(core/dataio/containers.py). A `BaseAdapter` is a container of tables (a base): it runs
+(core/dataio/containers.py). A container with `part_required` is read with its part named when it has several. A `BaseAdapter` is a container of tables (a base): it runs
 SQL inside the base and writes a table in place, in one transaction. Any adapter may run
 `query=` on its file itself (`query`) and may claim a file by its signature (`claims`),
 so that formats that share an extension (`.db`) tell their files apart.
@@ -145,6 +145,7 @@ class ContainerAdapter(FormatAdapter):
     """
 
     first_part: ClassVar[str]  # the name of the part a new file gets when the address names none
+    part_required: ClassVar[bool] = False  # a read of a file of several parts must name the part
 
     def parts(self, path: Path) -> list[str]:
         raise NotImplementedError
@@ -174,6 +175,10 @@ class BaseAdapter(ContainerAdapter):
     """
 
     def query(self, path: Path, sql: str, options: ReadOptions) -> Loaded:
+        raise NotImplementedError
+
+    def row_counts(self, path: Path) -> dict[str, int]:
+        """The rows of every table of the base by its name, in the order of `parts`; `info` shows them."""
         raise NotImplementedError
 
 
