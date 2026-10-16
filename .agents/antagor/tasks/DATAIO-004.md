@@ -2,7 +2,7 @@
 id: DATAIO-004
 title: 'Protection: backups, restore, atomic writes, write modes, safety checks and
   loss warnings'
-status: ideas
+status: queue
 attempts: 0
 blocked: false
 blocked_reason: null
@@ -10,7 +10,7 @@ phase: null
 tests_hash: null
 publish_stage: null
 created_by: architect
-approved_by: null
+approved_by: human
 worker: claude-code
 type: feature
 owns_paths:
