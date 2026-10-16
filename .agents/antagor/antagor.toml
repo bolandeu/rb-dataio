@@ -10,9 +10,9 @@ checks_timeout_minutes = 25
 red_timeout_minutes = 30
 
 [limits]
-max_lines = 800
-max_files = 30
-max_prompt_tokens = 16000
+max_lines = 100000
+max_files = 10000
+max_prompt_tokens = 200000
 max_attempts = 4
 hook_timeout_seconds = 600
 
