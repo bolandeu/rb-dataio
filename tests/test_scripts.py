@@ -186,7 +186,8 @@ def test_antagor_project_config() -> None:
     root = SCRIPTS.parent
     config = tomllib.loads((root / ".agents" / "antagor" / "antagor.toml").read_text())
     assert config["schema"] == 1
-    assert re.fullmatch(r"[A-Z]{2,4}", config["prefix"])
+    # The prefix must equal the Plane project identifier (DATAIO here), so it may be longer than 4 letters.
+    assert re.fullmatch(r"[A-Z]{2,12}", config["prefix"])
     assert config["worker"] == "claude-code"
     assert config["checks"] == ["python3 scripts/check_command_docstrings.py", "uv run scripts/release.py --check"]
     assert config["review"]["required_types"] == ["feature", "bugfix"]
@@ -195,7 +196,8 @@ def test_antagor_project_config() -> None:
         "changelog": "CHANGELOG.md",
         "deploy_command": "sh scripts/deploy.sh",
     }
-    assert "mode" not in config
+    # The Human sets the mode (`antagor mode set`); dataio runs in `fast`.
+    assert config.get("mode") in (None, "strict", "default", "free", "fast")
     assert (root / ".agents" / "antagor" / ".gitignore").read_text().split() == ["state/", "receipts/"]
     assert "ANTAGOR_VERSION" in (SCRIPTS / "deploy.sh").read_text()
 
