@@ -3,7 +3,8 @@
 Read: the encoding is the first of UTF-8 (with or without BOM) and cp1251 that decodes the
 file, the delimiter is sniffed among `, ; tab |` on the first 64 KB. `encoding=` and `sep=`
 replace the detection. Write: UTF-8 without BOM, `,` and `\\n`. `.tsv` (tsv.py) is the same
-format with tab, never sniffed; the append helpers here also serve txt.py.
+format with tab, never sniffed; the append helpers here also serve txt.py, and the header
+check of an append serves xlsx.py.
 """
 
 from __future__ import annotations
@@ -51,6 +52,13 @@ def append_text(path: Path, existing: tuple[str, str], text: str) -> None:
         handle.write((separator + text).encode(ENCODING if encoding == BOM_ENCODING else encoding))
 
 
+def require_same_header(in_file: list[str], frame: pd.DataFrame) -> None:
+    """Refuse an append whose data has another header than the file it goes to."""
+    in_data = column_names(frame)
+    if in_file != in_data:
+        raise ValueError(f"cannot append: the header of the file is {in_file}, the header of the data is {in_data}.")
+
+
 class CsvAdapter(TextAdapter):
     name = "csv"
     extensions = (".csv",)
@@ -85,7 +93,7 @@ class CsvAdapter(TextAdapter):
         text = existing[0]
         delimiter = options.sep or sniff_delimiter(text) or self.delimiter
         if options.header:
-            self._require_same_header(text, delimiter, frame)
+            require_same_header(next(csv.reader(io.StringIO(text), delimiter=delimiter)), frame)
         append_text(path, existing, self._render(frame, delimiter, header=False))
 
     @staticmethod
@@ -97,15 +105,6 @@ class CsvAdapter(TextAdapter):
     @staticmethod
     def _render(frame: pd.DataFrame, delimiter: str, header: bool) -> str:
         return frame.to_csv(index=False, sep=delimiter, header=header, lineterminator="\n")
-
-    @staticmethod
-    def _require_same_header(text: str, delimiter: str, frame: pd.DataFrame) -> None:
-        in_file = next(csv.reader(io.StringIO(text), delimiter=delimiter))
-        in_data = column_names(frame)
-        if in_file != in_data:
-            raise ValueError(
-                f"cannot append: the header of the file is {in_file}, the header of the data is {in_data}."
-            )
 
 
 ADAPTER = CsvAdapter()

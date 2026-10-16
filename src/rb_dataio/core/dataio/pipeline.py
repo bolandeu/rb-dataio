@@ -25,7 +25,7 @@ from typing import Any, cast
 
 import pandas as pd
 
-from ...formats import ContainerAdapter, FormatAdapter, Loaded
+from ...formats import ContainerAdapter, FormatAdapter, Loaded, WriteRefused
 from ...formats import txt as txt_format
 from ..errors import DataioError, FormatUnsupported, ReadFailed, SourceNotFound, TargetExists, WriteFailed
 from . import backup, containers, objects, protection, registry, stdio, values
@@ -48,10 +48,13 @@ def _address(text: str, options: SharedOptions) -> Address:
     return address
 
 
-def _unable(format_name: str, ability: str) -> FormatUnsupported:
+def _unable(format_name: str, ability: str, instead: str | None = None) -> FormatUnsupported:
+    """The refusal of an ability; `instead` is the format of the same kind that has it."""
     return FormatUnsupported(
         f"Format '{format_name}' cannot {ability} in this release.",
-        action=f"Pick a format that can {ability}: formats() lists them.",
+        action=f"Use {instead} instead: it is the format of this kind that can {ability}."
+        if instead
+        else f"Pick a format that can {ability}: formats() lists them.",
     )
 
 
@@ -120,7 +123,7 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
     path = Path(address.path)
     adapter = registry.resolve(address, options.format)
     if not adapter.writes:
-        raise _unable(adapter.name, "write")
+        raise _unable(adapter.name, "write", adapter.written_as)
     if options.mode is Mode.APPEND and not adapter.appends:
         raise _unable(adapter.name, "append")
     if options.mode is Mode.ERROR and path.exists():
@@ -225,7 +228,7 @@ def _replace(
         with keeping as warnings:
             protection.write_atomically(path, write, from_copy=from_copy)
     except (ValueError, OSError) as exc:
-        raise WriteFailed(part.uri, exc) from exc
+        raise WriteFailed(part.uri, exc, action=exc.action if isinstance(exc, WriteRefused) else None) from exc
     return warnings
 
 

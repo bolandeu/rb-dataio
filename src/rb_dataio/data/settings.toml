@@ -1,4 +1,5 @@
-# The defaults this package ships: the limits of the backup store and the threshold of the loss warning.
+# The defaults this package ships: the limits of the backup store, the threshold of the loss warning
+# and the layout of a written xlsx sheet.
 
 [backup]
 max_entries = 50     # the oldest entries go beyond this count
@@ -8,3 +9,6 @@ max_object_mb = 500  # a target bigger than this is replaced without a backup, w
 
 [warnings]
 row_drop_share = 0.5  # a replace that keeps fewer than this share of the rows warns
+
+[xlsx]
+column_padding = 2  # characters a written column has beyond its longest value

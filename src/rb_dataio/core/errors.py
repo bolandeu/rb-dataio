@@ -316,11 +316,13 @@ class ReadFailed(DataioError):
 
 
 class WriteFailed(DataioError):
-    def __init__(self, address: str, cause: Exception) -> None:
+    """`action`: what to do instead, when the format said so; else the check of the folder."""
+
+    def __init__(self, address: str, cause: Exception, *, action: str | None = None) -> None:
         super().__init__(
             "WRITE_FAILED",
             f"Could not write '{address}': {cause}",
-            action="Check that the folder of the target exists and is writable.",
+            action=action or "Check that the folder of the target exists and is writable.",
             exit_code=1,
         )
 
