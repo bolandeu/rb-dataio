@@ -2,7 +2,7 @@
 id: DATAIO-008
 title: 'Containers in the core: files with named parts (sheets, tables), reading one
   or all, writing one part and keeping the rest'
-status: publish
+status: done
 attempts: 1
 blocked: false
 blocked_reason: null
