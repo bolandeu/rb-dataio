@@ -2,8 +2,8 @@
 id: DATAIO-001
 title: 'Core frame: read/write/convert/info/formats through the address, the format
   registry and the report, with the full CLI surface'
-status: queue
-attempts: 0
+status: in_progress
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -120,3 +120,31 @@ Follow the template layers: commands only map flags to one core call (output.gua
 - Python objects, JSON, jsonl, stdin/stdout (objects/JSON task)
 - Backups, restore behaviour, atomic writes, append/error modes, safety checks (protection task)
 - Excel, parquet, bases, Google, http, bulk (later epics)
+
+## Feedback
+
+### Answer to question #1
+
+> The gate fails before my work: tests/test_scripts.py::test_antagor_project_config wants a task prefix of 2-4 letters, .agents/antagor/antagor.toml at HEAD has prefix DATAIO (6 letters, commit fb5ee9c).
+> Question: How do we make the gate pass?
+> Options:
+> 1. Widen the test regex to [A-Z]{2,10} in this task (one line in tests/test_scripts.py)
+> 2. Fix it in a separate chore; DATAIO-001 is submitted with this one known failure
+> 3. Shorten the prefix in antagor.toml to 2-4 letters
+> Recommended: Widen the test regex to [A-Z]{2,10} in this task (one line in tests/test_scripts.py)
+
+Already fixed on main in commit e2a34e5 (regex [A-Z]{2,12}). Run 'git cherry-pick e2a34e5' in the worktree and continue. Do not edit the test; do not shorten the prefix.
+
+### Blocked: diff_too_large (files 22 > 10)
+
+Size limits raised by the Human for the product start; config and test fix (e2a34e5) cherry-picked into the branch.
+
+### Attempt 1: file docstring
+
+- add a docstring to src/rb_dataio/cli.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/backups.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/convert.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/formats.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/info.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/restore.py: what it holds and why
+- add a docstring to src/rb_dataio/core/errors.py: what it holds and why
