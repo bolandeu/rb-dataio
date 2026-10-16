@@ -1,10 +1,10 @@
 ---
 id: DATAIO-003
 title: Python objects, JSON, jsonl and stdin/stdout, including in-memory write targets
-status: in_progress
+status: cancelled
 attempts: 0
-blocked: true
-blocked_reason: scope_held
+blocked: false
+blocked_reason: null
 phase: null
 tests_hash: null
 publish_stage: null

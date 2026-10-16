@@ -1,8 +1,8 @@
 ---
 id: DATAIO-005
 title: 'Backup safety fixes: content file name, no hard links, size check before parsing'
-status: queue
-attempts: 0
+status: in_progress
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -21,6 +21,7 @@ owns_paths:
 test_paths:
 - tests/test_backup.py
 - tests/test_protect.py
+- tests/conftest.py
 docs: none
 tools: []
 worker_args: null
@@ -75,3 +76,9 @@ Follow the existing backup and pipeline modules of the protection task; keep the
 ## Out of scope
 
 - The append write path (no adapter appends yet); new parameters or flags.
+
+## Feedback
+
+### Attempt 1: file docstring
+
+- update the docstring of src/rb_dataio/core/dataio/pipeline.py: +refuse_over_source
