@@ -1,5 +1,5 @@
 schema = 1
-prefix = "DIO"
+prefix = "DATAIO"
 name = "dataio"
 worker = "claude-code"
 checks = ["python3 scripts/check_command_docstrings.py", "uv run scripts/release.py --check"]
