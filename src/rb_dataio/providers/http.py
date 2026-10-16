@@ -1,3 +1,10 @@
+"""The base class of every HTTP API integration: `HttpProvider`.
+
+It holds the retries, the timeouts and the mapping of a wire failure to a `CliError`, so a provider
+does not repeat them. An error response gives a `ProviderError` with the status and the request, never
+the response body; its action says to retry only for a status that is worth a retry (429, 502, 503, 504).
+"""
+
 from __future__ import annotations
 
 import functools
