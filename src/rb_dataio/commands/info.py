@@ -35,10 +35,14 @@ def info(
     as_text: bool = option("as_text", False),
     dtypes: list[str] | None = option("dtypes", None, metavar="COLUMN=TYPE"),
     limit: int | None = option("limit", None, min=0),
+    query: str | None = option("query", None),
     json_output: bool = output.JsonOption,
     quiet: bool = output.QuietOption,
 ) -> None:
     """Describe a source: format, encoding, delimiter, rows, column types, the first 5 rows, the sheets or tables.
+
+    With --query it describes the result of the SQL: inside a base it names
+    its tables, over any other source the table is data.
 
     Example: {cli} info a.csv --json
     """
@@ -53,5 +57,6 @@ def info(
         as_text=as_text,
         dtypes=pairs(dtypes),
         limit=limit,
+        query=query,
     )
     output.emit_success(ctx, described.to_dict(), render_human=_render)

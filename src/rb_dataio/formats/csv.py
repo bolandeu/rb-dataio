@@ -2,7 +2,9 @@
 
 Read: the encoding is the first of UTF-8 (with or without BOM) and cp1251 that decodes the
 file, the delimiter is sniffed among `, ; tab |` on the first 64 KB. `encoding=` and `sep=`
-replace the detection. Write: UTF-8 without BOM, `,` and `\\n`. `.tsv` (tsv.py) is the same
+replace the detection. `query=` over a UTF-8 file with a header is run by DuckDB on the
+file itself, with the delimiter detected the same way; any other file is read first
+(core/dataio/query.py). Write: UTF-8 without BOM, `,` and `\\n`. `.tsv` (tsv.py) is the same
 format with tab, never sniffed; the append helpers here also serve txt.py, and the header
 check of an append serves xlsx.py.
 """
@@ -16,6 +18,7 @@ from typing import ClassVar
 
 import pandas as pd
 
+from ..core.dataio import query
 from ..core.dataio.options import Mode, ReadOptions, SharedOptions, WriteOptions
 from ..core.dataio.report import column_names
 from ..core.errors import InvalidParameter
@@ -69,8 +72,7 @@ class CsvAdapter(TextAdapter):
     sniffs: ClassVar[bool] = True  # the delimiter is sniffed on read; False: `delimiter` is the default
 
     def parse(self, text: str, options: ReadOptions) -> Loaded:
-        sniffed = sniff_delimiter(text) if self.sniffs else None
-        delimiter = options.sep or sniffed or self.delimiter
+        delimiter = self._read_delimiter(text, options)
         frame = pd.read_csv(
             io.StringIO(text), sep=delimiter, header=None, dtype=str, keep_default_na=False, na_values=[""]
         )
@@ -79,6 +81,21 @@ class CsvAdapter(TextAdapter):
         else:
             frame.columns = pd.RangeIndex(frame.shape[1])  # no names: value normalisation calls them col1..colN
         return Loaded(frame, delimiter=delimiter)
+
+    def query(self, path: Path, sql: str, options: ReadOptions) -> Loaded | None:
+        with path.open("rb") as file:
+            head = file.read(SNIFF_CHARACTERS)
+            if file.read(1):  # a cut inside a character would not decode: whole lines only
+                head = head[: head.rfind(b"\n") + 1] or head
+        try:
+            text, encoding = decode(head, options.encoding)
+        except ValueError:
+            return None
+        if encoding not in (ENCODING, BOM_ENCODING) or not options.header:
+            return None
+        delimiter = self._read_delimiter(text, options)
+        function = f"read_csv({query.literal(str(path))}, delim={query.literal(delimiter)}, header=true)"
+        return Loaded(query.over_file(function, sql), encoding=encoding, delimiter=delimiter, infers_types=False)
 
     def render(self, frame: pd.DataFrame, options: WriteOptions) -> str:
         delimiter = options.sep or (self.excel_delimiter if self._is_excel(options) else self.delimiter)
@@ -95,6 +112,10 @@ class CsvAdapter(TextAdapter):
         if options.header:
             require_same_header(next(csv.reader(io.StringIO(text), delimiter=delimiter)), frame)
         append_text(path, existing, self._render(frame, delimiter, header=False))
+
+    def _read_delimiter(self, text: str, options: ReadOptions) -> str:
+        sniffed = sniff_delimiter(text) if self.sniffs else None
+        return options.sep or sniffed or self.delimiter
 
     @staticmethod
     def _is_excel(options: WriteOptions) -> bool:

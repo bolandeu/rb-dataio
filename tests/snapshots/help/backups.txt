@@ -1,7 +1,8 @@
 
  Usage: dataio backups [OPTIONS]
 
- List the kept backups, newest first: id, time, target and rows.
+ List the kept backups, newest first: id, time, target (with #table for a table of a base) and
+ rows.
 
  Example: dataio backups --json
 

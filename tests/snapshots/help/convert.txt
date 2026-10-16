@@ -4,6 +4,8 @@
  Read a table from SOURCE and write it to TARGET; report both sides.
 
  Options both sides have take --in- (the source) or --out- (the target).
+ --query is SQL over the source whose result is written: inside a base
+ it names its tables, over any other source the table is data.
  With --dry-run the report comes back and nothing is written.
  A TARGET that is the SOURCE itself asks first: --confirm skips the question.
  SOURCE - is stdin, its format comes from the content; TARGET - is stdout:
@@ -37,6 +39,9 @@
 │ --dtypes                             COLUMN=TYPE             Type of one column as COLUMN=TYPE,  │
 │                                                              e.g. freq=int; repeatable.          │
 │ --limit                              <int range> [x>=0]      Read at most this many rows.        │
+│ --query                              <str>                   SQL whose result is read: inside a  │
+│                                                              base its tables, over any other     │
+│                                                              source the table data.              │
 │ --out-format                         <str>                   Target: Format name; wins over the  │
 │                                                              extension (see the formats          │
 │                                                              command).                           │

@@ -91,3 +91,10 @@ def test_every_keyword_is_a_flag_with_the_same_name(function: Callable, command:
             assert flag.secondary_opts == [f"--no-{dashed[2:]}"], f"{dashed} needs --no-{dashed[2:]}"
         if dict in {typing.get_origin(arg) for arg in typing.get_args(hint)}:
             assert flag.multiple, f"{dashed} must be repeatable (key=value)"
+
+
+@pytest.mark.parametrize("command", ["convert", "info"])
+def test_query_is_a_source_option_without_a_prefix(command: str) -> None:
+    assert "query" in _keywords(read)
+    assert "--query" in _flag_params(command)["query"].opts
+    assert "in_query" not in _flag_params(command)

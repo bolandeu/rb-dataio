@@ -1,12 +1,14 @@
 """The format registry: the adapter of an address, the text format of data with no file, the formats list.
 
-`resolve` picks the adapter of an address by `format=` or the extension; `text_adapter` picks a
+`resolve` picks the adapter of an address by `format=` or the extension; of the formats that
+share an extension, the one whose signature the file has (`claims`). `text_adapter` picks a
 text format by name for stdin, stdout and the in-memory text of `write()` (`text` is txt).
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 
 # `from ...formats import` and not `from ... import formats`: the package root's
 # `formats` is the public function, which hides the subpackage of the same name.
@@ -20,11 +22,21 @@ TEXT = "text"  # the in-memory name of txt: a string read as text, a table writt
 
 
 def resolve(address: Address, format_name: str | None) -> FormatAdapter:
-    """The adapter named by `format=`, else the one of the address's extension."""
+    """The adapter named by `format=`, else the one of the address's extension.
+
+    Formats that share the extension claim an existing file by its signature; a file that
+    none or several claim, or a new file, has no format of its own (pass `format=`).
+    """
     known = adapters()
-    for adapter in known:
-        if (adapter.name == format_name) if format_name else (address.suffix in adapter.extensions):
-            return adapter
+    if format_name:
+        matching = [adapter for adapter in known if adapter.name == format_name]
+    else:
+        matching = [adapter for adapter in known if address.suffix in adapter.extensions]
+    if len(matching) > 1:
+        path = Path(address.path)
+        matching = [adapter for adapter in matching if path.is_file() and adapter.claims(path)]
+    if len(matching) == 1:
+        return matching[0]
     raise FormatUnknown(address.text, [adapter.name for adapter in known])
 
 

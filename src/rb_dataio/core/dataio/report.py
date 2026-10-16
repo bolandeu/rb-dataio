@@ -57,6 +57,7 @@ class Backup(_Part):
     format: str
     rows: int | None  # None when dataio could not read the old content
     columns: list[str] | None
+    table: str | None = None  # a table of a base: the content is its old rows only, as parquet
 
 
 class Report(_Part):

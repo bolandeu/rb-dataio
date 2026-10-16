@@ -23,6 +23,7 @@ _HELP = {
     "as_text": "Read every value as text.",
     "dtypes": "Type of one column as COLUMN=TYPE, e.g. freq=int; repeatable.",
     "limit": "Read at most this many rows.",
+    "query": "SQL whose result is read: inside a base its tables, over any other source the table data.",
     "mode": "Write mode: what to do with the data the target already has.",
     "profile": "Write profile, e.g. excel.",
     "overwrite": "Allow a write over the source itself.",
