@@ -10,6 +10,7 @@ import typer
 from .. import output
 from ..core.dataio import api
 from ..core.dataio.options import SOURCE_COLUMN
+from ..core.errors import LibraryAction
 from ._parameters import option, pairs
 
 
@@ -52,24 +53,27 @@ def info(
     With --query it describes the result of the SQL: inside a base it names
     its tables, over any other source the table is data. A Google spreadsheet
     lists its sheets; an address of many sources is described as the merged table
-    (--source-column, --strict); --credentials is the key file to reach it with.
+    (--source-column, --strict, which fails with SCHEMA_MISMATCH); --credentials is the key file to reach it with.
 
     Example: {cli} info a.csv --json
     """
-    described = api.info(
-        source,
-        format=format,
-        sheet=sheet,
-        table=table,
-        encoding=encoding,
-        sep=sep,
-        header=header,
-        credentials=credentials,
-        as_text=as_text,
-        dtypes=pairs(dtypes),
-        limit=limit,
-        query=query,
-        source_column=source_column,
-        strict=strict,
-    )
+    try:
+        described = api.info(
+            source,
+            format=format,
+            sheet=sheet,
+            table=table,
+            encoding=encoding,
+            sep=sep,
+            header=header,
+            credentials=credentials,
+            as_text=as_text,
+            dtypes=pairs(dtypes),
+            limit=limit,
+            query=query,
+            source_column=source_column,
+            strict=strict,
+        )
+    except LibraryAction as error:
+        raise error.for_cli() from error
     output.emit_success(ctx, described.to_dict(), render_human=_render)

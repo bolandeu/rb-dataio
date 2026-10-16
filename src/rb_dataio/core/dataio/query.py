@@ -7,21 +7,37 @@
 So a large csv or parquet file never reaches pandas whole, only the result does. The
 table `data` has the types of a read without `as_text` and `dtypes` (DuckDB's own over a
 file it reads itself); `as_text`, `dtypes` and `limit` apply to the result. An error of
-the SQL is a ValueError with the message of DuckDB: the read pipeline reports it as READ_FAILED.
+the SQL is a `QueryFailed` (a ValueError) with the message of the engine: the read pipeline reports it as
+READ_FAILED with an action about the SQL. `run_on_file` runs a query on the file itself, by its adapter.
 """
 
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 
 import duckdb
 import pandas as pd
 
-from ...formats import Loaded
+from ...formats import FormatAdapter, Loaded
 from . import values
 from .options import ReadOptions
 
 TABLE = "data"
+
+
+class QueryFailed(ValueError):
+    """The SQL of `query=` failed in the engine that ran it."""
+
+
+def run_on_file(adapter: FormatAdapter, path: Path, sql: str, options: ReadOptions) -> Loaded | None:
+    """The result of `sql` run by the adapter on the file itself; None when the format cannot."""
+    try:
+        return adapter.query(path, sql, options)
+    except QueryFailed:
+        raise
+    except ValueError as exc:
+        raise QueryFailed(str(exc)) from exc
 
 
 def literal(text: str) -> str:
@@ -53,4 +69,4 @@ def _result(connection: duckdb.DuckDBPyConnection, sql: str) -> pd.DataFrame:
     try:
         return connection.execute(sql).df()
     except duckdb.Error as exc:
-        raise ValueError(str(exc)) from exc
+        raise QueryFailed(str(exc)) from exc

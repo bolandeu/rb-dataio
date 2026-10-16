@@ -62,6 +62,7 @@ from .protection import MISSING, TargetState
 from .report import Backup, Info, PlannedTarget, Report, SourcePart, TargetPart, column_names
 
 PREVIEW_ROWS = 5  # the first rows `info()` shows
+SQL_ACTION = "Fix the SQL of the query: over a file or an object the table is called data."
 IN_MEMORY = "<object>"  # how a report and an error name the target of `write()` with none
 
 
@@ -91,6 +92,8 @@ def read_frame(source: object, options: ReadOptions) -> tuple[pd.DataFrame, Sour
     try:
         format_name, loaded = _load(source, options)
         frame, normalised = values.normalise(loaded.frame, options, infer=loaded.infers_types)
+    except query.QueryFailed as exc:
+        raise ReadFailed(uri, exc, action=SQL_ACTION) from exc
     except (ValueError, OSError) as exc:  # pandas parse and decode errors are ValueErrors
         raise ReadFailed(uri, exc) from exc
     if options.limit is not None:
@@ -150,7 +153,7 @@ def _load_file(address: Address, options: ReadOptions) -> tuple[str, Loaded]:
     adapter = registry.resolve(address, options.format)
     if not adapter.reads:
         raise _unable(adapter.name, "read")
-    if options.query and (result := adapter.query(path, options.query, options)) is not None:
+    if options.query and (result := query.run_on_file(adapter, path, options.query, options)) is not None:
         return adapter.name, result
     if isinstance(adapter, ContainerAdapter):
         loaded = containers.read(adapter, path, address.fragment, options, address.text)
@@ -167,6 +170,7 @@ def refuse_over_source(source: str, target: str, options: WriteOptions) -> None:
 
 def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Report:
     """Write `frame` to `target`."""
+    targets.require_placeholder(target, options)
     if targets.is_template(target, options):
         return targets.write_many(frame, target, options)
     address = _address(target, options)
@@ -182,10 +186,12 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
         remote = Remote(address, options.credentials)
         return _write_in_place(adapter, remote, adapter.part_named(remote), frame, part, options)
     path = Path(address.path)
-    if options.mode is Mode.ERROR and path.exists():
+    if options.mode is Mode.ERROR and path.exists() and not isinstance(adapter, ContainerAdapter):
         raise TargetExists(target)
     if isinstance(adapter, BaseAdapter):
         return _write_in_place(adapter, path, address.fragment, frame, part, options)
+    if options.mode is Mode.ERROR and isinstance(adapter, ContainerAdapter):
+        _refuse_existing_part(adapter, path, address, target)
     keep = options.backup and options.mode is Mode.REPLACE
     before = _state(target, path, options)
     if options.dry_run:
@@ -196,6 +202,17 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
     from_copy = options.mode is Mode.APPEND or isinstance(adapter, ContainerAdapter)
     warnings += _replace(path, part, before, write, keep=keep, from_copy=from_copy)
     return Report(target=part, warnings=[*warnings, *written])
+
+
+def _refuse_existing_part(adapter: ContainerAdapter[Path], path: Path, address: Address, target: str) -> None:
+    """Raise TargetExists when the part a write under mode `error` names (the first, none named) is in the file."""
+    try:
+        part = containers.part_to_write(adapter, path, address.fragment)
+        exists = part in containers.existing_parts(adapter, path)
+    except (ValueError, OSError) as exc:
+        raise WriteFailed(target, exc) from exc
+    if exists:
+        raise TargetExists(target)
 
 
 def _write_in_place(

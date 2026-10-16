@@ -1,6 +1,7 @@
 """The targets seam of the write pipeline: a target address that is a template (`out/{region}.csv`, `out/part_{n}.csv`).
 
-`is_template` answers whether a target has a placeholder to fill (`{stem}` is the batch convert's, not this one's).
+`is_template` answers whether a target has a placeholder to fill (`{stem}` is the batch convert's, not this one's);
+`require_placeholder` refuses `split_by` or `chunk_rows` with a target that has none.
 `write_many` splits the frame by the column `split_by` (`{region}`) or by `chunk_rows` rows (`{n}`, from 1) and writes
 each part to its own target through `pipeline.write_frame`, so each has its mode, backup and checks. A placeholder in
 the path makes a file name, one after the `#` a sheet name; a value is made safe for it first. The report lists the
@@ -11,6 +12,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path
 
 import pandas as pd
@@ -34,6 +36,14 @@ def _placeholders(target: str) -> list[str]:
 
 def is_template(target: str, options: WriteOptions) -> bool:
     return bool(_placeholders(target))
+
+
+def require_placeholder(target: str, options: WriteOptions) -> None:
+    """INVALID_ARGUMENTS when the write asks for a split and the target has no placeholder to name the parts."""
+    if (options.split_by is not None or options.chunk_rows is not None) and not _placeholders(target):
+        raise InvalidParameter(
+            f"Target '{target}' has no placeholder: with split_by it needs {{column}}, with chunk_rows {{n}}."
+        )
 
 
 def _safe_file_name(value: object) -> str:
@@ -105,10 +115,11 @@ def write_many(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repor
     written: list[BatchTarget] = []
     errors: list[BatchError] = []
     warnings: list[str] = []
+    each = replace(options, split_by=None, chunk_rows=None)  # a part's target is a name, not a template
     for uri, part in parts:
         try:
             _make_folder(uri, options)
-            report = pipeline.write_frame(part, uri, options)
+            report = pipeline.write_frame(part, uri, each)
         except DataioError as exc:
             if not options.keep_going:
                 raise

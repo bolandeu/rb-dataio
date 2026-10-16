@@ -12,10 +12,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pandas as pd
-
 from ...formats import ContainerAdapter, Loaded, Location
 from ..errors import PartNotFound
+from . import values
 from .options import ReadOptions
 
 ALL_PARTS = "*"
@@ -55,7 +54,7 @@ def _stacked(adapter: ContainerAdapter[Location], location: Location, parts: lis
     frames = [table.frame.copy() for table in loaded]
     for part, frame in zip(parts, frames, strict=True):
         frame.insert(0, PART_COLUMN, part)
-    stacked = pd.concat(frames, ignore_index=True)
+    stacked = values.stack(frames)
     differing = [str(column) for column in stacked.columns if not all(column in frame for frame in frames)]
     warnings = (
         (f"the parts have different columns: {', '.join(differing)}; a part without one leaves it empty",)

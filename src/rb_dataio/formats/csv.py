@@ -22,7 +22,7 @@ from ..core.dataio import query
 from ..core.dataio.options import Mode, ReadOptions, SharedOptions, WriteOptions
 from ..core.dataio.report import column_names
 from ..core.errors import InvalidParameter
-from . import BOM_ENCODING, ENCODING, Loaded, TextAdapter, decode
+from . import BOM_ENCODING, ENCODING, AppendRefused, Loaded, TextAdapter, decode
 
 EXCEL = "excel"
 DELIMITERS = ",;\t|"
@@ -59,7 +59,7 @@ def require_same_header(in_file: list[str], frame: pd.DataFrame) -> None:
     """Refuse an append whose data has another header than the file it goes to."""
     in_data = column_names(frame)
     if in_file != in_data:
-        raise ValueError(f"cannot append: the header of the file is {in_file}, the header of the data is {in_data}.")
+        raise AppendRefused(f"cannot append: the header of the file is {in_file}, the header of the data is {in_data}.")
 
 
 class CsvAdapter(TextAdapter):

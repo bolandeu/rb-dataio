@@ -7,7 +7,8 @@ a write over the source, `WriteOverSource`, or the replace of a non-empty part, 
 and a backup that is not kept (`BackupNotFound`). A Google spreadsheet the service account may not
 open or change is `SheetNotShared`, which names the email to share it with. A key file that cannot be read is `KeyFileUnreadable`. A file of sheets or tables without the
 named one is `PartNotFound`, with the parts it has in the action. Sources merged with `strict=True` that
-do not share their columns are `SchemaMismatch`, which lists the columns of each source.
+do not share their columns are `SchemaMismatch`, which lists the columns of each source. `SchemaMismatch` and
+`TargetExists` are `LibraryAction`s: the action names a library argument, `for_cli()` words it as the CLI flag.
 """
 
 from __future__ import annotations
@@ -271,7 +272,20 @@ class PartNotFound(DataioError):
         )
 
 
-class SchemaMismatch(DataioError):
+class LibraryAction(DataioError):
+    """An error whose `action` names a library argument; the CLI shows `cli_action`, which names the flag."""
+
+    def __init__(self, code: str, message: str, *, action: str, cli_action: str, exit_code: int) -> None:
+        super().__init__(code, message, action=action, exit_code=exit_code)
+        self.cli_action = cli_action
+
+    def for_cli(self) -> LibraryAction:
+        """This error with the action worded for the CLI."""
+        self.action = self.cli_action
+        return self
+
+
+class SchemaMismatch(LibraryAction):
     """Sources merged with `strict=True` whose columns differ: the message lists the columns of each source."""
 
     def __init__(self, columns_by_source: dict[str, list[str]]) -> None:
@@ -280,6 +294,7 @@ class SchemaMismatch(DataioError):
             "SCHEMA_MISMATCH",
             f"The sources have different columns: {listed}.",
             action="Pass strict=False to merge them as a union, or fix the columns of the sources.",
+            cli_action="Drop --strict to merge them as a union, or fix the columns of the sources.",
             exit_code=2,
         )
 
@@ -299,12 +314,13 @@ class FormatUnsupported(DataioError):
         super().__init__("FORMAT_UNSUPPORTED", message, action=action, exit_code=2)
 
 
-class TargetExists(DataioError):
+class TargetExists(LibraryAction):
     def __init__(self, address: str) -> None:
         super().__init__(
             "TARGET_EXISTS",
             f"Target '{address}' already exists and the mode is 'error'.",
             action="Pass mode='replace' to replace it, or name another target.",
+            cli_action="Pass --mode replace to replace it, or name another target.",
             exit_code=1,
         )
 
@@ -374,11 +390,14 @@ class SheetNotShared(DataioError):
 
 
 class ReadFailed(DataioError):
-    def __init__(self, address: str, cause: Exception) -> None:
+    """`action`: what to do instead, when the cause is known (an SQL error); else the check of the file."""
+
+    def __init__(self, address: str, cause: Exception, *, action: str | None = None) -> None:
         super().__init__(
             "READ_FAILED",
             f"Could not read '{address}': {cause}",
-            action="Check that the source is a valid file of its format; pass encoding= or sep= if they differ.",
+            action=action
+            or "Check that the source is a valid file of its format; pass encoding= or sep= if they differ.",
             exit_code=1,
         )
 

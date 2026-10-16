@@ -18,6 +18,15 @@ _RETRY_STATUSES = frozenset({429, 502, 503, 504})
 PROBE_TIMEOUT = 10.0  # auth status --check budget per provider (standard §8), as the httpx timeout
 
 
+def _action_for(status: int) -> str | None:
+    """What to do after an error status: wait for a busy server, fix a request the server refused, else the default."""
+    if status in _RETRY_STATUSES:
+        return "Retry later."
+    if status < 500:
+        return "Check the address and the request: the server refused it."
+    return None
+
+
 class HttpProvider(Provider):
     """Base class for one HTTP API integration.
 
@@ -88,9 +97,9 @@ class HttpProvider(Provider):
             if response.is_error:
                 raise ProviderError(
                     self.name,
-                    f"HTTP {status} for {method} {path}: {response.text[:200]}",
+                    f"HTTP {status} for {method} {path}",
                     status=status,
-                    action="Retry later." if status in _RETRY_STATUSES else None,
+                    action=_action_for(status),
                 )
             return response
 
