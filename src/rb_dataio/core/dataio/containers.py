@@ -1,6 +1,7 @@
 """Containers: the part of a file with named parts (sheets, tables) that a read or a write takes.
 
-The part is the one the address or `sheet=` / `table=` names, else the first; a write to a
+The part is the one the address or `sheet=` / `table=` names, else the first (a format with `part_required`
+and several parts gives PartNotFound, which lists them); a write to a
 new file makes the format's `first_part`. `*` reads every part, stacked with the column
 `_sheet` that names the part of each row; parts with other columns give their union and a warning.
 """
@@ -24,6 +25,8 @@ def read(adapter: ContainerAdapter, path: Path, named: str | None, options: Read
     parts = adapter.parts(path)
     if named == ALL_PARTS:
         return _stacked(adapter, path, parts, options)
+    if named is None and adapter.part_required and len(parts) > 1:
+        raise PartNotFound(uri, "", parts)
     part = named if named is not None else next(iter(parts), "")
     if part not in parts:
         raise PartNotFound(uri, part, parts)

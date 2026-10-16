@@ -15,7 +15,9 @@ from ._parameters import option, pairs
 def _render(described: dict) -> None:
     output.human.key_values("Source", described["source"])
     output.human.key_values("Types", described["types"])
-    if described["parts"]:
+    if described["part_rows"]:
+        output.human.key_values("Tables", described["part_rows"])
+    elif described["parts"]:
         output.human.echo(f"Parts: {', '.join(described['parts'])}")
     output.human.echo(f"Preview ({len(described['preview'])} rows):")
     for row in described["preview"]:
