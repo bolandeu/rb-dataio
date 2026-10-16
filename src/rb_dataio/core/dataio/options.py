@@ -1,8 +1,10 @@
 """The parameter vocabulary: the options of a read and of a write, the same words in every format and in the CLI.
 
 `SharedOptions` are the options both sides have; in `convert` they take `in_` / `out_`.
-`query` is of the read side only, so `convert` takes it without a prefix; `start` and
-`value_input` (`ValueInput`) are of the write side only.
+`query`, `source_column` and `strict` are of the read side only, so `convert` takes them without a prefix;
+`start`, `value_input` (`ValueInput`), `split_by`, `chunk_rows`, `drop_split_column` and `keep_going`
+are of the write side only. The batch parameters are read by the behaviour modules
+(sources.py, targets.py, batch.py); the pipelines only pass them on.
 """
 
 from __future__ import annotations
@@ -22,6 +24,8 @@ class Mode(StrEnum):
     APPEND = "append"
     ERROR = "error"
 
+
+SOURCE_COLUMN = "_source"  # the column that names the source of each row of a merge
 
 _Member = TypeVar("_Member", bound=StrEnum)
 
@@ -69,12 +73,14 @@ class ReadOptions(SharedOptions):
     dtypes: dict[str, str] | None
     limit: int | None
     query: str | None  # SQL whose result is the table read (core/dataio/query.py)
+    source_column: str | None  # the column naming the source of each row of a merge; None leaves it out
+    strict: bool  # a merge of sources with different columns is SCHEMA_MISMATCH, not a union
 
     @classmethod
     def reading_back(cls, written: SharedOptions) -> Self:
         """The options that read what a write with `written` options leaves: its shared options, every value as text."""
         shared = {field.name: getattr(written, field.name) for field in fields(SharedOptions)}
-        return cls(**shared, as_text=True, dtypes=None, limit=None, query=None)
+        return cls(**shared, as_text=True, dtypes=None, limit=None, query=None, source_column=None, strict=False)
 
     def __post_init__(self) -> None:
         if self.limit is not None and self.limit < 0:
@@ -90,8 +96,14 @@ class WriteOptions(SharedOptions):
     overwrite: bool
     backup: bool
     dry_run: bool
+    split_by: str | None  # a column: one target per value of it, in a target that is a template
+    chunk_rows: int | None  # a number of rows: one numbered target per chunk, in a target that is a template
+    drop_split_column: bool  # leave the `split_by` column out of the targets
+    keep_going: bool  # a batch goes on after a failure and reports it in `errors`, else it stops at the first
 
     def __post_init__(self) -> None:
         # frozen: the one place the values are set
         object.__setattr__(self, "mode", _member(Mode, "mode", self.mode))
         object.__setattr__(self, "value_input", _member(ValueInput, "value_input", self.value_input))
+        if self.chunk_rows is not None and self.chunk_rows < 1:
+            raise InvalidParameter(f"chunk_rows must be 1 or more, not {self.chunk_rows}.")
