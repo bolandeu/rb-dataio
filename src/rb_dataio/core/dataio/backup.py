@@ -96,7 +96,11 @@ def kept_rows(rows: pd.DataFrame, target: str, format_name: str, table: str, uri
     `target` is how `restore` finds it again: the absolute path of a base, the place of a remote container.
 
     Yields the warnings: rows over the object limit (by their size in memory) are not kept.
+    A part with no columns holds nothing to restore: nothing is kept.
     """
+    if rows.columns.empty:
+        yield []
+        return
     if warning := over_limit(int(rows.memory_usage(deep=True).sum()), uri):
         yield [warning]
         return
