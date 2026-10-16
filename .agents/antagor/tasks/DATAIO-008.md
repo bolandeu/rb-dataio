@@ -15,10 +15,20 @@ worker: claude-code
 type: feature
 owns_paths:
 - src/rb_dataio/core/
+- src/rb_dataio/commands/
+- src/rb_dataio/__init__.py
 - src/rb_dataio/formats/__init__.py
+- src/rb_dataio/formats/csv.py
+- src/rb_dataio/formats/tsv.py
+- src/rb_dataio/formats/txt.py
+- src/rb_dataio/formats/json.py
+- src/rb_dataio/formats/jsonl.py
+- tests/conftest.py
 - tests/test_containers.py
 - tests/data/containers/
 - tests/snapshots/
+- tests/test_frame.py
+- tests/test_cli_frame.py
 test_paths:
 - tests/test_containers.py
 - tests/test_frame.py
