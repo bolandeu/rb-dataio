@@ -1,0 +1,14 @@
+
+ Usage: dataio auth logout [OPTIONS]
+
+ Remove a stored credential.
+
+ Example: dataio auth logout --provider default
+
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --provider        <str>  Provider/profile name. [default: default]                               │
+│ --json                   Emit machine-readable JSON output.                                      │
+│ --quiet                  Suppress non-essential output.                                          │
+│ --help                   Show this message and exit.                                             │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

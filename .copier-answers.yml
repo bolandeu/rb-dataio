@@ -1,0 +1,17 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v1.15.0
+_src_path: gh:bolandeu/cli-generator
+antagor_prefix: DIO
+author_name: net.paradox
+cli_name: dataio
+description: 'Универсальное чтение и запись таблиц: строки, списки, DataFrame, txt,
+    csv, tsv, xlsx, json, jsonl, parquet, Google Sheets, stdin'
+dist_name: rb-dataio
+dist_name_legacy: ''
+include_auth: true
+include_ci: false
+include_db: false
+include_http_provider: true
+package_name: rb_dataio
+project_name: dataio
+repository_url: https://github.com/bolandeu/rb-dataio
