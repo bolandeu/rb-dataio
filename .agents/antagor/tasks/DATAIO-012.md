@@ -2,7 +2,7 @@
 id: DATAIO-012
 title: 'SQLite bases: x.sqlite#table read and write with modes, transactions and safe
   concurrent appends'
-status: queue
+status: in_review
 attempts: 0
 blocked: false
 blocked_reason: null
