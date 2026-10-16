@@ -736,7 +736,7 @@
       },
       {
         "name": "info",
-        "description": "Describe a source: format, encoding, delimiter, rows, column types and the first 5 rows.\n\nExample: dataio info a.csv --json",
+        "description": "Describe a source: format, encoding, delimiter, rows, column types, the first 5 rows, the sheets or tables.\n\nExample: dataio info a.csv --json",
         "options": [
           {
             "name": "--format",

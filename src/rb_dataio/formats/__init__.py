@@ -5,7 +5,10 @@ module of this package, and `formats()` and the `FORMAT_UNKNOWN` list come from 
 An adapter has a read ability when it defines `read`, a write ability when it
 defines `write`; `appends` and `options` it states itself. A `TextAdapter` is a
 format of plain text: it defines `parse` and `render`, and the same two serve its
-files, stdin and stdout, and the in-memory text of `write()`.
+files, stdin and stdout, and the in-memory text of `write()`. A `ContainerAdapter` is a
+format of a file with named parts (sheets, tables): it lists the parts, reads one and
+writes one, and the core gives every container the same choice of the part
+(core/dataio/containers.py). A module whose name starts with `_` is a helper, not a format.
 """
 
 from __future__ import annotations
@@ -56,12 +59,14 @@ class Loaded:
     """A table an adapter read, with the encoding and the delimiter it used (None where the format has none).
 
     `infers_types` False: value normalisation keeps the text columns as they are (a phrase list stays text).
+    `warnings` are what the read tells the report about.
     """
 
     frame: pd.DataFrame
     encoding: str | None = None
     delimiter: str | None = None
     infers_types: bool = True
+    warnings: tuple[str, ...] = ()
 
 
 class FormatAdapter:
@@ -106,7 +111,38 @@ class TextAdapter(FormatAdapter):
         path.write_bytes(self.render(frame, options).encode(options.encoding or ENCODING))
 
 
+class ContainerAdapter(FormatAdapter):
+    """A format of a file with named parts (sheets, tables): the core picks the part, the adapter reads or writes it.
+
+    `write_part` gets a copy of the current file (no file for a new one) and changes only `part`;
+    it returns the warnings of the write, for example what the format may lose.
+    """
+
+    first_part: ClassVar[str]  # the name of the part a new file gets when the address names none
+
+    def parts(self, path: Path) -> list[str]:
+        raise NotImplementedError
+
+    def read_part(self, path: Path, part: str, options: ReadOptions) -> Loaded:
+        raise NotImplementedError
+
+    def write_part(self, frame: pd.DataFrame, path: Path, part: str, options: WriteOptions) -> list[str]:
+        raise NotImplementedError
+
+    @property
+    def reads(self) -> bool:
+        return type(self).read_part is not ContainerAdapter.read_part
+
+    @property
+    def writes(self) -> bool:
+        return type(self).write_part is not ContainerAdapter.write_part
+
+
 def adapters() -> list[FormatAdapter]:
-    """The adapter of every module of this package, by format name."""
-    modules = (importlib.import_module(f"{__name__}.{info.name}") for info in pkgutil.iter_modules(__path__))
+    """The adapter of every module of this package but the helpers (`_` first), by format name."""
+    modules = (
+        importlib.import_module(f"{__name__}.{info.name}")
+        for info in pkgutil.iter_modules(__path__)
+        if not info.name.startswith("_")
+    )
     return sorted((module.ADAPTER for module in modules), key=lambda adapter: adapter.name)

@@ -72,11 +72,15 @@ class Report(_Part):
 
 
 class Info(_Part):
-    """What `info()` tells about a source: the source part of a report, the column types and the first rows."""
+    """What `info()` tells about a source: the source part of a report, the column types and the first rows.
+
+    `parts` are the sheets or tables of a container file; empty for any other source.
+    """
 
     source: SourcePart
     types: dict[str, str]
     preview: list[dict[str, Any]]
+    parts: list[str] = Field(default_factory=list)
 
 
 class FormatInfo(_Part):

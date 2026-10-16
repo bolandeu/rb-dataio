@@ -15,6 +15,8 @@ from ._parameters import option, pairs
 def _render(described: dict) -> None:
     output.human.key_values("Source", described["source"])
     output.human.key_values("Types", described["types"])
+    if described["parts"]:
+        output.human.echo(f"Parts: {', '.join(described['parts'])}")
     output.human.echo(f"Preview ({len(described['preview'])} rows):")
     for row in described["preview"]:
         output.human.echo(f"  {row}")
@@ -36,7 +38,7 @@ def info(
     json_output: bool = output.JsonOption,
     quiet: bool = output.QuietOption,
 ) -> None:
-    """Describe a source: format, encoding, delimiter, rows, column types and the first 5 rows.
+    """Describe a source: format, encoding, delimiter, rows, column types, the first 5 rows, the sheets or tables.
 
     Example: {cli} info a.csv --json
     """

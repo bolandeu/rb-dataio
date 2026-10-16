@@ -195,6 +195,7 @@ def test_antagor_project_config() -> None:
         "versioning": "semver",
         "changelog": "CHANGELOG.md",
         "deploy_command": "sh scripts/deploy.sh",
+        "regenerate": {"uv.lock": "uv lock"},
     }
     # The Human sets the mode (`antagor mode set`); dataio runs in `fast`.
     assert config.get("mode") in (None, "strict", "default", "free", "fast")

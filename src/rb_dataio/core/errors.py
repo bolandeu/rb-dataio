@@ -3,7 +3,8 @@
 Each error has a code, a message, an action and an exit code; `output.guard`
 puts it in the error envelope. `DataioError` is the family of read and write failures,
 the protection of a target among them: a write over the source (`WriteOverSource`) and
-a backup that is not kept (`BackupNotFound`).
+a backup that is not kept (`BackupNotFound`). A file of sheets or tables without the
+named one is `PartNotFound`, with the parts it has in the action.
 """
 
 from __future__ import annotations
@@ -237,6 +238,18 @@ class SourceNotFound(DataioError):
             "SOURCE_NOT_FOUND",
             f"Source '{address}' does not exist.",
             action="Pass format='text' to read the string as text",
+            exit_code=2,
+        )
+
+
+class PartNotFound(DataioError):
+    """The file has no part (sheet, table) of this name: the action lists the parts it has."""
+
+    def __init__(self, address: str, part: str, parts: list[str]) -> None:
+        super().__init__(
+            "SOURCE_NOT_FOUND",
+            f"Source '{address}' has no part '{part}'.",
+            action=f"Name one of the parts: {', '.join(parts)}." if parts else "The file has no parts yet.",
             exit_code=2,
         )
 

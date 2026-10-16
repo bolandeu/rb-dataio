@@ -1,7 +1,10 @@
 """The read and the write pipelines.
 
-    read:    resolve the source -> adapter read -> value normalisation -> limit
+    read:    resolve the source -> adapter read (of the part, in a container) -> value normalisation -> limit
     write:   resolve the target -> dry run -> safety checks -> backup -> atomic write -> report
+
+A write to a container (containers.py) starts from a copy of the current file and changes
+only its part, so the backup and the atomic write are of the whole file.
     restore: find the backup -> dry run -> backup of the current content -> atomic write -> report
 
 A source is an address, a text or a Python object (objects.py); a target is an address,
@@ -22,10 +25,10 @@ from typing import Any, cast
 
 import pandas as pd
 
-from ...formats import Loaded
+from ...formats import ContainerAdapter, FormatAdapter, Loaded
 from ...formats import txt as txt_format
 from ..errors import DataioError, FormatUnsupported, ReadFailed, SourceNotFound, TargetExists, WriteFailed
-from . import backup, objects, protection, registry, stdio, values
+from . import backup, containers, objects, protection, registry, stdio, values
 from .address import FILE, STDIO, Address, parse
 from .options import Mode, ReadOptions, SharedOptions, WriteOptions
 from .protection import MISSING, TargetState
@@ -57,7 +60,7 @@ def read_frame(source: object, options: ReadOptions) -> tuple[pd.DataFrame, Sour
     uri = _source_name(source)
     try:
         format_name, loaded = _load(source, options)
-        frame, warnings = values.normalise(loaded.frame, options, infer=loaded.infers_types)
+        frame, normalised = values.normalise(loaded.frame, options, infer=loaded.infers_types)
     except (ValueError, OSError) as exc:  # pandas parse and decode errors are ValueErrors
         raise ReadFailed(uri, exc) from exc
     if options.limit is not None:
@@ -70,7 +73,7 @@ def read_frame(source: object, options: ReadOptions) -> tuple[pd.DataFrame, Sour
         rows=len(frame),
         columns=column_names(frame),
     )
-    return frame, part, warnings
+    return frame, part, [*loaded.warnings, *normalised]
 
 
 def _source_name(source: object) -> str:
@@ -98,6 +101,8 @@ def _load(source: object, options: ReadOptions) -> tuple[str, Loaded]:
     adapter = registry.resolve(address, options.format)
     if not adapter.reads:
         raise _unable(adapter.name, "read")
+    if isinstance(adapter, ContainerAdapter):
+        return adapter.name, containers.read(adapter, path, address.fragment, options, text)
     return adapter.name, adapter.read(path, options)
 
 
@@ -125,9 +130,22 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
     part = TargetPart(uri=target, format=adapter.name, mode=options.mode, rows=len(frame), columns=column_names(frame))
     if options.dry_run:
         return Report(target=_planned(part, before))
+    write, written = _writer(adapter, frame, address, options)
     warnings = protection.loss_warnings(frame, before, options.mode)
-    warnings += _replace(path, part, before, lambda into: adapter.write(frame, into, options), keep=keep)
-    return Report(target=part, warnings=warnings)
+    from_copy = options.mode is Mode.APPEND or isinstance(adapter, ContainerAdapter)
+    warnings += _replace(path, part, before, write, keep=keep, from_copy=from_copy)
+    return Report(target=part, warnings=[*warnings, *written])
+
+
+def _writer(
+    adapter: FormatAdapter, frame: pd.DataFrame, address: Address, options: WriteOptions
+) -> tuple[Callable[[Path], object], list[str]]:
+    """The write of `frame` into a file, and the list that gets the warnings of the adapter once it ran."""
+    if not isinstance(adapter, ContainerAdapter):
+        return (lambda into: adapter.write(frame, into, options)), []
+    part = containers.part_to_write(adapter, Path(address.path), address.fragment)
+    written: list[str] = []
+    return (lambda into: written.extend(adapter.write_part(frame, into, part, options))), written
 
 
 def frame_data(frame: pd.DataFrame, options: WriteOptions) -> Any:
@@ -159,7 +177,9 @@ def restore_target(backup_id: str | None, dry_run: bool) -> Report:
     part = TargetPart(uri=entry.target, format=entry.format, mode=Mode.REPLACE, rows=entry.rows, columns=entry.columns)
     if dry_run:
         return Report(target=_planned(part, before), backup=entry)
-    warnings = _replace(path, part, before, lambda into: shutil.copyfile(backup.content(entry), into), keep=True)
+    warnings = _replace(
+        path, part, before, lambda into: shutil.copyfile(backup.content(entry), into), keep=True, from_copy=False
+    )
     return Report(target=part, backup=entry, warnings=warnings)
 
 
@@ -188,13 +208,22 @@ def _planned(part: TargetPart, before: TargetState) -> PlannedTarget:
 
 
 def _replace(
-    path: Path, part: TargetPart, before: TargetState, write: Callable[[Path], object], *, keep: bool
+    path: Path,
+    part: TargetPart,
+    before: TargetState,
+    write: Callable[[Path], object],
+    *,
+    keep: bool,
+    from_copy: bool,
 ) -> list[str]:
-    """Write the target atomically, with `keep` after a backup of what it holds; the warnings of the backup."""
+    """Write the target atomically, with `keep` after a backup of what it holds; the warnings of the backup.
+
+    `from_copy`: `write` gets a copy of the current file to change (an append, a part of a container).
+    """
     keeping = backup.kept(path, part.format, before, part.uri) if keep and before.exists else nullcontext([])
     try:
         with keeping as warnings:
-            protection.write_atomically(path, write, append=part.mode is Mode.APPEND)
+            protection.write_atomically(path, write, from_copy=from_copy)
     except (ValueError, OSError) as exc:
         raise WriteFailed(part.uri, exc) from exc
     return warnings
@@ -206,6 +235,18 @@ def describe_source(source: str, options: ReadOptions) -> Info:
     preview = cast(str, frame.head(PREVIEW_ROWS).to_json(orient="records", force_ascii=False, date_format="iso"))
     return Info(
         source=part,
+        parts=_parts(source, options),
         types={str(column): str(dtype) for column, dtype in frame.dtypes.items()},
         preview=json.loads(preview),
     )
+
+
+def _parts(source: str, options: ReadOptions) -> list[str]:
+    """The parts of a container file; none for any other source."""
+    if objects.is_text(source, options):
+        return []
+    address = _address(source, options)
+    if address.scheme != FILE:
+        return []
+    adapter = registry.resolve(address, options.format)
+    return adapter.parts(Path(address.path)) if isinstance(adapter, ContainerAdapter) else []
