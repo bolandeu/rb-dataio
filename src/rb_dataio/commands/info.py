@@ -16,7 +16,9 @@ def _render(described: dict) -> None:
     output.human.key_values("Source", described["source"])
     output.human.key_values("Types", described["types"])
     if described["parts"]:
-        output.human.echo(f"Parts: {', '.join(described['parts'])}")
+        rows = described["part_rows"]
+        listed = [f"{part} ({rows[part]} rows)" if part in rows else part for part in described["parts"]]
+        output.human.echo(f"Parts: {', '.join(listed)}")
     output.human.echo(f"Preview ({len(described['preview'])} rows):")
     for row in described["preview"]:
         output.human.echo(f"  {row}")

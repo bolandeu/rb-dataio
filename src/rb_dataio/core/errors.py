@@ -248,7 +248,7 @@ class PartNotFound(DataioError):
     def __init__(self, address: str, part: str, parts: list[str]) -> None:
         super().__init__(
             "SOURCE_NOT_FOUND",
-            f"Source '{address}' has no part '{part}'.",
+            f"Source '{address}' has no part '{part}'." if part else f"Source '{address}' names no part.",
             action=f"Name one of the parts: {', '.join(parts)}." if parts else "The file has no parts yet.",
             exit_code=2,
         )

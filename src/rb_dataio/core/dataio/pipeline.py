@@ -24,6 +24,7 @@ import os
 import shutil
 from collections.abc import Callable
 from contextlib import AbstractContextManager, nullcontext
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -303,23 +304,46 @@ def _written(uri: str, keeping: AbstractContextManager[list[str]], write: Callab
 
 
 def describe_source(source: str, options: ReadOptions) -> Info:
+    options, part_rows = _described_table(source, options)
     frame, part, _ = read_frame(source, options)
     # to_json: missing values become null and dates ISO strings; without a path it returns the text
     preview = cast(str, frame.head(PREVIEW_ROWS).to_json(orient="records", force_ascii=False, date_format="iso"))
     return Info(
         source=part,
         parts=_parts(source, options),
+        part_rows=part_rows,
         types={str(column): str(dtype) for column, dtype in frame.dtypes.items()},
         preview=json.loads(preview),
     )
 
 
+def _file_adapter(source: str, options: ReadOptions) -> tuple[FormatAdapter, Address] | None:
+    """The adapter and the address of a source that is an existing local file; None for any other source."""
+    if objects.is_text(source, options):
+        return None
+    address = _address(source, options)
+    if address.scheme != FILE or not Path(address.path).exists():
+        return None
+    return registry.resolve(address, options.format), address
+
+
 def _parts(source: str, options: ReadOptions) -> list[str]:
     """The parts of a container file; none for any other source."""
-    if objects.is_text(source, options):
+    found = _file_adapter(source, options)
+    if found is None or not isinstance(found[0], ContainerAdapter):
         return []
-    address = _address(source, options)
-    if address.scheme != FILE:
-        return []
-    adapter = registry.resolve(address, options.format)
-    return adapter.parts(Path(address.path)) if isinstance(adapter, ContainerAdapter) else []
+    return found[0].parts(Path(found[1].path))
+
+
+def _described_table(source: str, options: ReadOptions) -> tuple[ReadOptions, dict[str, int]]:
+    """The rows of every table of a base; with several tables and none named, `options` name the first to describe."""
+    found = _file_adapter(source, options)
+    if found is None:
+        return options, {}
+    adapter, address = found
+    if not isinstance(adapter, BaseAdapter):
+        return options, {}
+    counts = adapter.row_counts(Path(address.path))
+    if address.fragment is None and len(counts) > 1:
+        options = replace(options, table=next(iter(counts)))
+    return options, counts
