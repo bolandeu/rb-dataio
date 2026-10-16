@@ -5,7 +5,8 @@ It maps the flags to one `convert()` call. The options both sides have take
 A replace that needs confirmation (a target that is the source itself, a part with rows
 of a remote container) asks first (`--confirm` skips the question). With the target `-` stdout is the data:
 the human report is left out, and under `--json` the data is records inside the
-envelope. `render_report` is the human view of a report, shared with `restore`.
+envelope. A report of a batch lists its `targets`; when some failed (`--keep-going`) it lists the `errors` too
+and the command exits 1 with `ok` false. `render_report` is the human view of a report, shared with `restore`.
 """
 
 from __future__ import annotations
@@ -17,9 +18,9 @@ from .. import output
 from ..core.dataio import api
 from ..core.dataio.address import STDIO_TEXT
 from ..core.dataio.objects import RECORDS
-from ..core.dataio.options import Mode, ValueInput
+from ..core.dataio.options import SOURCE_COLUMN, Mode, ValueInput
 from ..core.dataio.report import Report
-from ..core.errors import ConfirmationRequired
+from ..core.errors import CliError, ConfirmationRequired
 from ._parameters import option, pairs
 
 
@@ -27,7 +28,11 @@ def render_report(report: dict) -> None:
     for side in ("source", "backup", "target"):
         if side in report:
             output.human.key_values(side.capitalize(), report[side])
+    for target in report.get("targets", []):
+        output.human.echo(f"Target {target['uri']}: {target['rows']} rows")
     render_warnings(report)
+    for error in report.get("errors", []):
+        output.human.err_console.print(f"[red]Failed:[/red] {escape(error['uri'])}: {escape(error['message'])}")
 
 
 def render_warnings(report: dict) -> None:
@@ -53,6 +58,8 @@ def convert(
     dtypes: list[str] | None = option("dtypes", None, metavar="COLUMN=TYPE"),
     limit: int | None = option("limit", None, min=0),
     query: str | None = option("query", None),
+    source_column: str | None = option("source_column", SOURCE_COLUMN),
+    strict: bool = option("strict", False),
     out_format: str | None = option("format", None, "out"),
     out_sheet: str | None = option("sheet", None, "out"),
     out_table: str | None = option("table", None, "out"),
@@ -66,6 +73,10 @@ def convert(
     profile: str | None = option("profile", None),
     overwrite: bool = option("overwrite", False),
     backup: bool = option("backup", True),
+    split_by: str | None = option("split_by", None),
+    chunk_rows: int | None = option("chunk_rows", None, min=1),
+    drop_split_column: bool = option("drop_split_column", False),
+    keep_going: bool = option("keep_going", False),
     dry_run: bool = output.DryRunOption,
     confirm: bool = output.ConfirmOption,
     json_output: bool = output.JsonOption,
@@ -79,6 +90,11 @@ def convert(
     With --dry-run the report comes back and nothing is written.
     A TARGET that is the SOURCE itself, or a sheet with rows of a Google
     spreadsheet that the write replaces, asks first: --confirm skips the question.
+    An address of many sources (a mask, a folder, a list) is read as one table:
+    --source-column names the column with the source of each row, --strict makes
+    different columns fail with SCHEMA_MISMATCH. A TARGET with {column} or {n} splits
+    the table (--split-by, --chunk-rows, --drop-split-column). A batch reports its
+    targets; --keep-going goes on after a failure and lists the errors (exit 1).
     --start and --value-input place and pass the values in a sheet of a service.
     SOURCE - is stdin, its format comes from the content; TARGET - is stdout:
     CSV, one value per line for one column, or --out-format; under --json the
@@ -105,6 +121,8 @@ def convert(
             dtypes=pairs(dtypes),
             limit=limit,
             query=query,
+            source_column=source_column,
+            strict=strict,
             out_format=out_format,
             out_sheet=out_sheet,
             out_table=out_table,
@@ -118,6 +136,10 @@ def convert(
             profile=profile,
             overwrite=overwrite,
             backup=backup,
+            split_by=split_by,
+            chunk_rows=chunk_rows,
+            drop_split_column=drop_split_column,
+            keep_going=keep_going,
             dry_run=output.is_dry_run(ctx),
         )
 
@@ -126,4 +148,6 @@ def convert(
     except ConfirmationRequired as needed:
         output.require_confirmation(ctx, needed.question, confirm)
         report = run(True)
-    output.emit_success(ctx, report.to_dict(), render_human=render_warnings if to_stdout else render_report)
+    first = report.errors[0] if report.errors else None
+    problem = CliError(first.code, first.message, exit_code=1) if first else None
+    output.emit_report(ctx, report.to_dict(), render_warnings if to_stdout else render_report, problem)

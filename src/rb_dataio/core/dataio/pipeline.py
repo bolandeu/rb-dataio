@@ -1,7 +1,7 @@
 """The read and the write pipelines.
 
-    read:    resolve the source -> adapter read (of the part, in a container) -> query= -> value normalisation -> limit
-    write:   resolve the target -> dry run -> safety checks -> backup -> atomic write -> report
+    read:    a source that names many (sources.py)? -> resolve the source -> adapter read (of the part, in a container) -> query= -> value normalisation -> limit
+    write:   a target that is a template (targets.py)? -> resolve the target -> dry run -> safety checks -> backup -> atomic write -> report
 
 A write to a container (containers.py) starts from a copy of the current file and changes
 only its part, so the backup and the atomic write are of the whole file. A base (a
@@ -17,6 +17,7 @@ A source is an address, a text or a Python object (objects.py); a target is an a
 or none for `write()` to return the data. `-` is stdin or stdout (stdio.py); local paths
 are the files; any other scheme goes to the format that takes it (registry.py), and a
 scheme no format takes is FORMAT_UNSUPPORTED.
+`convert` asks batch.py first whether it is a run of many files to many (api.py).
 `refuse_over_source` stops `convert` before it reads a source that is also its target.
 """
 
@@ -54,7 +55,7 @@ from ..errors import (
     TargetExists,
     WriteFailed,
 )
-from . import backup, containers, objects, protection, query, registry, stdio, values
+from . import backup, containers, objects, protection, query, registry, sources, stdio, targets, values
 from .address import FILE, STDIO, Address, parse
 from .options import Mode, ReadOptions, SharedOptions, ValueInput, WriteOptions
 from .protection import MISSING, TargetState
@@ -84,6 +85,8 @@ def _unable(format_name: str, ability: str, instead: str | None = None, *, why: 
 
 def read_frame(source: object, options: ReadOptions) -> tuple[pd.DataFrame, SourcePart, list[str]]:
     """The table, the source part of the report and the warnings of the read."""
+    if sources.names_many(source, options):
+        return sources.read_many(source, options)
     uri = _source_name(source)
     try:
         format_name, loaded = _load(source, options)
@@ -164,6 +167,8 @@ def refuse_over_source(source: str, target: str, options: WriteOptions) -> None:
 
 def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Report:
     """Write `frame` to `target`."""
+    if targets.is_template(target, options):
+        return targets.write_many(frame, target, options)
     address = _address(target, options)
     if address.scheme == STDIO:
         return _write_stdout(frame, target, options)
@@ -313,6 +318,10 @@ def _restore_table(entry: Backup, dry_run: bool) -> Report:
         overwrite=True,
         backup=True,
         dry_run=dry_run,
+        split_by=None,
+        chunk_rows=None,
+        drop_split_column=False,
+        keep_going=False,
     )
     return write_frame(backup.kept_table_rows(entry), entry.target, options).model_copy(update={"backup": entry})
 

@@ -6,7 +6,8 @@ the protection of a target among them: a replace that needs confirmation (`Confi
 a write over the source, `WriteOverSource`, or the replace of a non-empty part, `NonEmptyPartReplace`)
 and a backup that is not kept (`BackupNotFound`). A Google spreadsheet the service account may not
 open or change is `SheetNotShared`, which names the email to share it with. A key file that cannot be read is `KeyFileUnreadable`. A file of sheets or tables without the
-named one is `PartNotFound`, with the parts it has in the action.
+named one is `PartNotFound`, with the parts it has in the action. Sources merged with `strict=True` that
+do not share their columns are `SchemaMismatch`, which lists the columns of each source.
 """
 
 from __future__ import annotations
@@ -266,6 +267,19 @@ class PartNotFound(DataioError):
             "SOURCE_NOT_FOUND",
             f"Source '{address}' has no part '{part}'." if part else f"Source '{address}' has several parts: name one.",
             action=f"Name one of the parts: {', '.join(parts)}." if parts else "The file has no parts yet.",
+            exit_code=2,
+        )
+
+
+class SchemaMismatch(DataioError):
+    """Sources merged with `strict=True` whose columns differ: the message lists the columns of each source."""
+
+    def __init__(self, columns_by_source: dict[str, list[str]]) -> None:
+        listed = "; ".join(f"{uri} ({', '.join(columns)})" for uri, columns in columns_by_source.items())
+        super().__init__(
+            "SCHEMA_MISMATCH",
+            f"The sources have different columns: {listed}.",
+            action="Pass strict=False to merge them as a union, or fix the columns of the sources.",
             exit_code=2,
         )
 

@@ -9,6 +9,7 @@ import typer
 
 from .. import output
 from ..core.dataio import api
+from ..core.dataio.options import SOURCE_COLUMN
 from ._parameters import option, pairs
 
 
@@ -41,6 +42,8 @@ def info(
     dtypes: list[str] | None = option("dtypes", None, metavar="COLUMN=TYPE"),
     limit: int | None = option("limit", None, min=0),
     query: str | None = option("query", None),
+    source_column: str | None = option("source_column", SOURCE_COLUMN),
+    strict: bool = option("strict", False),
     json_output: bool = output.JsonOption,
     quiet: bool = output.QuietOption,
 ) -> None:
@@ -48,7 +51,8 @@ def info(
 
     With --query it describes the result of the SQL: inside a base it names
     its tables, over any other source the table is data. A Google spreadsheet
-    lists its sheets; --credentials is the key file to reach it with.
+    lists its sheets; an address of many sources is described as the merged table
+    (--source-column, --strict); --credentials is the key file to reach it with.
 
     Example: {cli} info a.csv --json
     """
@@ -65,5 +69,7 @@ def info(
         dtypes=pairs(dtypes),
         limit=limit,
         query=query,
+        source_column=source_column,
+        strict=strict,
     )
     output.emit_success(ctx, described.to_dict(), render_human=_render)
