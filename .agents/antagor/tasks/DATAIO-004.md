@@ -3,7 +3,7 @@ id: DATAIO-004
 title: 'Protection: backups, restore, atomic writes, write modes, safety checks and
   loss warnings'
 status: queue
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -133,3 +133,8 @@ Option 1, per SPEC (Confirmation section) and ADR 0005: add the template Confirm
 ### Blocked: needs_scope (entries [{'n': 1, 'text': "DATAIO-004 acceptance wants convert-over-source refused with action 'pass overwrite=True / --confirm', but the convert command has --overwrite and no --confirm, and new CLI flags are out of scope.\nQue"}])
 
 Inbox #1 answered: option 1 (--confirm via require_confirmation).
+
+### Attempt 1: file docstring
+
+- update the docstring of src/rb_dataio/core/dataio/report.py: +PlannedTarget
+- update the docstring of src/rb_dataio/core/errors.py: +BackupNotFound +WriteOverSource -NotAvailableYet
