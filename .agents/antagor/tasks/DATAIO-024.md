@@ -1,7 +1,7 @@
 ---
 id: DATAIO-024
 title: xlsx write is quadratic in the number of rows
-status: in_review
+status: publish
 attempts: 1
 blocked: false
 blocked_reason: null
