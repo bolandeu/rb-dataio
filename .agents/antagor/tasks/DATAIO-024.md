@@ -90,3 +90,19 @@ TOTAL                                      3414   1510    56%
 FAIL Required test coverage of 90.0% not reached. Total coverage: 55.77%
 39 passed in 2.48s
 ```
+
+### Architect's note
+
+Attempt 1 failed only on the coverage gate: the check ran one test file, and the project needs 90% of the whole package. The check is now 'uv run pytest -q tests/test_excel.py --no-cov'. Your tests passed (39 passed); do not add tests for coverage.
+
+### Answer to question #1
+
+> Check 'uv run pytest -q tests/test_excel.py' fails only on the global coverage gate fail_under=90 (pyproject.toml addopts --cov): one test file covers 56% of src, all 39 tests pass.
+> Question: How must the task check pass?
+> Options:
+> 1. Change the task check to 'uv run pytest -q --no-cov tests/test_excel.py'
+> 2. Lower fail_under in pyproject.toml (forbidden by its comment)
+> 3. Accept the check as it is; the full suite at publish enforces coverage
+> Recommended: Change the task check to 'uv run pytest -q --no-cov tests/test_excel.py'
+
+Option 1 is done: the task check is now 'uv run pytest -q tests/test_excel.py --no-cov'. Do not change pyproject.toml.
