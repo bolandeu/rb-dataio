@@ -28,7 +28,7 @@ budget_usd: null
 epic: null
 spec_refs: []
 checks:
-- uv run pytest -q tests/test_excel.py
+- uv run pytest -q tests/test_excel.py --no-cov
 resident: null
 tool: null
 pr: null
