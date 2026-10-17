@@ -55,12 +55,17 @@ def _replaced_sheet(book: Workbook, part: str) -> Worksheet:
     return book.create_sheet(part, index)
 
 
+def _text_kept(sheet: Worksheet, value: object) -> Cell:
+    """A cell of `value`; a text that starts with `=` stays a string, openpyxl would make it a formula."""
+    cell = Cell(sheet, value=value)
+    if cell.data_type == "f":
+        cell.data_type = "s"
+    return cell
+
+
 def _append_row(sheet: Worksheet, row: Iterable[object]) -> None:
-    """Add a row of values; a text that starts with `=` stays a string, openpyxl would make it a formula."""
-    sheet.append(row)
-    for cell in sheet[sheet.max_row]:
-        if cell.data_type == "f":
-            cell.data_type = "s"
+    """Add a row of values below the last one; openpyxl places the cells, no pass over the sheet."""
+    sheet.append([_text_kept(sheet, value) for value in row])
 
 
 def _is_empty(sheet: Worksheet) -> bool:
