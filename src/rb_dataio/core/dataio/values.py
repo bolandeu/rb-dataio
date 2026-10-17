@@ -5,7 +5,8 @@ dropped, then the type of every text column: `dtypes` for the named columns, `as
 for all, else inferred. NA words never turn into missing values (the adapter reads them
 as text); only an empty cell is missing. A column stays text when it could be an ID:
 a value with a leading zero or `+`, or with more than 15 digits. `stack` joins tables of different
-columns: a whole-number column stays whole (a nullable int) where a table lacks it.
+columns: a whole-number column stays whole (a nullable int) where a table lacks it. `typed` builds a table
+from Python values and keeps a column of ints with a missing value whole in the same way.
 """
 
 from __future__ import annotations
@@ -50,6 +51,21 @@ def normalise(frame: pd.DataFrame, options: ReadOptions, *, infer: bool = True) 
         elif infer and pd.api.types.is_string_dtype(frame[name]):
             frame[name] = _infer(frame[name])
     return frame, warnings
+
+
+def typed(frame: pd.DataFrame) -> pd.DataFrame:
+    """The table of Python values (object columns) with its types set; ints with a missing value are Int64, not float."""
+    columns = [_whole(frame.iloc[:, number]) for number in range(frame.shape[1])]
+    typed_frame = pd.concat(columns, axis="columns") if columns else frame
+    typed_frame.columns = frame.columns
+    return typed_frame.infer_objects()
+
+
+def _whole(column: pd.Series) -> pd.Series:
+    present = column.dropna()
+    if 0 < len(present) < len(column) and all(type(value) is int for value in present):
+        return column.astype("Int64")
+    return column
 
 
 def stack(frames: list[pd.DataFrame]) -> pd.DataFrame:

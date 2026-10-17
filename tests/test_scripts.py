@@ -199,7 +199,8 @@ def test_antagor_project_config() -> None:
     }
     # The Human sets the mode (`antagor mode set`); dataio runs in `fast`.
     assert config.get("mode") in (None, "strict", "default", "free", "fast")
-    assert (root / ".agents" / "antagor" / ".gitignore").read_text().split() == ["state/", "receipts/"]
+    # Antagor owns this file and may add entries on upgrade.
+    assert {"state/", "receipts/"} <= set((root / ".agents" / "antagor" / ".gitignore").read_text().split())
     assert "ANTAGOR_VERSION" in (SCRIPTS / "deploy.sh").read_text()
 
 

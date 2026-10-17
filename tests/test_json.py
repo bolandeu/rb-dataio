@@ -77,3 +77,24 @@ def test_written_json_reads_back(workdir: Path) -> None:
     for name in ("back.json", "back.jsonl"):
         write(read("records.json"), name)
         assert read(name).equals(read("records.json"))
+
+
+# --- whole numbers with a missing value ---------------------------------------------
+
+
+def test_jsonl_int_column_with_null_is_int64(workdir: Path) -> None:
+    Path("n.jsonl").write_text('{"phrase":"a","freq":5}\n{"phrase":"b","freq":null}\n', encoding="utf-8")
+    frame = read("n.jsonl")
+    assert str(frame["freq"].dtype) == "Int64"
+    assert frame["freq"].tolist()[0] == 5
+    assert frame["freq"].isna().tolist() == [False, True]
+
+
+def test_json_int_column_with_null_is_int64(workdir: Path) -> None:
+    Path("n.json").write_text('[{"phrase":"a","freq":5},{"phrase":"b","freq":null}]', encoding="utf-8")
+    assert str(read("n.json")["freq"].dtype) == "Int64"
+
+
+def test_jsonl_float_column_with_null_stays_float64(workdir: Path) -> None:
+    Path("f.jsonl").write_text('{"x":1.5}\n{"x":null}\n', encoding="utf-8")
+    assert str(read("f.jsonl")["x"].dtype) == "float64"

@@ -286,3 +286,11 @@ def test_formats_json_lists_the_excel_formats(workdir: Path) -> None:
     listed = {entry["name"]: (entry["read"], entry["write"], entry["append"]) for entry in payload["formats"]}
     assert listed["xlsx"] == (True, True, True)
     assert listed["xls"] == listed["xlsb"] == listed["ods"] == (True, False, False)
+
+
+def test_int_column_with_an_empty_cell_is_int64(tmp_path: Path) -> None:
+    build_book(tmp_path / "n.xlsx", {"S": [("freq", "x"), (5, 1.5), (None, 2.5)]})
+    frame = read(str(tmp_path / "n.xlsx"))
+    assert str(frame["freq"].dtype) == "Int64"
+    assert frame["freq"].isna().tolist() == [False, True]
+    assert str(frame["x"].dtype) == "float64"

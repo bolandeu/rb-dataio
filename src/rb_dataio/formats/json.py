@@ -15,6 +15,7 @@ from typing import Any
 import pandas as pd
 
 from ..core.dataio.options import ReadOptions, WriteOptions
+from ..core.dataio.values import typed
 from . import Loaded, TextAdapter
 
 INDENT = 2
@@ -33,10 +34,18 @@ def flat(rows: list[Any]) -> pd.DataFrame:
     """Records as a table: a nested object becomes `a.b` columns, a nested list its JSON text."""
     if not all(isinstance(row, dict) for row in rows):
         raise ValueError("expected records: every item must be an object.")
-    frame = pd.json_normalize(rows)
-    for name in frame.select_dtypes(include="object").columns:
-        frame[name] = frame[name].map(lambda value: dumps(value) if isinstance(value, list) else value)
-    return frame
+    return typed(pd.DataFrame([_cells(row) for row in rows], dtype=object))
+
+
+def _cells(record: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+    """One record as flat cells: a nested object becomes `a.b` keys, a nested list its JSON text."""
+    cells: dict[str, Any] = {}
+    for name, value in record.items():
+        if isinstance(value, dict):
+            cells.update(_cells(value, f"{prefix}{name}."))
+        else:
+            cells[f"{prefix}{name}"] = dumps(value) if isinstance(value, list) else value
+    return cells
 
 
 def dumps(value: Any, indent: int | None = None) -> str:
