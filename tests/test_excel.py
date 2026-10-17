@@ -8,6 +8,7 @@ and Second.
 from __future__ import annotations
 
 import json
+import time
 import zipfile
 from pathlib import Path
 
@@ -159,6 +160,36 @@ def test_a_new_book_has_sheet1_with_a_usable_layout(workdir: Path) -> None:
 def test_missing_values_are_empty_cells(workdir: Path) -> None:
     write(pd.DataFrame({"n": pd.array([1, None], dtype="Int64"), "s": [None, "b"]}), "new.xlsx")
     assert sheet_rows(workdir / "new.xlsx", "Sheet1") == [("n", "s"), (1, None), (None, "b")]
+
+
+def test_a_text_that_starts_with_equals_stays_a_string(workdir: Path) -> None:
+    write(pd.DataFrame({"t": ["=1+1", "plain"]}), "new.xlsx")
+    assert read("new.xlsx")["t"].tolist() == ["=1+1", "plain"]
+    cell = openpyxl.load_workbook(workdir / "new.xlsx")["Sheet1"]["A2"]
+    assert (cell.value, cell.data_type) == ("=1+1", "s")
+
+
+def test_a_text_that_starts_with_equals_stays_a_string_on_append(workdir: Path) -> None:
+    write(pd.DataFrame({"x": [4], "y": ["=SUM(A1)"]}), "book.xlsx#A", mode="append")
+    assert sheet_rows(workdir / "book.xlsx", "A")[-1] == (4, "=SUM(A1)")
+
+
+def test_a_large_frame_is_written_and_read_back_whole(workdir: Path) -> None:
+    frame = pd.DataFrame({"t": [f"row {i}" for i in range(100_000)], "n": range(100_000)})
+    started = time.perf_counter()
+    write(frame, "big.xlsx")
+    assert time.perf_counter() - started < 20
+    pd.testing.assert_frame_equal(read("big.xlsx"), frame, check_dtype=False)
+
+
+def test_the_write_time_grows_near_linear_with_the_rows(workdir: Path) -> None:
+    def seconds(rows: int) -> float:
+        frame = pd.DataFrame({"t": ["v"] * rows, "n": range(rows)})
+        started = time.perf_counter()
+        write(frame, f"rows{rows}.xlsx")
+        return time.perf_counter() - started
+
+    assert seconds(20_000) / seconds(2_000) <= 20
 
 
 @pytest.mark.parametrize("part", ["xl/charts/chart1.xml", "xl/pivotTables/pivotTable1.xml"])
