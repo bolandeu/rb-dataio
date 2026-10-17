@@ -3,7 +3,7 @@ id: DATAIO-025
 title: An int column with an empty cell reads as float from json, jsonl and Excel
   books
 status: in_review
-attempts: 1
+attempts: 2
 blocked: false
 blocked_reason: null
 phase: null
@@ -110,3 +110,7 @@ Required test coverage of 90.0% reached. Total coverage: 95.74%
 FAILED tests/test_scripts.py::test_antagor_project_config - AssertionError: a...
 1 failed, 646 passed, 1 warning in 13.86s
 ```
+
+### Attempt 2: the Architect's verdict
+
+Two changes, then done. 1) src/rb_dataio/formats/json.py imports nested_to_record from pandas.io.json._normalize, a private pandas module; pyproject allows any pandas>=3.0, so a minor pandas release can break the import. Use the public API: pd.json_normalize(rows) for the column names and the flattening, then rebuild the cells as Python objects (for example pd.json_normalize(rows).astype(object) where a value is NaN only because pandas made it so), or write a small own flattener of nested dicts into 'a.b' keys (about 10 lines) in json.py. Keep the current tests green. 2) tests/test_scripts.py line 202: do not pin the whole .gitignore list; Antagor adds entries on upgrade. Use: assert {"state/", "receipts/"} <= set((root / ".agents" / "antagor" / ".gitignore").read_text().split()), with a comment above it: Antagor owns this file and may add entries on upgrade.
