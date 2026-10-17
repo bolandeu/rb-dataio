@@ -36,6 +36,7 @@ import pandas as pd
 
 from ..core.dataio.address import Address
 from ..core.dataio.options import ReadOptions, WriteOptions
+from ..core.dataio.values import typed
 from ..core.errors import InvalidParameter
 
 ENCODING = "utf-8"
@@ -99,8 +100,8 @@ def from_cells(cells: list[list[Any]], header: bool) -> Loaded:
     """
     rows = [[_cell_value(cell) for cell in row] for row in cells]
     if header and rows:
-        return Loaded(pd.DataFrame(rows[1:], columns=rows[0]))
-    frame = pd.DataFrame(rows)
+        return Loaded(typed(pd.DataFrame(rows[1:], columns=rows[0], dtype=object)))
+    frame = typed(pd.DataFrame(rows, dtype=object))
     frame.columns = pd.RangeIndex(frame.shape[1])  # no names: value normalisation calls them col1..colN
     return Loaded(frame)
 

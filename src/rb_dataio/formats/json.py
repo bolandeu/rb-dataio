@@ -13,8 +13,10 @@ import json
 from typing import Any
 
 import pandas as pd
+from pandas.io.json._normalize import nested_to_record
 
 from ..core.dataio.options import ReadOptions, WriteOptions
+from ..core.dataio.values import typed
 from . import Loaded, TextAdapter
 
 INDENT = 2
@@ -33,10 +35,11 @@ def flat(rows: list[Any]) -> pd.DataFrame:
     """Records as a table: a nested object becomes `a.b` columns, a nested list its JSON text."""
     if not all(isinstance(row, dict) for row in rows):
         raise ValueError("expected records: every item must be an object.")
-    frame = pd.json_normalize(rows)
-    for name in frame.select_dtypes(include="object").columns:
-        frame[name] = frame[name].map(lambda value: dumps(value) if isinstance(value, list) else value)
-    return frame
+    cells = [
+        {name: dumps(value) if isinstance(value, list) else value for name, value in row.items()}
+        for row in nested_to_record(rows, sep=".")
+    ]
+    return typed(pd.DataFrame(cells, dtype=object))
 
 
 def dumps(value: Any, indent: int | None = None) -> str:
