@@ -5,6 +5,12 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.23 — 2026-10-17
+
+### Outside epics
+
+- An int column with an empty cell reads as float from json, jsonl and Excel books (DATAIO-025)
+
 ## v0.1.22 — 2026-10-17
 
 ### Outside epics
