@@ -1,10 +1,10 @@
 ---
 id: DATAIO-024
 title: xlsx write is quadratic in the number of rows
-status: in_progress
+status: queue
 attempts: 1
-blocked: true
-blocked_reason: needs_scope
+blocked: false
+blocked_reason: null
 phase: null
 tests_hash: null
 publish_stage: null
@@ -106,3 +106,5 @@ Attempt 1 failed only on the coverage gate: the check ran one test file, and the
 > Recommended: Change the task check to 'uv run pytest -q --no-cov tests/test_excel.py'
 
 Option 1 is done: the task check is now 'uv run pytest -q tests/test_excel.py --no-cov'. Do not change pyproject.toml.
+
+### Blocked: needs_scope (entries [{'n': 1, 'text': "Check 'uv run pytest -q tests/test_excel.py' fails only on the global coverage gate fail_under=90 (pyproject.toml addopts --cov): one test file covers 56% of src, all 39 tests pass.\nQuestion: How must"}])
