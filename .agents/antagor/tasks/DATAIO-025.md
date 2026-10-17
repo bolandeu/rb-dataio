@@ -2,7 +2,7 @@
 id: DATAIO-025
 title: An int column with an empty cell reads as float from json, jsonl and Excel
   books
-status: queue
+status: in_review
 attempts: 1
 blocked: false
 blocked_reason: null
@@ -26,6 +26,7 @@ test_paths:
 - tests/test_json.py
 - tests/test_excel.py
 - tests/test_values.py
+- tests/test_scripts.py
 docs: none
 tools: []
 worker_args: null
