@@ -3,7 +3,7 @@ id: DATAIO-025
 title: An int column with an empty cell reads as float from json, jsonl and Excel
   books
 status: queue
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -71,3 +71,41 @@ csv gives Int64 through values.py inference; reuse the Int64 rule of values.py (
 ## Out of scope
 
 - Write side; csv and parquet (they already keep Int64); the xlsx write speed.
+
+## Feedback
+
+### Attempt 1: checks failed
+
+- `uv run pytest -q` (exit 1)
+
+```
+4, 61, 111-112, 159
+src/rb_dataio/core/errors.py              126      4    97%   151, 208, 220, 235
+src/rb_dataio/core/opencli.py             143     22    85%   108, 112, 141-142, 175, 177, 190-191, 203-238, 256-266
+src/rb_dataio/core/version.py              40      7    82%   34-35, 52-53, 57, 64-65
+src/rb_dataio/credentials/health.py       105      3    97%   61, 64, 181
+src/rb_dataio/credentials/manager.py      146     11    92%   71-72, 81-82, 262, 269-270, 277-280
+src/rb_dataio/formats/__init__.py         137     14    90%   57, 134, 137, 141, 148, 163, 166, 193, 196, 199, 220, 224, 241, 259
+src/rb_dataio/formats/csv.py               90      3    97%   89, 92-93
+src/rb_dataio/formats/duckdb.py            99      3    97%   36, 54, 57
+src/rb_dataio/formats/gsheet.py           126      1    99%   88
+src/rb_dataio/formats/http.py              41      1    98%   37
+src/rb_dataio/formats/json.py              41      3    93%   37, 52, 70
+src/rb_dataio/formats/sqlite.py            95      3    97%   41, 129-130
+src/rb_dataio/output/__init__.py           94      3    97%   81, 122, 156
+src/rb_dataio/output/human.py              18      4    78%   29-32
+src/rb_dataio/providers/__init__.py         9      1    89%   28
+src/rb_dataio/providers/base.py            61      2    97%   95, 126
+src/rb_dataio/providers/google.py          82      8    90%   59-61, 99-100, 132-134
+src/rb_dataio/providers/http.py            69      1    99%   34
+---------------------------------------------------------------------
+TOTAL                                    3425    146    96%
+
+39 files skipped due to complete coverage.
+Required test coverage of 90.0% reached. Total coverage: 95.74%
+--------------------------- snapshot report summary ----------------------------
+20 snapshots passed.
+=========================== short test summary info ============================
+FAILED tests/test_scripts.py::test_antagor_project_config - AssertionError: a...
+1 failed, 646 passed, 1 warning in 13.86s
+```
