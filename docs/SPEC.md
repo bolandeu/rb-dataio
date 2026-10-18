@@ -59,6 +59,7 @@ The CLI follows the shared cli-builder standard: JSON envelope, exit codes, `--d
 35. As a user, I want writes to be atomic (temporary file, then rename), so that a crash never leaves a broken file (b20).
 36. As a user, I want `append` to add rows to csv/jsonl/txt, to an xlsx sheet, and to json/parquet by rewrite, so that I can grow a dataset (b20).
 37. As a user, I want `append` to a CSV with a different header to fail, so that columns never shift (b20).
+37a. As a tool author, I want `write(df, t, columns=[...], rename={...})` and `dataio convert --columns --rename` to give every target the chosen target columns under the new names (selection first, then rename), so that semkit saves `phrase,similarity` as `phrase,score` (refused with `INVALID_ARGUMENTS`, exit 2, on a wrong name or a clash).
 
 ### Address and parameters
 38. As a user, I want one address string for both source and target, so that I learn one syntax (b3).
@@ -133,7 +134,7 @@ The CLI follows the shared cli-builder standard: JSON envelope, exit codes, `--d
 
 - **Layers** follow the cli-builder contract: commands only map flags to one service call; all logic lives in the core; external services sit behind providers; credentials go through the template's credential manager.
 - **Public API** (one module, the package root): `read(source, **opts) -> DataFrame`, `write(df, target=None, **opts) -> Report | object` (typed with overloads), `convert(source, target, **opts) -> Report`, `info(source, **opts) -> Info`, `formats() -> list[FormatInfo]`, `backups() -> list[Backup]`, `restore(id=None) -> Report`. The CLI command `convert` calls `convert()`; `read` from the CLI is `convert SRC -`.
-- **Parameter vocabulary** (single source, shared by library and CLI): `format`, `sheet`, `table`, `query`, `encoding`, `sep`, `header`, `as_text`, `dtypes`, `limit`, `mode`, `start`, `profile`, `split_by`, `chunk_rows`, `drop_split_column`, `source_column`, `strict`, `keep_going`, `overwrite`, `backup`, `credentials`, `value_input`. Flag = name with `_` → `-`; booleans `--flag` / `--no-flag`; dicts as a repeatable `key=value` flag. In `convert`, options both sides have take `in_` / `out_`.
+- **Parameter vocabulary** (single source, shared by library and CLI): `format`, `sheet`, `table`, `query`, `encoding`, `sep`, `header`, `as_text`, `dtypes`, `limit`, `mode`, `start`, `profile`, `split_by`, `chunk_rows`, `drop_split_column`, `source_column`, `strict`, `keep_going`, `overwrite`, `backup`, `credentials`, `value_input`, `columns`, `rename`. Flag = name with `_` → `-`; booleans `--flag` / `--no-flag`; dicts as a repeatable `key=value` flag. In `convert`, options both sides have take `in_` / `out_`.
 - **Address module**: parses an address string into a structured address (scheme, path or id, fragment = sheet or table, template placeholders `{column}`, `{n}`, `{stem}`, glob). Explicit parameters override parsed parts. Recognised: local paths by extension, `-`, `gsheet://<id>`, Google Sheets URLs (with `gid`), `http(s)://`, globs and folders.
 - **Format registry**: each format is one adapter with `read` and/or `write`, its own option set and its capabilities; `formats()` is generated from the registry. Engines: pandas for text formats; `python-calamine` for Excel read; `openpyxl` for xlsx write; DuckDB for parquet and for `query=`; stdlib `sqlite3`; `gspread` for Google Sheets.
 - **Detection**: format by scheme, then extension, then content (stdin, `.db` signature). CSV encoding chain `utf-8-sig` → `utf-8` → `cp1251`; delimiter sniffed on the first 64 KB among `, ; \t |`.
@@ -169,6 +170,7 @@ The CLI follows the shared cli-builder standard: JSON envelope, exit codes, `--d
 - Primary keys, indexes and upsert in bases (b15).
 - Schema changes on `append` (b15).
 - Secrets in project config (b45).
+- Choosing columns on read (only the target columns are chosen).
 - Migrating semkit and other tools to dataio: their own work, after the first release.
 
 ## Further Notes

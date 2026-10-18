@@ -320,7 +320,7 @@
       },
       {
         "name": "convert",
-        "description": "Read a table from SOURCE and write it to TARGET; report both sides.\n\nOptions both sides have take --in- (the source) or --out- (the target).\n--query is SQL over the source whose result is written: inside a base\nit names its tables, over any other source the table is data.\nWith --dry-run the report comes back and nothing is written.\nA TARGET that is the SOURCE itself, or a sheet with rows of a Google\nspreadsheet that the write replaces, asks first: --confirm skips the question.\nAn address of many sources (a mask, a folder, a list) is read as one table:\n--source-column names the column with the source of each row, --strict makes\ndifferent columns fail with SCHEMA_MISMATCH. A TARGET with {column} or {n} splits\nthe table (--split-by, --chunk-rows, --drop-split-column). A batch reports its\ntargets; --keep-going goes on after a failure and lists the errors (exit 1).\nSources that would be written to one target (a/x.csv, b/x.csv for {stem}) are refused first.\nThe action of SCHEMA_MISMATCH and TARGET_EXISTS names the flag to change (--strict, --mode).\n--start and --value-input place and pass the values in a sheet of a service.\nSOURCE - is stdin, its format comes from the content; TARGET - is stdout:\nCSV, one value per line for one column, or --out-format; under --json the\ndata is inside the envelope as data.\n\nExample: dataio convert a.csv b.csv --json",
+        "description": "Read a table from SOURCE and write it to TARGET; report both sides.\n\nOptions both sides have take --in- (the source) or --out- (the target).\n--query is SQL over the source whose result is written: inside a base\nit names its tables, over any other source the table is data.\nWith --dry-run the report comes back and nothing is written.\nA TARGET that is the SOURCE itself, or a sheet with rows of a Google\nspreadsheet that the write replaces, asks first: --confirm skips the question.\nAn address of many sources (a mask, a folder, a list) is read as one table:\n--source-column names the column with the source of each row, --strict makes\ndifferent columns fail with SCHEMA_MISMATCH. A TARGET with {column} or {n} splits\nthe table (--split-by, --chunk-rows, --drop-split-column). A batch reports its\ntargets; --keep-going goes on after a failure and lists the errors (exit 1).\nSources that would be written to one target (a/x.csv, b/x.csv for {stem}) are refused first.\nThe action of SCHEMA_MISMATCH and TARGET_EXISTS names the flag to change (--strict, --mode).\n--columns lists the source columns the target keeps, in this order; --rename\ngives kept columns new names as old=new (the selection comes first). Both take a\ncomma list and repeat; a wrong name or a clash is INVALID_ARGUMENTS (exit 2).\n--start and --value-input place and pass the values in a sheet of a service.\nSOURCE - is stdin, its format comes from the content; TARGET - is stdout:\nCSV, one value per line for one column, or --out-format; under --json the\ndata is inside the envelope as data.\n\nExample: dataio convert a.csv b.csv --json",
         "options": [
           {
             "name": "--in-format",
@@ -716,6 +716,46 @@
               {
                 "name": "x-rb-default",
                 "value": "raw"
+              }
+            ]
+          },
+          {
+            "name": "--columns",
+            "arguments": [
+              {
+                "name": "COLUMN",
+                "required": true
+              }
+            ],
+            "description": "Source columns the target keeps, in this order; a comma list, repeatable.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              },
+              {
+                "name": "x-rb-multiple",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--rename",
+            "arguments": [
+              {
+                "name": "OLD=NEW",
+                "required": true
+              }
+            ],
+            "description": "New name of a kept column as old=new, applied after --columns; a comma list, repeatable.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              },
+              {
+                "name": "x-rb-multiple",
+                "value": true
               }
             ]
           },

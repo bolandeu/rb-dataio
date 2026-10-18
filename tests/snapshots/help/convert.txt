@@ -16,6 +16,9 @@
  targets; --keep-going goes on after a failure and lists the errors (exit 1).
  Sources that would be written to one target (a/x.csv, b/x.csv for {stem}) are refused first.
  The action of SCHEMA_MISMATCH and TARGET_EXISTS names the flag to change (--strict, --mode).
+ --columns lists the source columns the target keeps, in this order; --rename
+ gives kept columns new names as old=new (the selection comes first). Both take a
+ comma list and repeat; a wrong name or a clash is INVALID_ARGUMENTS (exit 2).
  --start and --value-input place and pass the values in a sheet of a service.
  SOURCE - is stdin, its format comes from the content; TARGET - is stdout:
  CSV, one value per line for one column, or --out-format; under --json the
@@ -112,6 +115,15 @@
 │                                                                          values: raw as they     │
 │                                                                          are, user as if typed.  │
 │                                                                          [default: raw]          │
+│ --columns                                        COLUMN                  Source columns the      │
+│                                                                          target keeps, in this   │
+│                                                                          order; a comma list,    │
+│                                                                          repeatable.             │
+│ --rename                                         OLD=NEW                 New name of a kept      │
+│                                                                          column as old=new,      │
+│                                                                          applied after           │
+│                                                                          --columns; a comma      │
+│                                                                          list, repeatable.       │
 │ --profile                                        <str>                   Write profile, e.g.     │
 │                                                                          excel.                  │
 │ --overwrite            --no-overwrite                                    Allow a write over the  │

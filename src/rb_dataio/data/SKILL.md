@@ -64,6 +64,13 @@ uv tool install "rb-dataio @ git+ssh://git@github.com/bolandeu/rb-dataio.git@vX.
   `restore ID` brings one back. Read `warnings` in the report: a replace
   that drops most rows or loses columns says so — show it to the user,
   who may want it restored. `--no-backup` only for throwaway targets.
+- **Target columns.** `convert --columns a,b` keeps these source columns in
+  this order; `--rename old=new` renames kept columns (a value splits on its
+  first `=`). Both take a comma list and repeat; the selection comes before
+  rename, so `--rename` names a source column. A wrong name or a clash gives
+  INVALID_ARGUMENTS (exit 2) and writes nothing. They work with `--split-by`
+  and `--mode append` (the header must match the renamed one), e.g.
+  `dataio convert in.csv out.json --columns phrase,similarity --rename similarity=score`.
 - **`doctor --json`** first when something looks off — it reports
   project, config, version compatibility and credential readiness.
 - **`describe --json`** — the whole CLI as one machine-readable OpenCLI

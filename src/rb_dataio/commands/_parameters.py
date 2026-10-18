@@ -3,6 +3,8 @@
 Typer names a flag after its Python parameter (`in_encoding` -> `--in-encoding`,
 a boolean -> `--x/--no-x`), so a command parameter named like the library keyword
 is the flag tests/test_parity.py expects. `side` is `in` or `out` in `convert`.
+`pairs`, `names` and `renames` turn the repeatable flag values (`COLUMN=TYPE`, comma lists,
+`old=new`) into the dict or list the library takes.
 """
 
 from __future__ import annotations
@@ -28,6 +30,8 @@ _HELP = {
     "strict": "Sources with different columns fail with SCHEMA_MISMATCH instead of merging as a union.",
     "split_by": "Column whose values split the table into one target each, in a target with {column}.",
     "chunk_rows": "Rows per part, in a target with {n}.",
+    "columns": "Source columns the target keeps, in this order; a comma list, repeatable.",
+    "rename": "New name of a kept column as old=new, applied after --columns; a comma list, repeatable.",
     "drop_split_column": "Leave the --split-by column out of the targets.",
     "keep_going": "Go on after a failed target; the report lists the failures in errors.",
     "mode": "Write mode: what to do with the data the target already has.",
@@ -52,3 +56,20 @@ def pairs(values: list[str] | None) -> dict[str, str] | None:
     if bad := [value for value in values if "=" not in value]:
         raise InvalidArguments(f"Expected COLUMN=TYPE, got: {', '.join(bad)}.")
     return dict(value.split("=", 1) for value in values)
+
+
+def names(values: list[str] | None) -> list[str] | None:
+    """`["a,b", "c"]` -> `["a", "b", "c"]`, the shape of a comma-list flag."""
+    if not values:
+        return None
+    return [name for value in values for name in value.split(",")]
+
+
+def renames(values: list[str] | None) -> dict[str, str] | None:
+    """`["a=x,b=y"]` -> `{"a": "x", "b": "y"}`; a pair splits on its first `=`."""
+    if not values:
+        return None
+    items = names(values) or []
+    if bad := [item for item in items if "=" not in item]:
+        raise InvalidArguments(f"Expected old=new, got: {', '.join(bad)}.")
+    return dict(item.split("=", 1) for item in items)
