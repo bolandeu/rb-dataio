@@ -1,7 +1,7 @@
 ---
 id: DATAIO-027
 title: Target columns for templates, batch convert and Google Sheets
-status: in_review
+status: publish
 attempts: 0
 blocked: false
 blocked_reason: null
