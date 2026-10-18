@@ -3,6 +3,8 @@
 Typer names a flag after its Python parameter (`in_encoding` -> `--in-encoding`,
 a boolean -> `--x/--no-x`), so a command parameter named like the library keyword
 is the flag tests/test_parity.py expects. `side` is `in` or `out` in `convert`.
+`pairs`, `names` and `renames` turn the repeatable flag values (`COLUMN=TYPE`, comma lists,
+`old=new`) into the dict or list the library takes.
 """
 
 from __future__ import annotations
