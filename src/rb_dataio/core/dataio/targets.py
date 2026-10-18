@@ -18,6 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..errors import DataioError, InvalidParameter
+from . import columns as columns_module
 from .address import FILE, parse
 from .options import WriteOptions
 from .report import BatchError, BatchTarget, PlannedBatchTarget, PlannedTarget, Report
@@ -105,17 +106,31 @@ def _make_folder(uri: str, options: WriteOptions) -> None:
         Path(address.path).parent.mkdir(parents=True, exist_ok=True)
 
 
+def _part_options(frame: pd.DataFrame, options: WriteOptions) -> WriteOptions:
+    """The options of one part: the target columns checked once on the whole table, a dropped split column left out."""
+    whole = frame
+    columns = options.columns
+    if options.split_by is not None and options.drop_split_column:
+        whole = frame.drop(columns=[options.split_by])
+        columns = None if columns is None else [name for name in columns if name != options.split_by]
+    each = replace(
+        options, columns=columns, split_by=None, chunk_rows=None
+    )  # a part's target is a name, not a template
+    columns_module.validate(whole, each)
+    return each
+
+
 def write_many(frame: pd.DataFrame, target: str, options: WriteOptions) -> Report:
     from . import pipeline  # pipeline imports this module
 
     parts = list(_parts(frame, target, options))
+    each = _part_options(frame, options)
     uris = [uri.casefold() for uri, _ in parts]
     if len(set(uris)) < len(uris):
         raise InvalidParameter(f"Two values of the table get the same name in '{target}' once made safe.")
     written: list[BatchTarget] = []
     errors: list[BatchError] = []
     warnings: list[str] = []
-    each = replace(options, split_by=None, chunk_rows=None)  # a part's target is a name, not a template
     for uri, part in parts:
         try:
             _make_folder(uri, options)
