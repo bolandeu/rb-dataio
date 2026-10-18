@@ -5,6 +5,15 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.24 — 2026-10-18
+
+### E-006 — Write: choose, order and rename the target columns
+
+write(), convert() and dataio convert take columns (keep these, in this order) and rename (old -> new); every target (csv, xlsx, json, jsonl, parquet, stdout, Google Sheets, records in memory) gets the chosen columns under the new names; a wrong name or a clash is refused with exit 2. Released as a non-breaking 0.1.x; the tag goes to the semkit Architect.
+Time: 0.2h since the epic was approved
+
+- Target columns in write(): select, order, rename for every single target (DATAIO-026)
+
 ## v0.1.23 — 2026-10-17
 
 ### Outside epics
