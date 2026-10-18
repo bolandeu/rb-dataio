@@ -1,7 +1,7 @@
 ---
 id: DATAIO-026
 title: 'Target columns in write(): select, order, rename for every single target'
-status: queue
+status: in_review
 attempts: 0
 blocked: false
 blocked_reason: null
