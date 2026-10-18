@@ -2,7 +2,8 @@
 
 `SharedOptions` are the options both sides have; in `convert` they take `in_` / `out_`.
 `query`, `source_column` and `strict` are of the read side only, so `convert` takes them without a prefix;
-`start`, `value_input` (`ValueInput`), `split_by`, `chunk_rows`, `drop_split_column` and `keep_going`
+`start`, `value_input` (`ValueInput`), `split_by`, `chunk_rows`, `drop_split_column`, `keep_going`,
+`columns` and `rename` (the target columns, columns.py)
 are of the write side only. The batch parameters are read by the behaviour modules
 (sources.py, targets.py, batch.py); the pipelines only pass them on.
 """
@@ -100,6 +101,8 @@ class WriteOptions(SharedOptions):
     chunk_rows: int | None  # a number of rows: one numbered target per chunk, in a target that is a template
     drop_split_column: bool  # leave the `split_by` column out of the targets
     keep_going: bool  # a batch goes on after a failure and reports it in `errors`, else it stops at the first
+    columns: list[str] | None  # the source columns the target keeps, in this order; None: all
+    rename: dict[str, str] | None  # new names of the kept columns, old -> new; None: none
 
     def __post_init__(self) -> None:
         # frozen: the one place the values are set
