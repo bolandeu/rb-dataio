@@ -3,8 +3,10 @@
 `converts_each` answers whether a convert is such a run: a source mask (a local path with `*`, `?` or `[`) and a
 target with `{stem}`. `convert_each` runs it and returns the report with `targets` and, for `keep_going`, `errors`.
 Each source is read and written alone, so each replaced target has its own backup; without `keep_going` the first
-error stops the run and is raised. Two sources whose targets are one (`a/x.csv`, `b/x.csv` for `{stem}`) are
-INVALID_ARGUMENTS before anything is written. The warnings of the reads are in the report, each prefixed by its file. A dry run lists every target as a `PlannedBatchTarget` and writes nothing.
+error stops the run and is raised. A wrong target column name is INVALID_ARGUMENTS that names its source. Two sources
+whose targets are one (`a/x.csv`, `b/x.csv` for `{stem}`) are INVALID_ARGUMENTS before anything is written. The
+warnings of the reads are in the report, each prefixed by its file. A dry run lists every target as a
+`PlannedBatchTarget` and writes nothing.
 """
 
 from __future__ import annotations
@@ -13,8 +15,10 @@ import glob
 import re
 from pathlib import Path
 
+import pandas as pd
+
 from ..errors import DataioError, InvalidParameter, SourceNotFound
-from . import pipeline
+from . import columns, pipeline
 from .address import FILE, parse
 from .options import ReadOptions, WriteOptions
 from .report import BatchError, BatchTarget, PlannedBatchTarget, PlannedTarget, Report
@@ -64,12 +68,21 @@ def _require_distinct(pairs: list[tuple[str, str]]) -> None:
             raise InvalidParameter(f"Sources {' and '.join(names)} get the same target '{into}': nothing is written.")
 
 
+def _require_columns(frame: pd.DataFrame, source: str, write_options: WriteOptions) -> None:
+    """INVALID_ARGUMENTS naming the source when `columns` or `rename` do not fit its table."""
+    try:
+        columns.validate(frame, write_options)
+    except InvalidParameter as error:
+        raise InvalidParameter(f"{source}: {error.message}") from error
+
+
 def _convert_one(
     source: str, target: str, read_options: ReadOptions, write_options: WriteOptions
 ) -> tuple[BatchTarget, list[str]]:
     """The target one source was written to and the warnings of its read."""
     pipeline.refuse_over_source(source, target, write_options)
     frame, _, read_warnings = pipeline.read_frame(source, read_options)
+    _require_columns(frame, source, write_options)
     if not write_options.dry_run:
         Path(parse(target).path).parent.mkdir(parents=True, exist_ok=True)
     part = pipeline.write_frame(frame, target, write_options).target
