@@ -1,7 +1,7 @@
 """The read and the write pipelines.
 
     read:    a source that names many (sources.py)? -> resolve the source -> adapter read (of the part, in a container) -> query= -> value normalisation -> limit
-    write:   a target that is a template (targets.py)? -> resolve the target -> dry run -> safety checks -> backup -> atomic write -> report
+    write:   a target that is a template (targets.py)? -> target columns (columns.py) -> resolve the target -> dry run -> safety checks -> backup -> atomic write -> report
 
 A write to a container (containers.py) starts from a copy of the current file and changes
 only its part, so the backup and the atomic write are of the whole file. A base (a
@@ -55,7 +55,7 @@ from ..errors import (
     TargetExists,
     WriteFailed,
 )
-from . import backup, containers, objects, protection, query, registry, sources, stdio, targets, values
+from . import backup, columns, containers, objects, protection, query, registry, sources, stdio, targets, values
 from .address import FILE, STDIO, Address, parse
 from .options import Mode, ReadOptions, SharedOptions, ValueInput, WriteOptions
 from .protection import MISSING, TargetState
@@ -173,6 +173,7 @@ def write_frame(frame: pd.DataFrame, target: str, options: WriteOptions) -> Repo
     targets.require_placeholder(target, options)
     if targets.is_template(target, options):
         return targets.write_many(frame, target, options)
+    frame = columns.shaped(frame, options)
     address = _address(target, options)
     if address.scheme == STDIO:
         return _write_stdout(frame, target, options)
@@ -280,6 +281,7 @@ def _writer(
 
 def frame_data(frame: pd.DataFrame, options: WriteOptions) -> Any:
     """`frame` as the object or the text of `format=` (records when none): `write()` with no target."""
+    frame = columns.shaped(frame, options)
     try:
         return objects.rendered(frame, options.format or objects.RECORDS, options, IN_MEMORY)
     except ValueError as exc:
@@ -339,6 +341,8 @@ def _restore_table(entry: Backup, dry_run: bool) -> Report:
         chunk_rows=None,
         drop_split_column=False,
         keep_going=False,
+        columns=None,
+        rename=None,
     )
     return write_frame(backup.kept_table_rows(entry), entry.target, options).model_copy(update={"backup": entry})
 

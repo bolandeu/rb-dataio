@@ -77,6 +77,8 @@ def write(
     chunk_rows: int | None = None,
     drop_split_column: bool = False,
     keep_going: bool = False,
+    columns: list[str] | None = None,
+    rename: dict[str, str] | None = None,
 ) -> Any:
     """Write a DataFrame to a target and return the report (a `Report`): `write(df, "out.csv")`.
 
@@ -88,6 +90,8 @@ def write(
     asks first (a Google sheet) needs `overwrite=True`; `credentials` is a key file for such a target.
     A target that is a template splits the table: `split_by` is the column, `chunk_rows` the rows of a part,
     `drop_split_column` leaves the column out; with `keep_going` a failed target does not stop the rest.
+    `columns` are the source columns the target keeps, in this order; `rename` gives kept columns new names
+    (old -> new): the selection comes first. A name the table lacks, or two columns with one name, is refused.
     """
     options = WriteOptions.taken_from(locals())
     if target is None:
@@ -130,12 +134,14 @@ def convert(
     chunk_rows: int | None = None,
     drop_split_column: bool = False,
     keep_going: bool = False,
+    columns: list[str] | None = None,
+    rename: dict[str, str] | None = None,
 ) -> Report:
     """Read a source and write it to a target: `convert("a.csv", "b.csv")`; the report has both sides.
 
     The options both sides have take `in_` (the source) or `out_` (the target); `query` is of the source,
-    `start` and `value_input` of the target. A target that is the source itself, or a part with rows in a
-    container that asks first (a Google sheet), needs `overwrite=True`. Many sources merge and a template target
+    `start`, `value_input`, `columns` and `rename` of the target. A target that is the source itself, or a part
+    with rows in a container that asks first (a Google sheet), needs `overwrite=True`. Many sources merge and a template target
     splits (see `read` and `write`); many files to many targets, one to one, report `targets` and `errors`.
     """
     arguments = locals()
