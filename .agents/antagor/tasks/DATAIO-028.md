@@ -1,7 +1,7 @@
 ---
 id: DATAIO-028
 title: dataio convert --columns/--rename, describe and docs
-status: publish
+status: done
 attempts: 1
 blocked: false
 blocked_reason: null
