@@ -30,6 +30,21 @@ It tags the release, builds `CHANGELOG.md` from the ticket titles and runs
 `scripts/deploy.sh`: push `main` with tags, then report the release to the
 root tools agent. Nobody tags or pushes by hand.
 
+## Target columns
+
+Keep some columns, in an order, under new names; every target takes them
+(files, stdout, Google Sheets, records in memory). The selection comes first,
+then the rename. A wrong name or a clash is refused with exit 2
+(`INVALID_ARGUMENTS`); `split_by` and `append` work with them.
+
+```python
+write(df, "out.json", columns=["phrase", "similarity"], rename={"similarity": "score"})
+```
+
+```bash
+dataio convert semkit-out.csv clusters.json --columns phrase,similarity --rename similarity=score
+```
+
 ## Install
 
 **On this machine, from a local checkout:**

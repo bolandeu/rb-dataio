@@ -21,7 +21,7 @@ from ..core.dataio.objects import RECORDS
 from ..core.dataio.options import SOURCE_COLUMN, Mode, ValueInput
 from ..core.dataio.report import Report
 from ..core.errors import CliError, ConfirmationRequired, LibraryAction
-from ._parameters import option, pairs
+from ._parameters import names, option, pairs, renames
 
 
 def render_report(report: dict) -> None:
@@ -70,6 +70,8 @@ def convert(
     mode: Mode = option("mode", Mode.REPLACE),
     start: str | None = option("start", None),
     value_input: ValueInput = option("value_input", ValueInput.RAW),
+    columns: list[str] | None = option("columns", None, metavar="COLUMN"),
+    rename: list[str] | None = option("rename", None, metavar="OLD=NEW"),
     profile: str | None = option("profile", None),
     overwrite: bool = option("overwrite", False),
     backup: bool = option("backup", True),
@@ -97,6 +99,9 @@ def convert(
     targets; --keep-going goes on after a failure and lists the errors (exit 1).
     Sources that would be written to one target (a/x.csv, b/x.csv for {stem}) are refused first.
     The action of SCHEMA_MISMATCH and TARGET_EXISTS names the flag to change (--strict, --mode).
+    --columns lists the source columns the target keeps, in this order; --rename
+    gives kept columns new names as old=new (the selection comes first). Both take a
+    comma list and repeat; a wrong name or a clash is INVALID_ARGUMENTS (exit 2).
     --start and --value-input place and pass the values in a sheet of a service.
     SOURCE - is stdin, its format comes from the content; TARGET - is stdout:
     CSV, one value per line for one column, or --out-format; under --json the
@@ -135,6 +140,8 @@ def convert(
             mode=mode,
             start=start,
             value_input=value_input,
+            columns=names(columns),
+            rename=renames(rename),
             profile=profile,
             overwrite=overwrite,
             backup=backup,

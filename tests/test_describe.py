@@ -186,3 +186,11 @@ def test_parameter_shapes() -> None:
     assert internal_cmd["hidden"] is True
     [path] = internal_cmd["arguments"]
     assert path["required"] is False and path["arity"] == {"minimum": 0, "maximum": 1}
+
+
+def test_skill_describes_the_target_columns() -> None:
+    """The bundled SKILL.md: --columns and --rename, selection before rename, a refusal is INVALID_ARGUMENTS (exit 2)."""
+    skill = (Path(opencli.__file__).parents[1] / "data" / "SKILL.md").read_text()
+    [rule] = [line for line in skill.split("\n- ") if line.startswith("**Target columns")]
+    assert {"--columns", "--rename", "INVALID_ARGUMENTS", "2"} <= set(re.findall(r"[\w-]+", rule))
+    assert "selection comes before rename" in " ".join(rule.split())
