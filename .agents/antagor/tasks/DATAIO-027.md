@@ -16,6 +16,9 @@ owns_paths:
 - src/rb_dataio/commands/
 - src/rb_dataio/core/opencli.py
 - tests/snapshots/
+- tests/test_describe.py
+- tests/test_contracts.py
+- tests/contracts/
 test_paths:
 - tests/test_cli_target_columns.py
 docs: none
