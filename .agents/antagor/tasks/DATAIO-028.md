@@ -2,7 +2,7 @@
 id: DATAIO-028
 title: dataio convert --columns/--rename, describe and docs
 status: queue
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -92,3 +92,9 @@ Follow the option definitions in the shared parameters module of commands and th
 ## Out of scope
 
 - Library logic of selection, rename and validation (DATAIO-026, DATAIO-027); a separate dataio write command; columns on read; CONTEXT.md (the term is already there).
+
+## Feedback
+
+### Attempt 1: file docstring
+
+- update the docstring of src/rb_dataio/commands/_parameters.py: +names +renames
