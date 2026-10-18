@@ -90,3 +90,11 @@ Follow the WriteOptions validation pattern in options.py and raise InvalidArgume
 ## Out of scope
 
 - Templates (split_by, chunk_rows), batch convert and Google Sheets (the block beside); the CLI flags, describe and docs (the CLI block); columns or rename on read; pattern or position selection; computed columns.
+
+## Feedback
+
+### Answer to finding #1
+
+> DATAIO-026: convert() now takes columns and rename (acceptance), so tests/test_parity.py::test_every_keyword_is_a_flag_with_the_same_name[convert] fails until the CLI block adds --columns/--rename flags (out of scope here). The gate release.py --check is red only on this test; 663 others pass.
+
+DATAIO-028 adds --columns/--rename and fixes test_parity; DATAIO-027 now depends on DATAIO-028 so its gate is not red on it
