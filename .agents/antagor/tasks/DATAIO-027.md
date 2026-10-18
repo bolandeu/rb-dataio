@@ -25,6 +25,7 @@ decision: false
 visual: null
 depends_on:
 - DATAIO-026
+- DATAIO-028
 budget_usd: null
 epic: E-006
 spec_refs: []
