@@ -38,6 +38,8 @@ def test_antagor_project_config() -> None:
         "changelog": "CHANGELOG.md",
         "deploy_command": "sh scripts/deploy.sh",
         "regenerate": {"uv.lock": "uv lock"},
+        "gate": "remote",
+        "gate_status_url": "https://homeserver.tailee01ab.ts.net:3000/api/v1/repos/bolandeu/dataio/commits/{commit}/status",
     }
     # The Human sets the mode (`antagor mode set`); dataio runs in `fast`.
     assert config.get("mode") in (None, "strict", "default", "free", "fast")

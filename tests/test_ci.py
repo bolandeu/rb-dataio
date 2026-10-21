@@ -22,3 +22,10 @@ def test_workflow_runs_the_gate_on_the_docker_runner() -> None:
     checkout = next(step for step in job["steps"] if str(step.get("uses", "")).startswith("actions/checkout@"))
     assert checkout["with"]["fetch-depth"] == 0
     assert job["steps"][-1]["run"].strip() == GATE
+
+
+def test_workflow_runs_on_a_push_to_main_and_to_a_publish_candidate() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text())
+    # PyYAML (YAML 1.1) reads the key `on` as the boolean True.
+    triggers = workflow.get("on", workflow.get(True))
+    assert triggers["push"]["branches"] == ["main", "antagor/publish-*"]
