@@ -3,8 +3,8 @@ id: DATAIO-037
 title: 'Docs of join: the skill and the README show a VLOOKUP-like join by two keys'
 status: publish
 attempts: 0
-blocked: false
-blocked_reason: null
+blocked: true
+blocked_reason: idea_wait
 phase: null
 tests_hash: null
 publish_stage: null
