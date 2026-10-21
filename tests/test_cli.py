@@ -177,7 +177,11 @@ def test_doctor_json(tmp_path: Path) -> None:
     assert code == 0
     names = [check["name"] for check in payload["checks"]]
     assert names[:3] == ["python", "cli_version", "project"]
-    assert payload["healthy"] is False  # no project here
+    assert names.index("credential") == names.index("credential_store") + 1
+    project = next(check for check in payload["checks"] if check["name"] == "project")
+    assert project["ok"] is True  # dataio works without a project: reported, not failed
+    assert project["detail"]
+    assert "default" not in json.dumps(payload["checks"])
 
 
 def test_doctor_reports_config_parse_error(tmp_path: Path) -> None:

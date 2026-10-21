@@ -1,4 +1,4 @@
-"""The `auth status [--check] --json` report (the Standard, Health).
+"""The `auth status [--check] --json` report (the Standard, Health), and `doctor_check`, the same rule for `doctor`.
 
 Its shape is a cross-tool contract — `tools-watch` reads it from every CLI
 without knowing any provider — so it is pinned by `tests/test_auth.py`, and
@@ -127,6 +127,20 @@ def is_problem(entry: dict) -> bool:
     if entry["status"] in ALWAYS_PROBLEMS:
         return True
     return entry["required"] and entry["status"] not in HEALTHY
+
+
+def doctor_check(tool: str, version: str) -> dict:
+    """The `credential` check of `doctor`: the `auth status` rule, without a network call.
+
+    Names each provider with its status and source, never a value.
+    """
+    entries = report(tool, version, providers.all_providers(), check=False)["credentials"]
+    detail = "; ".join(f"{entry['provider']}: {entry['status']} ({entry['source']})" for entry in entries)
+    return {
+        "name": "credential",
+        "ok": not any(is_problem(entry) for entry in entries),
+        "detail": detail or "no providers with credentials",
+    }
 
 
 def _entries(provider_cls: type[Provider], check: bool, only: str | None) -> list[dict]:

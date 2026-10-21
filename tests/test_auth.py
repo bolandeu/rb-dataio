@@ -8,6 +8,8 @@ from typing import ClassVar
 
 import pytest
 
+from keyring.backends import fail
+
 from rb_dataio import providers
 from rb_dataio.core.errors import AuthRequired, ProviderError
 from rb_dataio.credentials import health
@@ -377,3 +379,58 @@ def test_doctor_reports_credential_checks(tmp_path: Path, fake_keyring) -> None:
     names = [check["name"] for check in payload["checks"]]
     assert "credential_store" in names
     assert "credential" in names
+
+
+# --- doctor: the credential checks follow the auth status rule ---------------------------
+
+
+def doctor_checks(tmp_path: Path, **env: str) -> tuple[bool, dict[str, dict]]:
+    code, payload = invoke_json("--project", str(tmp_path), "doctor", env=env)
+    assert code == 0
+    return payload["healthy"], {check["name"]: check for check in payload["checks"]}
+
+
+def test_doctor_is_healthy_with_env_credentials_and_no_keychain_or_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(credentials.keyring, "get_keyring", lambda: fail.Keyring())
+    env = {"DATAIO_GOOGLE_CLIENT_EMAIL": "a@b.c", "DATAIO_GOOGLE_PRIVATE_KEY": GOOD}
+
+    healthy, checks = doctor_checks(tmp_path, **env)
+
+    assert healthy is True
+    for name in ("credential_store", "credential", "project"):
+        assert checks[name]["ok"] is True
+        assert checks[name]["detail"]
+    assert "google" in checks["credential"]["detail"]
+    assert "env" in checks["credential"]["detail"]
+    assert GOOD not in json.dumps(checks)
+    assert "default" not in json.dumps(checks)
+
+
+@pytest.mark.parametrize("status", ["invalid", "expired"])
+def test_doctor_fails_the_credential_check_of_a_bad_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, demo_providers, status: str
+) -> None:
+    real = health.report
+    monkeypatch.setattr(health, "report", lambda *a, **k: _with_status(real(*a, **k), status))
+
+    healthy, checks = doctor_checks(tmp_path, **env(demo=GOOD))
+
+    assert healthy is False
+    assert checks["credential"]["ok"] is False
+    assert f"demo: {status}" in checks["credential"]["detail"]
+
+
+def _with_status(payload: dict, status: str) -> dict:
+    for entry in payload["credentials"]:
+        if entry["provider"] == "demo":
+            entry["status"] = status
+    return payload
+
+
+def test_doctor_fails_when_a_required_provider_is_missing(tmp_path: Path, demo_providers) -> None:
+    healthy, checks = doctor_checks(tmp_path)
+
+    assert healthy is False
+    assert "demo: missing" in checks["credential"]["detail"]

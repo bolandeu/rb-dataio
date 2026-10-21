@@ -1,3 +1,9 @@
+"""The `doctor` command: diagnostic checks and the `healthy` verdict.
+
+A missing project and a missing OS keychain are reported, not failed: dataio
+works without them. The credential check follows the `auth status` rule.
+"""
+
 from __future__ import annotations
 
 import importlib
@@ -14,31 +20,23 @@ from ..core.version import DEV_VERSION, cli_name, installed_version, module_exis
 _PACKAGE_NAME = __name__.split(".")[0]
 
 
-def _auth_checks(provider: str) -> list[dict]:
+def _auth_checks() -> list[dict]:
     # credentials/ is dropped at generation time when include_auth=false;
     # detecting it at runtime keeps this file free of template logic.
     if not module_exists(f"{_PACKAGE_NAME}.credentials.manager"):
         return []
     credentials = importlib.import_module(f"{_PACKAGE_NAME}.credentials.manager")
+    health = importlib.import_module(f"{_PACKAGE_NAME}.credentials.health")
 
     backend = credentials.store_backend()
-    checks: list[dict] = [
+    return [
         {
             "name": "credential_store",
-            "ok": backend is not None,
-            "detail": backend or "no usable OS keychain backend; credentials must come from environment variables",
-        }
+            "ok": True,
+            "detail": backend or "no OS keychain; credentials come from environment variables",
+        },
+        health.doctor_check(cli_name(), installed_version() or DEV_VERSION),
     ]
-    available = credentials.get_credential(provider) is not None
-    checks.append(
-        {
-            "name": "credential",
-            "ok": available,
-            "detail": f"provider '{provider}'"
-            + ("" if available else f" — run '{cli_name()} auth login --provider {provider}'"),
-        }
-    )
-    return checks
 
 
 @output.guard
@@ -61,7 +59,7 @@ def doctor(
     start = Path(ctx.obj.get("project") or Path.cwd())
     output.vecho(ctx, f"Searching for a project root starting at: {start}")
     root = services.find_project_root(start)
-    checks.append({"name": "project", "ok": root is not None, "detail": str(root) if root else None})
+    checks.append({"name": "project", "ok": True, "detail": str(root) if root else "no project; dataio works without one"})
 
     config: ProjectConfig | None = None
     if root is not None:
@@ -77,7 +75,7 @@ def doctor(
         except CliTooOld as exc:
             checks.append({"name": "cli_compat", "ok": False, "detail": exc.message})
 
-    checks.extend(_auth_checks(config.provider.name if config else "default"))
+    checks.extend(_auth_checks())
     checks.extend(deps.doctor_checks())  # [[tool.rb.external]] in pyproject.toml
     if module_exists(f"{_PACKAGE_NAME}.core.db"):  # include_db=false drops it at generation time
         checks.extend(importlib.import_module(f"{_PACKAGE_NAME}.core.db").doctor_checks())
