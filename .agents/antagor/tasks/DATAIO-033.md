@@ -2,7 +2,7 @@
 id: DATAIO-033
 title: 'Gate tag v1.25.8: CI on homeserver runs the gate as the Mac does'
 status: queue
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -75,3 +75,14 @@ new `[publish]` table). That is not this task's: the checks of this task do not 
 - requires-python and the Python version of CI (the Human: dataio stays on >=3.11)
 - .agents/antagor/antagor.toml and AGENTS.md: the Architect changed them on main
 - src/ and every other test
+
+## Feedback
+
+### Attempt 1: checks failed
+
+- `sh -c "! git grep -n 'v1\.25\.0' -- .gitea README.md tests AGENTS.md .agents/antagor/antagor.toml"` (exit 1)
+
+```
+.agents/antagor/antagor.toml:6:checks = ["python3 scripts/check_command_docstrings.py", 'uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.0#subdirectory=gate" rb-release check']
+AGENTS.md:10:- Гейт перед коммитом: `uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.0#subdirectory=gate" rb-release check`.
+```
