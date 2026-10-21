@@ -1,7 +1,7 @@
 ---
 id: DATAIO-033
 title: 'Gate tag v1.25.8: CI on homeserver runs the gate as the Mac does'
-status: in_review
+status: publish
 attempts: 1
 blocked: false
 blocked_reason: null
