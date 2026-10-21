@@ -12,7 +12,7 @@ programs and template version.
 
 The output is a cross-tool contract like `auth status`: tests/test_describe.py
 validates it against the OpenCLI schema and snapshots it. Changing or removing
-anything in it is a breaking change (conventions.md).
+anything in it is a breaking change.
 """
 
 from __future__ import annotations
