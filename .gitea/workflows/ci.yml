@@ -5,7 +5,7 @@ name: ci
 # `docker`, on the lowest supported Python, repeating the gate on a clean machine.
 on:
   push:
-    branches: [main]
+    branches: [main, "antagor/publish-*"]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
