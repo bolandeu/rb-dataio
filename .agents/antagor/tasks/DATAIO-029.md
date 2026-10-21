@@ -2,10 +2,10 @@
 id: DATAIO-029
 title: 'CLI Standard v1.25.0: a usage error under --json prints the INVALID_ARGUMENTS
   envelope; the gate is rb-release check'
-status: queue
+status: in_progress
 attempts: 1
-blocked: false
-blocked_reason: null
+blocked: true
+blocked_reason: environment_broken
 phase: null
 tests_hash: null
 publish_stage: null
