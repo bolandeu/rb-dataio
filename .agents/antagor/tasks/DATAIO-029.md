@@ -4,8 +4,8 @@ title: 'CLI Standard v1.25.0: a usage error under --json prints the INVALID_ARGU
   envelope; the gate is rb-release check'
 status: in_progress
 attempts: 1
-blocked: true
-blocked_reason: environment_broken
+blocked: false
+blocked_reason: null
 phase: null
 tests_hash: null
 publish_stage: null
@@ -145,3 +145,7 @@ cli-generator template v1.25.0: template/src/{{ package_name }}/output/__init__.
 ### Attempt 1: file docstring
 
 - add a docstring to src/rb_dataio/output/__init__.py: what it holds and why
+
+### Blocked: environment_broken (checks ['uv run pytest tests/test_cli.py tests/test_ci.py tests/test_scripts.py'])
+
+The task check ran a subset of tests under the coverage floor (fail_under = 90): it was red on main and on the branch for that reason only. The Architect changed it to --no-cov; the work stays as it is.
