@@ -22,7 +22,8 @@ _PACKAGE_NAME = __name__.split(".")[0]
 # its docstring. No `no_args_is_help` (that exits 2) — main_options() below
 # prints this and exits 0. Shell completion stays enabled.
 app = typer.Typer(
-    help=f"{cli_name()} {installed_version() or DEV_VERSION} — {package_summary() or 'project-aware automation CLI'}"
+    cls=output.RootGroup,  # a usage error under --json is the error envelope
+    help=f"{cli_name()} {installed_version() or DEV_VERSION} — {package_summary() or 'project-aware automation CLI'}",
 )
 
 app.add_typer(config_cmd.app, name="config")

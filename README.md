@@ -7,15 +7,15 @@
 ```bash
 uv sync
 uv run dataio --help
-uv run scripts/release.py --check   # the full gate (run before every commit; CI runs it too)
+uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.0#subdirectory=gate" rb-release check   # the full gate (run before every commit; CI runs it too)
 uv run pytest --snapshot-update  # after changing a command's help; review tests/snapshots/help/
 ```
 
 `pytest` fails below the coverage floor in `pyproject.toml`; `ruff` includes
 the security (`S`) rules; the gate also scans `uv.lock` for known
 vulnerabilities when `osv-scanner` is installed (`brew install osv-scanner`),
-and says it skipped the scan otherwise. CI is optional and only repeats
-`release.py --check`.
+and says it skipped the scan otherwise. CI repeats
+the same gate, `uvx ... rb-release check` (the command above).
 
 ## Release
 

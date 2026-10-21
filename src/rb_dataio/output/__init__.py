@@ -1,3 +1,13 @@
+"""How every command talks to the user: options, JSON envelopes, errors and the usage-error root group.
+
+Holds the shared options (`JsonOption`, `QuietOption`, `DryRunOption`, `ConfirmOption`, `VerboseOption`,
+`NonInteractiveOption`), the emitters (`emit_success`, `emit_report`, `emit_error`), `guard` and `is_guarded`
+(they turn an error into the standard output and exit code), `RootGroup` (a usage error under --json is the
+`INVALID_ARGUMENTS` envelope, because Click raises it before any command runs), and the helpers
+`configure_logging`, `group`, `help_if_no_command`, `is_dry_run`, `vecho` and `require_confirmation`.
+One place, so stdout stays pure data under --json and every command fails the same way.
+"""
+
 from __future__ import annotations
 
 import functools
@@ -5,9 +15,11 @@ import logging
 import sys
 import weakref
 from collections.abc import Callable
+from typing import NoReturn, cast
 
 import typer
 from rich.markup import escape
+from typer.core import TyperGroup
 
 from ..core.errors import Aborted, CliError, InvalidArguments
 from ..core.version import cli_name
@@ -20,6 +32,7 @@ __all__ = [
     "JsonOption",
     "NonInteractiveOption",
     "QuietOption",
+    "RootGroup",
     "VerboseOption",
     "configure_logging",
     "emit_error",
@@ -36,6 +49,9 @@ __all__ = [
 ]
 
 _CLI_NAME = cli_name()
+# Click's UsageError (unknown option, missing argument, bad value): recent Typer ships its own copy of Click,
+# so it is taken from Typer's BadParameter, never imported from the `click` package.
+_UsageError = cast("type[Exception]", typer.BadParameter.__bases__[0])
 _GUARDED: weakref.WeakSet[Callable] = weakref.WeakSet()
 
 # Reusable local options: attach to any command so `<cli> <command> --json`
@@ -91,6 +107,40 @@ def group(help_text: str) -> typer.Typer:
         help_if_no_command(ctx)
 
     return app
+
+
+class RootGroup(TyperGroup):
+    """The CLI's root group: a usage error (unknown option, missing argument) under --json is the error envelope.
+
+    Click reports a usage error while it parses the arguments, before any
+    command runs, so `guard` never sees it. The root's own arguments fail in
+    `make_context`, a subcommand's inside `invoke`; both end here.
+    """
+
+    def make_context(self, info_name, args, parent=None, **extra):
+        argv = list(args)  # Click consumes `args` while it parses
+        try:
+            ctx = super().make_context(info_name, args, parent, **extra)
+        except _UsageError as exc:
+            _usage_error(exc, argv)
+        ctx.meta["argv"] = argv
+        return ctx
+
+    def invoke(self, ctx):
+        try:
+            return super().invoke(ctx)
+        except _UsageError as exc:
+            _usage_error(exc, ctx.meta["argv"])
+
+
+def _usage_error(exc: Exception, argv: list[str]) -> NoReturn:
+    """Under --json: INVALID_ARGUMENTS on stdout, exit 2. Otherwise Click's own usage message."""
+    options = argv[: argv.index("--")] if "--" in argv else argv
+    if "--json" not in options:
+        raise exc
+    error = InvalidArguments(str(exc))
+    json_output.emit({"ok": False, "error": error.to_dict()})
+    raise typer.Exit(code=error.exit_code)
 
 
 def emit_success(ctx: typer.Context, payload: dict, render_human: Callable[[dict], None]) -> None:

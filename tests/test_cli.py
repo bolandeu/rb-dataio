@@ -318,3 +318,28 @@ def test_skill_install_writes_to_project_dir(tmp_path: Path, monkeypatch: pytest
     assert installed.is_file()
     assert "name: dataio" in installed.read_text()
     assert payload["path"] == str(installed)
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("--json", "init", "--rb-release-unknown-option"),
+        ("doctor", "--json", "--no-such-option"),
+        ("--json", "no-such-command"),
+        ("--json", "auth", "status", "--provider"),
+    ],
+)
+def test_usage_error_under_json_is_the_error_envelope(args: tuple[str, ...]) -> None:
+    """An unknown option or command or a missing value (Click's usage errors) under --json: the envelope on stdout, exit 2."""
+    result = invoke(*args)
+    assert result.exit_code == 2
+    payload = json.loads(result.stdout)
+    assert (payload["ok"], payload["error"]["code"]) == (False, "INVALID_ARGUMENTS")
+    assert payload["error"]["message"]
+
+
+def test_usage_error_without_json_stays_on_stderr() -> None:
+    result = invoke("doctor", "--no-such-option")
+    assert result.exit_code == 2
+    assert result.stdout == ""
+    assert "--no-such-option" in result.stderr

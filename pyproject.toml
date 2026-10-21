@@ -81,12 +81,14 @@ dev = [
 # dist = "rb-serp"              # for one of our CLIs: its distribution (default rb-<name>)
 # url = "https://github.com/bolandeu/serp"  # its repo: DEPENDENCY_TOO_OLD then prints a pinned install
 
+[tool.rb.install]
+homeserver = ["rbtools"]
+mac = true
+
 [tool.cli-generator]
 # Where scripts/check_command_docstrings.py (called by the project's checks)
 # looks for commands: a glob or a list of globs, relative to the repo root.
 commands = ["src/rb_dataio/commands/*.py"]
-# scripts/release.py: extras to install before ruff/ty/pytest in the gate.
-# gate_extras = ["browser"]
 
 [tool.pytest.ini_options]
 # Only tests/: mutmut leaves a copy of the tree in mutants/.
