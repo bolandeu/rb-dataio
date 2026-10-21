@@ -1,7 +1,7 @@
 ---
 id: DATAIO-036
 title: 'dataio join: the CLI command over join(), with the flags of convert'
-status: queue
+status: in_review
 attempts: 0
 blocked: false
 blocked_reason: null
@@ -21,10 +21,12 @@ owns_paths:
 - tests/contracts/
 - tests/data/cli_join/
 - tests/test_help.py
+- src/rb_dataio/commands/_parameters.py
 test_paths:
 - tests/test_cli_join.py
 - tests/test_parity.py
 - tests/test_help.py
+- tests/snapshots/describe.json
 docs: none
 tools: []
 worker_args: null
