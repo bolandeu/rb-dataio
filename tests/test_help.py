@@ -91,6 +91,10 @@ def test_help_snapshot(path: tuple[str, ...], snapshot) -> None:
     assert _render_help(path) == snapshot(extension_class=HelpSnapshot, name=_slug(path))
 
 
+def test_help_is_the_same_in_ci(same_in_ci: Callable[[str], None]) -> None:
+    same_in_ci("test_help_snapshot")
+
+
 def test_no_orphan_help_snapshots() -> None:
     stored = {p.stem for p in SNAPSHOT_DIR.glob("*.txt")}
     expected = {_slug(path) for path in HELP_PAGES}
