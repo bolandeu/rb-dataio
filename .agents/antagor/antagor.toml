@@ -3,7 +3,7 @@ mode = "fast"
 prefix = "DATAIO"
 name = "dataio"
 worker = "claude-code"
-checks = ["python3 scripts/check_command_docstrings.py", "uv run scripts/release.py --check"]
+checks = ["python3 scripts/check_command_docstrings.py", 'uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.0#subdirectory=gate" rb-release check']
 parallel = 3
 timeout_minutes = 90
 checks_timeout_minutes = 25
