@@ -5,6 +5,12 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.31 — 2026-10-21
+
+### Outside epics
+
+- README states the package's own release facts only, not Antagor's process (DATAIO-039)
+
 ## v0.1.30 — 2026-10-21
 
 ### E-007 — Join: a VLOOKUP-like join of a main source with lookup sources by named key columns
