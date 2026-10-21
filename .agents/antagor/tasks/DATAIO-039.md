@@ -1,7 +1,7 @@
 ---
 id: DATAIO-039
 title: README states the package's own release facts only, not Antagor's process
-status: queue
+status: in_review
 attempts: 0
 blocked: false
 blocked_reason: null
