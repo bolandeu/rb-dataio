@@ -3,11 +3,11 @@ id: DATAIO-033
 title: 'Gate tag v1.25.8: CI on homeserver runs the gate as the Mac does'
 status: publish
 attempts: 1
-blocked: false
-blocked_reason: null
+blocked: true
+blocked_reason: environment_broken
 phase: null
 tests_hash: null
-publish_stage: null
+publish_stage: gate
 created_by: architect
 approved_by: human
 worker: claude-code
