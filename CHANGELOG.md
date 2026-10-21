@@ -5,6 +5,12 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.28 — 2026-10-21
+
+### Outside epics
+
+- Docs and comments name the Standard's sections, not cli-generator's internal files (DATAIO-030)
+
 ## v0.1.27 — 2026-10-21
 
 ### Outside epics
