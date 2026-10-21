@@ -2,7 +2,7 @@
 id: DATAIO-032
 title: 'Publish tags a version only on a green CI: the gate of a release runs in Gitea
   Actions'
-status: publish
+status: done
 attempts: 0
 blocked: false
 blocked_reason: null

@@ -5,6 +5,15 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.29 — 2026-10-21
+
+### Outside epics
+
+- Tests pass in Gitea Actions: help and stderr text stay plain under GITHUB_ACTIONS (DATAIO-031)
+- Publish tags a version only on a green CI: the gate of a release runs in Gitea Actions (DATAIO-032)
+- Gate tag v1.25.8: CI on homeserver runs the gate as the Mac does (DATAIO-033)
+- doctor is healthy on a server with env credentials: no false failure for the keychain, the provider or a missing project (DATAIO-034)
+
 ## v0.1.28 — 2026-10-21
 
 ### Outside epics

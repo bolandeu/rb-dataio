@@ -2,7 +2,7 @@
 id: DATAIO-034
 title: 'doctor is healthy on a server with env credentials: no false failure for the
   keychain, the provider or a missing project'
-status: publish
+status: done
 attempts: 0
 blocked: false
 blocked_reason: null
