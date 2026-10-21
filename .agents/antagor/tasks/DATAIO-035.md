@@ -1,7 +1,7 @@
 ---
 id: DATAIO-035
 title: 'join() in the library: a main source and lookups joined by named key columns'
-status: ideas
+status: publish
 attempts: 0
 blocked: false
 blocked_reason: null
@@ -9,7 +9,7 @@ phase: null
 tests_hash: null
 publish_stage: null
 created_by: architect
-approved_by: null
+approved_by: human
 worker: claude-code
 type: feature
 owns_paths:
@@ -18,6 +18,7 @@ owns_paths:
 - src/rb_dataio/core/errors.py
 - tests/test_join.py
 - tests/data/join/
+- src/rb_dataio/data/settings.toml
 test_paths:
 - tests/test_join.py
 docs: none
