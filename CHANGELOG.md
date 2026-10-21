@@ -5,6 +5,18 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.30 — 2026-10-21
+
+### E-007 — Join: a VLOOKUP-like join of a main source with lookup sources by named key columns
+
+dataio join main.csv out.xlsx --lookup prices.xlsx#Prices --on sku (and join() in the library) writes the main table with the lookup's columns matched by the named keys (left, right, inner or full; one key or several) to any target, with a report of how many rows found a match.
+Time: 1.2h since the epic was approved
+
+- join() in the library: a main source and lookups joined by named key columns (DATAIO-035)
+- dataio join: the CLI command over join(), with the flags of convert (DATAIO-036)
+- Docs of join: the skill and the README show a VLOOKUP-like join by two keys (DATAIO-037)
+- join: the repeated-keys warning names only keys that are repeated in the lookup (DATAIO-038)
+
 ## v0.1.29 — 2026-10-21
 
 ### Outside epics

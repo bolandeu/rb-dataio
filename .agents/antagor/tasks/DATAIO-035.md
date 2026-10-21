@@ -1,7 +1,7 @@
 ---
 id: DATAIO-035
 title: 'join() in the library: a main source and lookups joined by named key columns'
-status: publish
+status: done
 attempts: 0
 blocked: false
 blocked_reason: null
