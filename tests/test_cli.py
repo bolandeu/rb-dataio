@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import tomllib
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -343,3 +344,7 @@ def test_usage_error_without_json_stays_on_stderr() -> None:
     assert result.exit_code == 2
     assert result.stdout == ""
     assert "--no-such-option" in result.stderr
+
+
+def test_usage_error_is_the_same_in_ci(same_in_ci: Callable[[str], None]) -> None:
+    same_in_ci("test_usage_error_without_json_stays_on_stderr")

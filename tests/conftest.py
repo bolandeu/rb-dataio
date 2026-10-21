@@ -2,14 +2,51 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import platformdirs
 import pytest
+import typer.rich_utils
 
 from rb_dataio.core.dataio.options import ReadOptions
 from rb_dataio.credentials import manager as credentials
 from rb_dataio.formats import Loaded, TextAdapter
+from rb_dataio.output import human
+
+# Typer reads these once, at import, and then forces terminal output — what a CI runner sets.
+CI_ENV = {"GITHUB_ACTIONS": "true", "FORCE_COLOR": "1", "PY_COLORS": "1"}
+
+
+@pytest.fixture(autouse=True)
+def _plain_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Typer and our Rich consoles force terminal output (colour, ANSI codes) when CI_ENV is set; the tests compare plain text.
+
+    Both read the variables once, at import, so the value they stored is reset here.
+    """
+    monkeypatch.setattr(typer.rich_utils, "FORCE_TERMINAL", False)
+    for console in (human.console, human.err_console):
+        monkeypatch.setattr(console, "_force_terminal", False)
+        monkeypatch.setattr(console, "_color_system", None)
+
+
+@pytest.fixture
+def same_in_ci(request: pytest.FixtureRequest) -> Callable[[str], None]:
+    """Rerun this file's tests matching `-k` under CI_ENV in a fresh interpreter: the only way to set a value read at import."""
+    if request.config.getoption("--snapshot-update", default=False):
+        pytest.skip("the snapshots are being written; there is nothing to compare yet")
+
+    def run(selection: str) -> None:
+        options = ["-k", selection, "-p", "no:cacheprovider", "--no-cov", "-q"]
+        command = [sys.executable, "-m", "pytest", str(request.path), *options]
+        env = {**os.environ, **CI_ENV}
+        result = subprocess.run(command, env=env, capture_output=True, text=True, check=False)  # noqa: S603
+        assert result.returncode == 0, result.stdout[-3000:]
+
+    return run
 
 
 @pytest.fixture

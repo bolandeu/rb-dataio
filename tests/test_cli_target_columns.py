@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -86,6 +87,10 @@ def test_describe_and_help_show_both_options(args: list[str]) -> None:
 
     assert "--columns" in text
     assert "--rename" in text
+
+
+def test_describe_and_help_are_the_same_in_ci(same_in_ci: Callable[[str], None]) -> None:
+    same_in_ci("test_describe_and_help_show_both_options")
 
 
 def test_docs_describe_the_target_columns() -> None:
