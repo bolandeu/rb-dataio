@@ -194,3 +194,18 @@ def test_skill_describes_the_target_columns() -> None:
     [rule] = [line for line in skill.split("\n- ") if line.startswith("**Target columns")]
     assert {"--columns", "--rename", "INVALID_ARGUMENTS", "2"} <= set(re.findall(r"[\w-]+", rule))
     assert "selection comes before rename" in " ".join(rule.split())
+
+
+def test_skill_describes_the_join() -> None:
+    """The bundled SKILL.md: a join section with the two-key example and its flags."""
+    skill = (Path(opencli.__file__).parents[1] / "data" / "SKILL.md").read_text()
+    [rule] = [line for line in skill.split("\n- ") if line.startswith("**Join")]
+    assert "dataio join" in rule and "--lookup" in rule and "--on phrase --on region" in rule
+    assert {"--on", "--lookup", "--how", "VLOOKUP"} <= set(re.findall(r"[\w-]+", rule))
+
+
+def test_readme_describes_the_join() -> None:
+    """README.md: dataio join with two keys and the library form."""
+    readme = (Path(__file__).parents[1] / "README.md").read_text()
+    assert "dataio join" in readme and "--on phrase --on region" in readme
+    assert "join(" in readme

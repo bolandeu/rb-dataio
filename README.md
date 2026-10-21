@@ -45,6 +45,26 @@ write(df, "out.json", columns=["phrase", "similarity"], rename={"similarity": "s
 dataio convert semkit-out.csv clusters.json --columns phrase,similarity --rename similarity=score
 ```
 
+## Join
+
+Put the columns of lookups next to the rows of the main table by named key
+columns, as VLOOKUP does. Keys are always named (`--on`, or `main=lookup` when
+the names differ), never taken from same-named columns. `--how` is `left`
+(default), `inner`, `right` (one lookup only) or `full`. Keys compare as text
+with outer spaces trimmed, case and ё kept; an empty key matches nothing. A key
+repeated in a lookup adds rows and warns. A same-named lookup column gets the
+suffix `_<lookup name>`. The report counts matched and unmatched rows per
+lookup. A join whose target is one of its sources is destructive like
+`convert`'s: it is signed off before `--confirm`.
+
+```python
+join("main.csv", "out.xlsx", lookups=["prices.xlsx#Prices"], on=["phrase", "region"])
+```
+
+```bash
+dataio join main.csv out.xlsx --lookup prices.xlsx#Prices --on phrase --on region
+```
+
 ## Install
 
 **On this machine, from a local checkout:**
