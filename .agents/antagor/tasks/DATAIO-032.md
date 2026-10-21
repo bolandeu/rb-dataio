@@ -15,7 +15,6 @@ worker: claude-code
 type: chore
 owns_paths:
 - .gitea/workflows/ci.yml
-- .agents/antagor/antagor.toml
 - tests/test_ci.py
 - tests/test_scripts.py
 test_paths:
@@ -49,10 +48,9 @@ green CI. Until the Human runs `remote-gate-accept`, the local gate runs as befo
 
 1. `.gitea/workflows/ci.yml`: add `antagor/publish-*` to `on.push.branches` (next to `main`). Gitea Actions sets the
    commit status by itself; nothing else changes in the workflow.
-2. `.agents/antagor/antagor.toml`, table `[publish]`: add
-   `gate = "remote"` and
-   `gate_status_url = "https://homeserver.tailee01ab.ts.net:3000/api/v1/repos/bolandeu/dataio/commits/{commit}/status"`.
-   Leave `gate_remote` and `gate_branch` at their defaults (not written). No `gate_command`.
+2. `.agents/antagor/antagor.toml`: the Architect already added to `[publish]` `gate = "remote"` and
+   `gate_status_url = "https://homeserver.tailee01ab.ts.net:3000/api/v1/repos/bolandeu/dataio/commits/{commit}/status"`
+   (Antagor's own file: only the Architect changes it on main). Do not edit it.
 3. Tests first:
    - `tests/test_ci.py`: the workflow runs on a push to `main` and to `antagor/publish-*`. PyYAML (YAML 1.1) reads the
      key `on` as the boolean `True`: read `workflow[True]` (or `workflow.get("on", workflow.get(True))`).
@@ -65,10 +63,10 @@ The status URL is public and answers now:
 
 ## Read first
 
-- `tests/test_ci.py`
-- `tests/test_scripts.py`
+- `.agents/antagor/antagor.toml` — the `[publish]` table that `test_antagor_project_config` checks
 
 ## Out of scope
 
 - the gate tag v1.25.0 in every file: a new tag comes with cli-generator CG-057
 - src/, README.md, AGENTS.md
+- `.agents/antagor/antagor.toml`: the Architect has changed it on main
