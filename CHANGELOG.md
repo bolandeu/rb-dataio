@@ -5,6 +5,12 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.27 — 2026-10-21
+
+### Outside epics
+
+- CLI Standard v1.25.0: a usage error under --json prints the INVALID_ARGUMENTS envelope; the gate is rb-release check (DATAIO-029)
+
 ## v0.1.26 — 2026-10-18
 
 ### E-006 — Write: choose, order and rename the target columns
