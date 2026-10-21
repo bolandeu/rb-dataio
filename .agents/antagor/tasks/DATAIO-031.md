@@ -1,7 +1,7 @@
 ---
 id: DATAIO-031
 title: 'Tests pass in Gitea Actions: help and stderr text stay plain under GITHUB_ACTIONS'
-status: in_review
+status: publish
 attempts: 0
 blocked: false
 blocked_reason: null
