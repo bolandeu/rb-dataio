@@ -32,6 +32,8 @@ budget_usd: null
 epic: null
 spec_refs: []
 checks:
+- uv run ruff check
+- uv run ruff format --check
 - uv run pytest --no-cov tests/test_cli.py tests/test_auth.py
 resident: null
 tool: null
