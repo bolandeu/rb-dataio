@@ -41,7 +41,7 @@ budget_usd: null
 epic: null
 spec_refs: []
 checks:
-- uv run pytest tests/test_cli.py tests/test_ci.py tests/test_scripts.py
+- uv run pytest --no-cov tests/test_cli.py tests/test_ci.py tests/test_scripts.py
 - uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.0#subdirectory=gate"
   rb-release check
 resident: null
