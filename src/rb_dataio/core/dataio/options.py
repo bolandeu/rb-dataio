@@ -4,14 +4,15 @@
 `query`, `source_column` and `strict` are of the read side only, so `convert` takes them without a prefix;
 `start`, `value_input` (`ValueInput`), `split_by`, `chunk_rows`, `drop_split_column`, `keep_going`,
 `columns` and `rename` (the target columns, columns.py)
-are of the write side only. The batch parameters are read by the behaviour modules
+are of the write side only. `JoinOptions` are the lookups, the keys (`on`, each a `Key`) and the kind (`How`) of a join (joins.py).
+The batch parameters are read by the behaviour modules
 (sources.py, targets.py, batch.py); the pipelines only pass them on.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 from enum import StrEnum
 from typing import Any, Self, TypeVar
 
@@ -110,3 +111,53 @@ class WriteOptions(SharedOptions):
         object.__setattr__(self, "value_input", _member(ValueInput, "value_input", self.value_input))
         if self.chunk_rows is not None and self.chunk_rows < 1:
             raise InvalidParameter(f"chunk_rows must be 1 or more, not {self.chunk_rows}.")
+
+
+class How(StrEnum):
+    """The kind of a join: which rows it keeps besides the main rows that found a match."""
+
+    LEFT = "left"  # every main row
+    RIGHT = "right"  # every lookup row
+    INNER = "inner"  # matched rows only
+    FULL = "full"  # every row of both sides
+
+
+@dataclass(frozen=True)
+class Key:
+    """One key column of a join: its name in the main source and in the lookups."""
+
+    main: str
+    lookup: str
+
+    @classmethod
+    def named(cls, item: str) -> Self:
+        """The key of one item of `on`: a name, or main_name=lookup_name."""
+        main, equals, lookup = item.partition("=")
+        if not main or (equals and not lookup):
+            raise InvalidParameter(f"on has '{item}': give a column name, or main_name=lookup_name.")
+        return cls(main, lookup or main)
+
+
+@dataclass(frozen=True)
+class JoinOptions:
+    lookups: list[Any]  # the lookups, joined to the main source in this order
+    on: list[str] | None  # the key columns: a name, or main_name=lookup_name
+    how: How
+    keys: list[Key] = field(init=False)  # `on` parsed
+
+    @classmethod
+    def taken_from(cls, arguments: Mapping[str, Any]) -> Self:
+        """The options from a call's arguments; no `lookups` is none."""
+        return cls(lookups=arguments["lookups"] or [], on=arguments["on"], how=arguments["how"])
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "how", _member(How, "how", self.how))
+        if not self.on:
+            raise InvalidParameter("on must name the key columns: a name, or main_name=lookup_name.")
+        object.__setattr__(self, "keys", [Key.named(item) for item in self.on])
+        if not self.lookups:
+            raise InvalidParameter("lookups must name at least one lookup.")
+        if self.how is How.RIGHT and len(self.lookups) > 1:
+            raise InvalidParameter(
+                f"how 'right' joins one lookup, not {len(self.lookups)}: keep one, or use left, inner or full."
+            )

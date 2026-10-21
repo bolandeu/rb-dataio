@@ -6,7 +6,8 @@ for all, else inferred. NA words never turn into missing values (the adapter rea
 as text); only an empty cell is missing. A column stays text when it could be an ID:
 a value with a leading zero or `+`, or with more than 15 digits. `stack` joins tables of different
 columns: a whole-number column stays whole (a nullable int) where a table lacks it. `typed` builds a table
-from Python values and keeps a column of ints with a missing value whole in the same way.
+from Python values and keeps a column of ints with a missing value whole in the same way. `unique` is a name
+not yet taken: `name`, else `name_2`, `name_3`, ...
 """
 
 from __future__ import annotations
@@ -98,7 +99,7 @@ def _repair_header(frame: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     repairs: list[str] = []
     for number, label in enumerate(frame.columns, start=1):
         wanted = "" if pd.isna(label) else str(label)
-        name = _unique(wanted if wanted.strip() else f"col{number}", names)
+        name = unique(wanted if wanted.strip() else f"col{number}", names)
         if name != wanted:
             repairs.append(f"column {number} '{wanted}' is now '{name}'")
         names.append(name)
@@ -106,7 +107,7 @@ def _repair_header(frame: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     return frame.set_axis(names, axis="columns"), warning
 
 
-def _unique(name: str, taken: list[str]) -> str:
+def unique(name: str, taken: list[str]) -> str:
     candidate, number = name, 1
     while candidate in taken:
         number += 1

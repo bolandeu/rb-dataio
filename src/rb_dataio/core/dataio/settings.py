@@ -1,7 +1,7 @@
 """The settings of the table connector, read from the settings file the package ships (data/settings.toml).
 
 `settings()` gives one section per concern: `BackupLimits` (the backup store), `WarningLimits`
-(the loss warning), `XlsxLayout` (the layout of a written xlsx sheet), `GoogleEndpoints`
+(the loss warning, the repeated keys of a join), `XlsxLayout` (the layout of a written xlsx sheet), `GoogleEndpoints`
 (where and for what a service-account key gets its tokens) and `SheetsCalls` (the batches,
 the cell limit, the backoff and the timeout of the calls to Google Sheets).
 """
@@ -30,6 +30,7 @@ class BackupLimits(_Section):
 
 class WarningLimits(_Section):
     row_drop_share: float
+    repeated_keys_named: int
 
 
 class XlsxLayout(_Section):
