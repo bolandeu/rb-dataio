@@ -1,3 +1,13 @@
+"""How every command talks to the user: options, JSON envelopes, errors and the usage-error root group.
+
+Holds the shared options (`JsonOption`, `QuietOption`, `DryRunOption`, `ConfirmOption`, `VerboseOption`,
+`NonInteractiveOption`), the emitters (`emit_success`, `emit_report`, `emit_error`), `guard` and `is_guarded`
+(they turn an error into the standard output and exit code), `RootGroup` (a usage error under --json is the
+`INVALID_ARGUMENTS` envelope, because Click raises it before any command runs), and the helpers
+`configure_logging`, `group`, `help_if_no_command`, `is_dry_run`, `vecho` and `require_confirmation`.
+One place, so stdout stays pure data under --json and every command fails the same way.
+"""
+
 from __future__ import annotations
 
 import functools
