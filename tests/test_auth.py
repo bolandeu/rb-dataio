@@ -73,7 +73,7 @@ def by_provider(payload: dict) -> dict[str, dict]:
     return {entry["provider"]: entry for entry in payload["credentials"]}
 
 
-# --- the §8 shape: changing any of this is a breaking change ---------------------
+# --- the auth status shape: changing any of this is a breaking change ---------------------
 
 TOP_KEYS = ["ok", "tool", "version", "checked_at", "credentials"]
 ENTRY_KEYS = ["provider", "required", "fields", "source", "source_ref", "status", "expires_at", "quota", "message"]

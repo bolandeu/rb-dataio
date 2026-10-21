@@ -1,4 +1,4 @@
-"""The `auth status [--check] --json` report (tools/docs/standard-release.md §8).
+"""The `auth status [--check] --json` report (the Standard, Health).
 
 Its shape is a cross-tool contract — `tools-watch` reads it from every CLI
 without knowing any provider — so it is pinned by `tests/test_auth.py`, and
@@ -18,7 +18,7 @@ from ..core.errors import AuthRequired, CliError, CredentialsUnhealthy, InvalidA
 from ..providers import Health, Provider
 from . import manager
 
-CHECK_TIMEOUT = 10.0  # seconds per provider (standard §8) — enforced by the provider's own client timeout
+CHECK_TIMEOUT = 10.0  # seconds per provider — enforced by the provider's own client timeout
 # Statuses that are a problem even for an optional provider: a credential is
 # there but wrong. Anything else only counts against required providers.
 ALWAYS_PROBLEMS = frozenset({"invalid", "expired"})
@@ -98,7 +98,7 @@ def _entry(provider_cls: type[Provider], check: bool, target: str | None = None)
         return entry
 
     # Env vars override the keychain, and both the key file, field by field; a mix is reported
-    # as what wins with every place named in source_ref (standard §8: no "mixed").
+    # as what wins with every place named in source_ref (never "mixed").
     places = {
         source: ", ".join(dict.fromkeys(located[f][2] for f in fields if located[f][1] == source))
         for source in _SOURCE_ORDER
@@ -154,7 +154,7 @@ def select(known: list[type[Provider]], only: str | None) -> list[type[Provider]
 
 
 def report(tool: str, version: str, selected: list[type[Provider]], *, check: bool, only: str | None = None) -> dict:
-    """The §8 report for `selected` providers (only those that declare credential fields)."""
+    """The report for `selected` providers (only those that declare credential fields)."""
     return {
         "tool": tool,
         "version": version,

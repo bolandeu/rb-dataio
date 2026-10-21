@@ -1,3 +1,5 @@
+"""`auth status`, and the `auth` group that `auth login` / `auth logout` join when `commands/login.py` exists."""
+
 from __future__ import annotations
 
 import importlib
@@ -9,7 +11,7 @@ from .. import output
 from ..core.errors import InvalidArguments
 from ..core.version import DEV_VERSION, cli_name, installed_version, module_exists
 
-# `auth status` exists in every CLI (tools/docs/standard-release.md §8); a CLI
+# `auth status` exists in every CLI (the Standard, Health); a CLI
 # generated without credentials (no credentials/ package, no commands/login.py)
 # reports an empty `credentials` list and exits 0. Detected at runtime so this
 # file needs no template logic — same approach as doctor.py.

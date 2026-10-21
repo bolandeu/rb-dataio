@@ -6,7 +6,7 @@
   it lists shows up in that command's --help;
 - snapshot: tests/snapshots/describe.json (syrupy). A changed contract fails until
   the snapshot is refreshed with `uv run pytest --snapshot-update`, which puts the
-  change in the diff — review it like any other breaking change (conventions.md).
+  change in the diff — review it like any other breaking change.
 """
 
 from __future__ import annotations

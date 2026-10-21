@@ -1,3 +1,5 @@
+"""The installed version, the command name and the distribution name, read from package metadata."""
+
 from __future__ import annotations
 
 import functools
@@ -44,7 +46,7 @@ def cli_name() -> str:
     actions, `{cli}` in docstrings, `auth status`'s `tool` — uses this, while
     the keychain service, env var prefix and `.<package>/` project dir keep
     the package name. A bare source run (nothing installed) falls back to it.
-    The distribution (`DIST_NAME`, standard §10 `rb-<slug>`) is a third,
+    The distribution (`DIST_NAME`, `rb-<slug>`) is a third,
     separate name: what `uv tool install/upgrade` and dependencies use.
     """
     try:
