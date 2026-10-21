@@ -1,3 +1,5 @@
+"""The distribution name and the command-name identifier, written down because an editable install cannot find them."""
+
 # Rendered by copier from the `dist_name` answer: the [project] name in
 # pyproject.toml (`rb-<slug>`, the Standard, Technology), which may differ from this
 # import package's name. importlib.metadata finds this package's version,

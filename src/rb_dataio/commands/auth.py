@@ -1,3 +1,5 @@
+"""`auth status`, and the `auth` group that `auth login` / `auth logout` join when `commands/login.py` exists."""
+
 from __future__ import annotations
 
 import importlib

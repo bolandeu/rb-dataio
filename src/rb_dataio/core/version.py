@@ -1,3 +1,5 @@
+"""The installed version, the command name and the distribution name, read from package metadata."""
+
 from __future__ import annotations
 
 import functools
