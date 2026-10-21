@@ -3,7 +3,7 @@ id: DATAIO-030
 title: Docs and comments name the Standard's sections, not cli-generator's internal
   files
 status: queue
-attempts: 0
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -129,3 +129,11 @@ cli-generator template v1.25.2 made the same edits in the template: git -C /User
 - docs/ (docs/brief.md, docs/adr/, docs/SPEC.md, docs/plans/), CHANGELOG.md, .agents/, AGENTS.md: dataio's own history and contract
 - the [tool.cli-generator] key of pyproject.toml
 - copier update, .copier-answers.yml
+
+## Feedback
+
+### Attempt 1: file docstring
+
+- add a docstring to src/rb_dataio/_distribution.py: what it holds and why
+- add a docstring to src/rb_dataio/commands/auth.py: what it holds and why
+- add a docstring to src/rb_dataio/core/version.py: what it holds and why
