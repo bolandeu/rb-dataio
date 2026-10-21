@@ -1,7 +1,7 @@
 ---
 id: DATAIO-038
 title: 'join: the repeated-keys warning names only keys that are repeated in the lookup'
-status: queue
+status: publish
 attempts: 0
 blocked: false
 blocked_reason: null
