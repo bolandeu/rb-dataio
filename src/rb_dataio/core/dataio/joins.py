@@ -164,7 +164,7 @@ def _repeated(lookup_keys: pd.DataFrame, pairs: pd.DataFrame, uri: str, added: i
     """The warning about the lookup keys that matched a main row more than once, when they added rows."""
     if not added:
         return []
-    matched = pairs[_LOOKUP][pairs[_MAIN] != _NONE].unique()
+    matched = pairs[_LOOKUP][(pairs[_MAIN] != _NONE) & (pairs[_LOOKUP] != _NONE)].unique()
     keys = lookup_keys.iloc[sorted(matched)]
     repeated = [_shown(row) for row in keys[keys.duplicated()].drop_duplicates().itertuples(index=False)]
     named = settings().warnings.repeated_keys_named
