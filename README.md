@@ -20,15 +20,7 @@ the same gate, `uvx ... rb-release check` (the command above).
 ## Release
 
 The version is the git tag (`vX.Y.Z`) — `pyproject.toml` has no `version =`.
-Work goes through Antagor tickets (`.agents/antagor/`); a release (run by the Human) is
-
-```bash
-antagor publish --bump   # SemVer; at 0.x: patch = fix/feature, minor = breaking
-```
-
-It tags the release, builds `CHANGELOG.md` from the ticket titles and runs
-`scripts/deploy.sh`: push `main` with tags, then report the release to the
-root tools agent. Nobody tags or pushes by hand.
+Work and releases go through Antagor.
 
 ## Target columns
 
@@ -80,8 +72,7 @@ PyPI publish needed:**
 uv tool install "rb-dataio @ git+https://github.com/bolandeu/rb-dataio.git@vX.Y.Z"
 ```
 
-Replace `vX.Y.Z` with the latest release tag (a tag cut by
-`antagor publish`; never install a branch). This is also how an AI agent
+Replace `vX.Y.Z` with the latest release tag (never install a branch). This is also how an AI agent
 bootstraps this CLI on a fresh machine/sandbox where it isn't installed
 yet — see `src/rb_dataio/data/SKILL.md`.
 
