@@ -1,9 +1,9 @@
 """The library and the CLI have the same parameters (docs/adr/0001).
 
 `read()` and `write()` reach the CLI through `convert`: the options both sides have
-take `in_` / `out_` there, the others keep their names. Every keyword of `convert()`
-and `info()` is a flag of the command with the same name: `_` becomes `-`, a boolean
-is `--x/--no-x`, a dict is a repeatable `key=value` flag; the default is the same.
+take `in_` / `out_` there, the others keep their names. Every keyword of `convert()`,
+`info()` and `join()` is a flag of the command with the same name: `_` becomes `-`, a boolean
+is `--x/--no-x`, a dict or a list is a repeatable flag; the default is the same. `lookups` is the flag `--lookup`.
 The template's standard flags (`--json`, `--quiet`, `--dry-run`, ...) keep the
 template's own shape. A missing or an extra flag fails.
 """
@@ -18,7 +18,7 @@ from typing import Any
 import pytest
 import typer
 
-from rb_dataio import convert, info, output, read, write
+from rb_dataio import convert, info, join, output, read, write
 from rb_dataio.cli import app
 
 # Recent Typer ships its own copy of Click: parameters are told apart by `param_type_name`, not isinstance.
@@ -74,7 +74,10 @@ def test_info_takes_the_read_keywords() -> None:
     }
 
 
-@pytest.mark.parametrize(("function", "command"), [(convert, "convert"), (info, "info")])
+FLAG_NAMES = {"lookups": "--lookup"}  # a repeatable flag is named in the singular
+
+
+@pytest.mark.parametrize(("function", "command"), [(convert, "convert"), (info, "info"), (join, "join")])
 def test_every_keyword_is_a_flag_with_the_same_name(function: Callable, command: str) -> None:
     keywords = _keywords(function)
     flags = _flag_params(command)
@@ -82,7 +85,7 @@ def test_every_keyword_is_a_flag_with_the_same_name(function: Callable, command:
     hints = typing.get_type_hints(function)
     for name, param in keywords.items():
         flag = flags[name]
-        dashed = "--" + name.replace("_", "-")
+        dashed = FLAG_NAMES.get(name, "--" + name.replace("_", "-"))
         assert dashed in flag.opts, f"`{command}` has no {dashed}"
         if flag.default is not None or param.default is not None:
             assert flag.default == param.default, f"{dashed}: default {flag.default!r} != {param.default!r}"
@@ -91,6 +94,23 @@ def test_every_keyword_is_a_flag_with_the_same_name(function: Callable, command:
             assert flag.secondary_opts == [f"--no-{dashed[2:]}"], f"{dashed} needs --no-{dashed[2:]}"
         if dict in {typing.get_origin(arg) for arg in typing.get_args(hint)}:
             assert flag.multiple, f"{dashed} must be repeatable (key=value)"
+        if typing.get_origin(hint) is list or list in {typing.get_origin(arg) for arg in typing.get_args(hint)}:
+            assert flag.multiple, f"{dashed} must be repeatable"
+
+
+def test_join_takes_the_convert_keywords_of_its_sources_and_target() -> None:
+    joined = set(_keywords(join)) - {"lookups", "on", "how"}
+    assert joined <= set(_keywords(convert))
+    assert joined == {name for name in _keywords(convert) if name.startswith(("in_", "out_"))} | {
+        "mode",
+        "start",
+        "value_input",
+        "columns",
+        "rename",
+        "overwrite",
+        "backup",
+        "dry_run",
+    }
 
 
 @pytest.mark.parametrize("command", ["convert", "info"])

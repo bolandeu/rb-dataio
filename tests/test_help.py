@@ -18,6 +18,7 @@ tested like an API:
 from __future__ import annotations
 
 import inspect
+import json
 import re
 import typing
 from collections.abc import Callable, Iterator
@@ -144,7 +145,7 @@ def test_bare_help_lists_the_dataio_commands() -> None:
     assert result.exit_code == 0, result.output
     panel = result.output.split("Commands", 1)[1]
     listed = {match[1] for match in re.finditer(r"^│ (\S+) ", panel, re.M)}
-    assert {"convert", "info", "formats", "backups", "restore", "status", "doctor", "describe"} <= listed
+    assert {"convert", "join", "info", "formats", "backups", "restore", "status", "doctor", "describe"} <= listed
     assert "run" not in listed
 
 
@@ -162,3 +163,15 @@ def test_help_keeps_brackets() -> None:
     probe.command("other")(output.guard(cmd))
     result = CliRunner().invoke(probe, ["cmd", "--help"], env=HELP_ENV)
     assert "[[tool.rb.external]], see [x]." in result.output
+
+
+def test_join_help_shows_a_left_join_by_two_keys() -> None:
+    text = " ".join(_render_help(("join",)).split())
+    assert "dataio join main.csv out.xlsx --lookup prices.xlsx#Prices --on sku --on region --how left" in text
+
+
+def test_describe_lists_join_with_its_flags() -> None:
+    result = CliRunner().invoke(app, ["describe", "--json"], env=HELP_ENV, prog_name=CLI)
+    document = json.loads(result.stdout)
+    [command] = [c for c in document["command"]["commands"] if c["name"] == "join"]
+    assert {"--lookup", "--on", "--how"} <= {option["name"] for option in command["options"]}

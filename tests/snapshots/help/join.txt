@@ -1,0 +1,113 @@
+
+ Usage: dataio join [OPTIONS] {source} {target}
+
+ Join the columns of lookups to a main SOURCE by key columns and write it to TARGET.
+
+ --lookup is the address of a lookup and repeats; --on names a key column, or
+ main_name=lookup_name when the lookup calls it differently, and repeats for several keys.
+ --how keeps every source row (left, the default), every lookup row (right, one
+ lookup), the matched rows (inner) or all (full). Keys compare as text with outer
+ spaces trimmed; an empty key matches nothing. A lookup column whose name the table
+ has gets the suffix of the lookup. The report lists each lookup's rows, matched,
+ unmatched and empty keys. The --in- options are of every source, the --out- options
+ and the others of the target, as in convert. With --dry-run the report comes back and
+ nothing is written. A TARGET that is the SOURCE or a lookup, or a sheet with rows of a
+ Google spreadsheet that the write replaces, asks first: --confirm skips the question.
+ TARGET - is stdout, as in convert; under --json the data is inside the envelope as data.
+
+ Example: dataio join main.csv out.xlsx --lookup prices.xlsx#Prices --on sku --on region --how left
+
+╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
+│ *    source      <str>  Address of the main source, e.g. main.csv or book.xlsx#Sheet1.           │
+│                         [required]                                                               │
+│ *    target      <str>  Address of the target, e.g. out.xlsx or gsheet://ID#Sheet1; - is stdout. │
+│                         [required]                                                               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+│ --lookup                                ADDRESS                  Address of a lookup joined to   │
+│                                                                  the source, e.g.                │
+│                                                                  prices.xlsx#Prices; repeatable, │
+│                                                                  joined in order.                │
+│ --on                                    KEY                      Key column: a name, or          │
+│                                                                  main_name=lookup_name; repeat   │
+│                                                                  for several keys.               │
+│ --how                                   <left|right|inner|full>  Rows kept: left every source    │
+│                                                                  row, right every lookup row     │
+│                                                                  (one lookup), inner the         │
+│                                                                  matched, full all.              │
+│                                                                  [default: left]                 │
+│ --in-format                             <str>                    Source: Format name; wins over  │
+│                                                                  the extension (see the formats  │
+│                                                                  command).                       │
+│ --in-sheet                              <str>                    Source: Sheet name; wins over   │
+│                                                                  the part of the address after   │
+│                                                                  #.                              │
+│ --in-table                              <str>                    Source: Table name; wins over   │
+│                                                                  the part of the address after   │
+│                                                                  #.                              │
+│ --in-encoding                           <str>                    Source: Text encoding, e.g.     │
+│                                                                  utf-8 or cp1251.                │
+│ --in-sep                                <str>                    Source: Field delimiter, e.g.   │
+│                                                                  ';' or '|'.                     │
+│ --in-header          --no-in-header                              Source: The first row holds the │
+│                                                                  column names.                   │
+│                                                                  [default: in-header]            │
+│ --in-credentials                        <str>                    Source: Key file (JSON) of the  │
+│                                                                  service, e.g. a Google          │
+│                                                                  service-account key; default:   │
+│                                                                  the standard order.             │
+│ --out-format                            <str>                    Target: Format name; wins over  │
+│                                                                  the extension (see the formats  │
+│                                                                  command).                       │
+│ --out-sheet                             <str>                    Target: Sheet name; wins over   │
+│                                                                  the part of the address after   │
+│                                                                  #.                              │
+│ --out-table                             <str>                    Target: Table name; wins over   │
+│                                                                  the part of the address after   │
+│                                                                  #.                              │
+│ --out-encoding                          <str>                    Target: Text encoding, e.g.     │
+│                                                                  utf-8 or cp1251.                │
+│ --out-sep                               <str>                    Target: Field delimiter, e.g.   │
+│                                                                  ';' or '|'.                     │
+│ --out-header         --no-out-header                             Target: The first row holds the │
+│                                                                  column names.                   │
+│                                                                  [default: out-header]           │
+│ --out-credentials                       <str>                    Target: Key file (JSON) of the  │
+│                                                                  service, e.g. a Google          │
+│                                                                  service-account key; default:   │
+│                                                                  the standard order.             │
+│ --mode                                  <replace|append|error>   Write mode: what to do with the │
+│                                                                  data the target already has.    │
+│                                                                  [default: replace]              │
+│ --start                                 <str>                    Top-left cell of the table in a │
+│                                                                  sheet of a service, e.g. A5     │
+│                                                                  (default A1).                   │
+│ --value-input                           <raw|user>               How a sheet of a service takes  │
+│                                                                  the values: raw as they are,    │
+│                                                                  user as if typed.               │
+│                                                                  [default: raw]                  │
+│ --columns                               COLUMN                   Source columns the target       │
+│                                                                  keeps, in this order; a comma   │
+│                                                                  list, repeatable.               │
+│ --rename                                OLD=NEW                  New name of a kept column as    │
+│                                                                  old=new, applied after          │
+│                                                                  --columns; a comma list,        │
+│                                                                  repeatable.                     │
+│ --overwrite          --no-overwrite                              Allow a write over the source   │
+│                                                                  itself, or a replace of a sheet │
+│                                                                  with rows that asks first.      │
+│                                                                  [default: no-overwrite]         │
+│ --backup             --no-backup                                 Keep a backup of the target     │
+│                                                                  before it is replaced.          │
+│                                                                  [default: backup]               │
+│ --dry-run                                                        Show what would happen without  │
+│                                                                  making changes.                 │
+│ --confirm                                                        Confirm a destructive action    │
+│                                                                  (required together with         │
+│                                                                  --non-interactive).             │
+│ --json                                                           Emit machine-readable JSON      │
+│                                                                  output.                         │
+│ --quiet                                                          Suppress non-essential output.  │
+│ --help                                                           Show this message and exit.     │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
