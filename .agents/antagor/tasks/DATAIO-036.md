@@ -87,3 +87,11 @@ Follow the convert command: its flags (the option() helper with in_/out_), the c
 - the join behaviour itself (kinds, keys, empty and repeated keys, suffixes): DATAIO-035; a defect found there goes back to it as a note
 - SKILL.md and README.md: the docs task of this epic
 - new flags beyond join()'s keywords
+
+## Feedback
+
+### Answer to finding #1
+
+> rb-release check runs pytest with forced colour: 28 old tests fail on ANSI codes (test_auth, test_backup, test_bases_core, test_cli, test_cli_frame, test_cli_target_columns, 20 help snapshots incl. join). The same tests pass in a plain 'uv run pytest'. Outside DATAIO-036; the join tests pass in both modes.
+
+Fixed outside the task: DATAIO-031 (tests plain under GITHUB_ACTIONS/FORCE_COLOR) and DATAIO-032/033 (the [publish] table, gate v1.25.8) are in main since v0.1.29, whose CI ran gate v1.25.8 green; the branch was cut before them.
