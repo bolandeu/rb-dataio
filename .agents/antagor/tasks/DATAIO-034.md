@@ -2,13 +2,13 @@
 id: DATAIO-034
 title: 'doctor is healthy on a server with env credentials: no false failure for the
   keychain, the provider or a missing project'
-status: publish
+status: queue
 attempts: 0
-blocked: true
-blocked_reason: environment_broken
+blocked: false
+blocked_reason: null
 phase: null
 tests_hash: null
-publish_stage: gate
+publish_stage: null
 created_by: architect
 approved_by: human
 worker: claude-code
@@ -101,3 +101,9 @@ auth status already has the rule: src/rb_dataio/credentials/health.py status() a
 - auth status and its report shape
 - the health checks with --check (network calls): doctor does not call providers
 - new check names or a new --json field
+
+## Feedback
+
+### Blocked: environment_broken (stage gate)
+
+The publish gate (CI run 325) failed on style, not on the environment: (1) ruff I001 in tests/test_auth.py: 'from keyring.backends import fail' must sit in the third-party group with 'import pytest', no blank line between them; (2) ruff format: the project check line in commands/doctor.py is over the line length (ruff format splits the checks.append call). Fix both (uv run ruff check --fix; uv run ruff format), nothing else. The Architect ran the whole gate as CI does on main + DATAIO-031..034 with these two fixes: it passes. The task's checks now include ruff check and ruff format --check.
