@@ -1,7 +1,7 @@
 ---
 id: DATAIO-036
 title: 'dataio join: the CLI command over join(), with the flags of convert'
-status: in_review
+status: publish
 attempts: 0
 blocked: false
 blocked_reason: null
