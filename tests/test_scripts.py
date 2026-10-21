@@ -10,7 +10,7 @@ from types import ModuleType
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 GATE = (
     'uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git'
-    '@v1.25.0#subdirectory=gate" rb-release check'
+    '@v1.25.8#subdirectory=gate" rb-release check'
 )
 
 

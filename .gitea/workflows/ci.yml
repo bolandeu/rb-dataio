@@ -49,7 +49,7 @@ jobs:
         run: echo "UV_PYTHON=$(grep -m1 '^requires-python' pyproject.toml | grep -oE '[0-9]+\.[0-9]+' | head -1)" >> "$GITHUB_ENV"
       # Everything: lock, lint, format, types, tests (incl. help snapshots and
       # the auth status shape), wheel build + install + `--version` / `--help`.
-      # The gate of the template tag v1.25.0, through uvx.
+      # The gate of the template tag v1.25.8, through uvx.
       - name: Gate
         run: |
-          uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.0#subdirectory=gate" rb-release check
+          uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.8#subdirectory=gate" rb-release check
