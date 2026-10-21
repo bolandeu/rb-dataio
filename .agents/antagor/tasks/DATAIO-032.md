@@ -4,11 +4,11 @@ title: 'Publish tags a version only on a green CI: the gate of a release runs in
   Actions'
 status: publish
 attempts: 0
-blocked: true
-blocked_reason: environment_broken
+blocked: false
+blocked_reason: null
 phase: null
 tests_hash: null
-publish_stage: gate
+publish_stage: null
 created_by: architect
 approved_by: human
 worker: claude-code
