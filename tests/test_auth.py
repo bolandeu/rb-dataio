@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import ClassVar
 
 import pytest
-
 from keyring.backends import fail
 
 from rb_dataio import providers

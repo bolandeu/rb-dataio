@@ -59,7 +59,9 @@ def doctor(
     start = Path(ctx.obj.get("project") or Path.cwd())
     output.vecho(ctx, f"Searching for a project root starting at: {start}")
     root = services.find_project_root(start)
-    checks.append({"name": "project", "ok": True, "detail": str(root) if root else "no project; dataio works without one"})
+    checks.append(
+        {"name": "project", "ok": True, "detail": str(root) if root else "no project; dataio works without one"}
+    )
 
     config: ProjectConfig | None = None
     if root is not None:
