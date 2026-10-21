@@ -216,6 +216,35 @@ def test_repeated_lookup_key_repeats_the_main_row_and_warns(workdir: Path) -> No
     assert "1 rows added" in warning
 
 
+def test_repeated_keys_warning_does_not_name_a_key_of_an_unmatched_main_row(workdir: Path) -> None:
+    lookup = [{"sku": 1, "price": 10}, {"sku": 1, "price": 11}, {"sku": 3, "price": 30}]
+
+    report = join([{"sku": 1}, {"sku": 2}, {"sku": 3}], "out.csv", lookups=[lookup], on=["sku"], how="left")
+
+    [warning] = report.warnings
+    assert "repeated keys: 1;" in warning
+    assert "1 rows added" in warning
+
+
+def test_repeated_keys_warning_of_a_full_join_does_not_name_a_lookup_only_key(workdir: Path) -> None:
+    lookup = [{"sku": 2, "price": 20}, {"sku": 2, "price": 21}, {"sku": 5, "price": 50}]
+
+    report = join([{"sku": 1}, {"sku": 2}], "out.csv", lookups=[lookup], on=["sku"], how="full")
+
+    [warning] = report.warnings
+    assert "repeated keys: 2;" in warning
+    assert "1 rows added" in warning
+
+
+@pytest.mark.parametrize("how", ["left", "right", "inner", "full"])
+def test_no_repeated_lookup_key_means_no_warning(workdir: Path, how: str) -> None:
+    lookup = [{"sku": 1, "price": 10}, {"sku": 3, "price": 30}]
+
+    report = join([{"sku": 1}, {"sku": 2}, {"sku": 3}], "out.csv", lookups=[lookup], on=["sku"], how=how)
+
+    assert report.warnings == []
+
+
 def test_repeated_keys_warning_names_the_first_five(workdir: Path) -> None:
     keys = list(range(1, 8))
     lookup = [{"sku": key, "price": copy} for key in keys for copy in (1, 2)]
