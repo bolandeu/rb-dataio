@@ -1,7 +1,7 @@
 ---
 id: DATAIO-036
 title: 'dataio join: the CLI command over join(), with the flags of convert'
-status: ideas
+status: queue
 attempts: 0
 blocked: false
 blocked_reason: null
@@ -9,7 +9,7 @@ phase: null
 tests_hash: null
 publish_stage: null
 created_by: architect
-approved_by: null
+approved_by: human
 worker: claude-code
 type: feature
 owns_paths:
@@ -58,7 +58,7 @@ A CLI user runs dataio join SOURCE TARGET --lookup ADDRESS --on KEY [--how left|
 
 ## Acceptance
 
-- Given main.csv (sku,name: 1,a / 2,b) and prices.csv (sku,price: 1,10), When dataio join main.csv out.csv --lookup prices.csv --on sku --json runs, Then it exits 0 with ok true, the report has lookups [{address: prices.csv, rows: 1, matched: 1, unmatched: 1, empty_keys: 0}], and out.csv read back has sku,name,price with 1,a,10 and 2,b,empty [check: tests/test_cli_join.py]
+- Given main.csv (sku,name: 1,a / 2,b) and prices.csv (sku,price: 1,10), When dataio join main.csv out.csv --lookup prices.csv --on sku --json runs, Then it exits 0 with ok true, the report has lookups [{uri: prices.csv, rows: 1, matched: 1, unmatched: 1, empty_keys: 0}], and out.csv read back has sku,name,price with 1,a,10 and 2,b,empty [check: tests/test_cli_join.py]
 - Given --on phrase --on region, --on sku=article, two --lookup and --how inner/right/full, When dataio join runs, Then they reach join() as on=[...], lookups=[...], how=... and give its result [check: tests/test_cli_join.py]
 - Given no --on, --how other, --how right with two --lookup, or a key column a source lacks, When dataio join --json runs, Then it exits 2 with the INVALID_ARGUMENTS envelope (the missing column's message names the source, the column and its columns) and no target is written [check: tests/test_cli_join.py]
 - Given --dry-run, When dataio join runs, Then the report has the lookups counts and the target is not written; Given the target is main.csv itself, When dataio join runs without --confirm under --json, Then it is refused as convert refuses it, and with --confirm it writes and keeps a backup that dataio restore brings back [check: tests/test_cli_join.py]
