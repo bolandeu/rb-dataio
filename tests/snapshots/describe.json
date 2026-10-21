@@ -1236,6 +1236,531 @@
         ]
       },
       {
+        "name": "join",
+        "description": "Join the columns of lookups to a main SOURCE by key columns and write it to TARGET.\n\n--lookup is the address of a lookup and repeats; --on names a key column, or\nmain_name=lookup_name when the lookup calls it differently, and repeats for several keys.\n--how keeps every source row (left, the default), every lookup row (right, one\nlookup), the matched rows (inner) or all (full). Keys compare as text with outer\nspaces trimmed; an empty key matches nothing. A lookup column whose name the table\nhas gets the suffix of the lookup. The report lists each lookup's rows, matched,\nunmatched and empty keys. The --in- options are of every source, the --out- options\nand the others of the target, as in convert. With --dry-run the report comes back and\nnothing is written. A TARGET that is the SOURCE or a lookup, or a sheet with rows of a\nGoogle spreadsheet that the write replaces, asks first: --confirm skips the question.\nTARGET - is stdout, as in convert; under --json the data is inside the envelope as data.\n\nExample: dataio join main.csv out.xlsx --lookup prices.xlsx#Prices --on sku --on region --how left",
+        "options": [
+          {
+            "name": "--lookup",
+            "arguments": [
+              {
+                "name": "ADDRESS",
+                "required": true
+              }
+            ],
+            "description": "Address of a lookup joined to the source, e.g. prices.xlsx#Prices; repeatable, joined in order.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              },
+              {
+                "name": "x-rb-multiple",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--on",
+            "arguments": [
+              {
+                "name": "KEY",
+                "required": true
+              }
+            ],
+            "description": "Key column: a name, or main_name=lookup_name; repeat for several keys.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              },
+              {
+                "name": "x-rb-multiple",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--how",
+            "arguments": [
+              {
+                "name": "HOW",
+                "required": true,
+                "acceptedValues": [
+                  "left",
+                  "right",
+                  "inner",
+                  "full"
+                ]
+              }
+            ],
+            "description": "Rows kept: left every source row, right every lookup row (one lookup), inner the matched, full all.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "choice"
+              },
+              {
+                "name": "x-rb-default",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "name": "--in-format",
+            "arguments": [
+              {
+                "name": "IN_FORMAT",
+                "required": true
+              }
+            ],
+            "description": "Source: Format name; wins over the extension (see the formats command).",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--in-sheet",
+            "arguments": [
+              {
+                "name": "IN_SHEET",
+                "required": true
+              }
+            ],
+            "description": "Source: Sheet name; wins over the part of the address after #.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--in-table",
+            "arguments": [
+              {
+                "name": "IN_TABLE",
+                "required": true
+              }
+            ],
+            "description": "Source: Table name; wins over the part of the address after #.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--in-encoding",
+            "arguments": [
+              {
+                "name": "IN_ENCODING",
+                "required": true
+              }
+            ],
+            "description": "Source: Text encoding, e.g. utf-8 or cp1251.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--in-sep",
+            "arguments": [
+              {
+                "name": "IN_SEP",
+                "required": true
+              }
+            ],
+            "description": "Source: Field delimiter, e.g. ';' or '|'.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--in-header",
+            "aliases": [
+              "--no-in-header"
+            ],
+            "description": "Source: The first row holds the column names.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--in-credentials",
+            "arguments": [
+              {
+                "name": "IN_CREDENTIALS",
+                "required": true
+              }
+            ],
+            "description": "Source: Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-format",
+            "arguments": [
+              {
+                "name": "OUT_FORMAT",
+                "required": true
+              }
+            ],
+            "description": "Target: Format name; wins over the extension (see the formats command).",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-sheet",
+            "arguments": [
+              {
+                "name": "OUT_SHEET",
+                "required": true
+              }
+            ],
+            "description": "Target: Sheet name; wins over the part of the address after #.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-table",
+            "arguments": [
+              {
+                "name": "OUT_TABLE",
+                "required": true
+              }
+            ],
+            "description": "Target: Table name; wins over the part of the address after #.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-encoding",
+            "arguments": [
+              {
+                "name": "OUT_ENCODING",
+                "required": true
+              }
+            ],
+            "description": "Target: Text encoding, e.g. utf-8 or cp1251.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-sep",
+            "arguments": [
+              {
+                "name": "OUT_SEP",
+                "required": true
+              }
+            ],
+            "description": "Target: Field delimiter, e.g. ';' or '|'.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--out-header",
+            "aliases": [
+              "--no-out-header"
+            ],
+            "description": "Target: The first row holds the column names.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--out-credentials",
+            "arguments": [
+              {
+                "name": "OUT_CREDENTIALS",
+                "required": true
+              }
+            ],
+            "description": "Target: Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--mode",
+            "arguments": [
+              {
+                "name": "MODE",
+                "required": true,
+                "acceptedValues": [
+                  "replace",
+                  "append",
+                  "error"
+                ]
+              }
+            ],
+            "description": "Write mode: what to do with the data the target already has.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "choice"
+              },
+              {
+                "name": "x-rb-default",
+                "value": "replace"
+              }
+            ]
+          },
+          {
+            "name": "--start",
+            "arguments": [
+              {
+                "name": "START",
+                "required": true
+              }
+            ],
+            "description": "Top-left cell of the table in a sheet of a service, e.g. A5 (default A1).",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "--value-input",
+            "arguments": [
+              {
+                "name": "VALUE_INPUT",
+                "required": true,
+                "acceptedValues": [
+                  "raw",
+                  "user"
+                ]
+              }
+            ],
+            "description": "How a sheet of a service takes the values: raw as they are, user as if typed.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "choice"
+              },
+              {
+                "name": "x-rb-default",
+                "value": "raw"
+              }
+            ]
+          },
+          {
+            "name": "--columns",
+            "arguments": [
+              {
+                "name": "COLUMN",
+                "required": true
+              }
+            ],
+            "description": "Source columns the target keeps, in this order; a comma list, repeatable.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              },
+              {
+                "name": "x-rb-multiple",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--rename",
+            "arguments": [
+              {
+                "name": "OLD=NEW",
+                "required": true
+              }
+            ],
+            "description": "New name of a kept column as old=new, applied after --columns; a comma list, repeatable.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              },
+              {
+                "name": "x-rb-multiple",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--overwrite",
+            "aliases": [
+              "--no-overwrite"
+            ],
+            "description": "Allow a write over the source itself, or a replace of a sheet with rows that asks first.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--backup",
+            "aliases": [
+              "--no-backup"
+            ],
+            "description": "Keep a backup of the target before it is replaced.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": true
+              }
+            ]
+          },
+          {
+            "name": "--dry-run",
+            "description": "Show what would happen without making changes.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--confirm",
+            "description": "Confirm a destructive action (required together with --non-interactive).",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--json",
+            "description": "Emit machine-readable JSON output.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          },
+          {
+            "name": "--quiet",
+            "description": "Suppress non-essential output.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "boolean"
+              },
+              {
+                "name": "x-rb-default",
+                "value": false
+              }
+            ]
+          }
+        ],
+        "arguments": [
+          {
+            "name": "source",
+            "required": true,
+            "arity": {
+              "minimum": 1,
+              "maximum": 1
+            },
+            "description": "Address of the main source, e.g. main.csv or book.xlsx#Sheet1.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          },
+          {
+            "name": "target",
+            "required": true,
+            "arity": {
+              "minimum": 1,
+              "maximum": 1
+            },
+            "description": "Address of the target, e.g. out.xlsx or gsheet://ID#Sheet1; - is stdout.",
+            "metadata": [
+              {
+                "name": "x-rb-type",
+                "value": "str"
+              }
+            ]
+          }
+        ]
+      },
+      {
         "name": "formats",
         "description": "List every format: its extensions, whether it can read, write and append, and its options.\n\nExample: dataio formats --json",
         "options": [

@@ -2,7 +2,7 @@
 
 Typer names a flag after its Python parameter (`in_encoding` -> `--in-encoding`,
 a boolean -> `--x/--no-x`), so a command parameter named like the library keyword
-is the flag tests/test_parity.py expects. `side` is `in` or `out` in `convert`.
+is the flag tests/test_parity.py expects. `side` is `in` or `out` in `convert` and `join`.
 `pairs`, `names` and `renames` turn the repeatable flag values (`COLUMN=TYPE`, comma lists,
 `old=new`) into the dict or list the library takes.
 """
@@ -41,12 +41,16 @@ _HELP = {
     "value_input": "How a sheet of a service takes the values: raw as they are, user as if typed.",
     "overwrite": "Allow a write over the source itself, or a replace of a sheet with rows that asks first.",
     "backup": "Keep a backup of the target before it is replaced.",
+    "lookups": "Address of a lookup joined to the source, e.g. prices.xlsx#Prices; repeatable, joined in order.",
+    "on": "Key column: a name, or main_name=lookup_name; repeat for several keys.",
+    "how": "Rows kept: left every source row, right every lookup row (one lookup), inner the matched, full all.",
 }
 _SIDE = {None: "", "in": "Source: ", "out": "Target: "}
 
 
-def option(word: str, default: Any, side: str | None = None, **extra: Any) -> Any:
-    return typer.Option(default, help=_SIDE[side] + _HELP[word], **extra)
+def option(word: str, default: Any, side: str | None = None, *names_: str, **extra: Any) -> Any:
+    """`names_` are flag names that differ from the parameter's (`--lookup` for `lookups`)."""
+    return typer.Option(default, *names_, help=_SIDE[side] + _HELP[word], **extra)
 
 
 def pairs(values: list[str] | None) -> dict[str, str] | None:

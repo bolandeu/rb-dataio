@@ -11,7 +11,7 @@ from importlib import resources
 import typer
 
 from . import output
-from .commands import auth, backups, convert, describe, doctor, formats, info, init, restore, skill, status
+from .commands import auth, backups, convert, describe, doctor, formats, info, init, join, restore, skill, status
 from .commands import config as config_cmd
 from .core.version import DEV_VERSION, cli_name, installed_version, package_summary
 
@@ -35,6 +35,7 @@ app.command(name="status")(status.status)
 app.command(name="doctor")(doctor.doctor)
 app.command(name="convert")(convert.convert)
 app.command(name="info")(info.info)
+app.command(name="join")(join.join)
 app.command(name="formats")(formats.formats)
 app.command(name="backups")(backups.backups)
 app.command(name="restore")(restore.restore)
