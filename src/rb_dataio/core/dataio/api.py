@@ -2,19 +2,20 @@
 
 Every keyword here is a CLI flag with the same name (docs/adr/0001, tests/test_parity.py):
 `read()` and `write()` reach the CLI through `convert`, where the options both sides
-have take `in_` / `out_`. A parameter whose behaviour comes with a later task is
+have take `in_` / `out_`; `join()` takes convert's keywords for its sources and target. A parameter whose behaviour comes with a later task is
 accepted and passed on already, so later tasks change behaviour, not the surface.
 """
 
 from __future__ import annotations
 
+import inspect
 import os
 from typing import Any
 
 import pandas as pd
 
-from . import backup, batch, pipeline, registry
-from .options import SOURCE_COLUMN, ReadOptions, WriteOptions
+from . import backup, batch, joins, pipeline, registry
+from .options import SOURCE_COLUMN, JoinOptions, ReadOptions, WriteOptions
 from .report import Backup, FormatInfo, Info, Report
 
 # An address, a text with line breaks, or a Python object that is a table (core/dataio/objects.py).
@@ -153,6 +154,63 @@ def convert(
     frame, source_part, read_warnings = pipeline.read_frame(os.fspath(source), read_options)
     report = pipeline.write_frame(frame, os.fspath(target), write_options)
     return report.model_copy(update={"source": source_part, "warnings": [*read_warnings, *report.warnings]})
+
+
+# The options of convert that join does not take keep convert's defaults there.
+_CONVERT_DEFAULTS = {
+    name: parameter.default
+    for name, parameter in inspect.signature(convert).parameters.items()
+    if parameter.default is not inspect.Parameter.empty
+}
+
+
+def join(
+    source: Source,
+    target: str | os.PathLike[str],
+    *,
+    lookups: list[Source] | None = None,
+    on: list[str] | None = None,
+    how: str = "left",
+    in_format: str | None = None,
+    in_sheet: str | None = None,
+    in_table: str | None = None,
+    in_encoding: str | None = None,
+    in_sep: str | None = None,
+    in_header: bool = True,
+    in_credentials: str | None = None,
+    out_format: str | None = None,
+    out_sheet: str | None = None,
+    out_table: str | None = None,
+    out_encoding: str | None = None,
+    out_sep: str | None = None,
+    out_header: bool = True,
+    out_credentials: str | None = None,
+    mode: str = "replace",
+    start: str | None = None,
+    value_input: str = "raw",
+    columns: list[str] | None = None,
+    rename: dict[str, str] | None = None,
+    overwrite: bool = False,
+    backup: bool = True,
+    dry_run: bool = False,
+) -> Report:
+    """Join lookups to a source and write it to a target: `join("main.csv", "out.xlsx", lookups=["prices.xlsx#Prices"],
+    on=["sku"])`; the report has `lookups`, how many main rows found a match in each.
+
+    `on` names the key columns: a name, or `main_name=lookup_name` (the result keeps the main name). Keys compare
+    as text with outer spaces trimmed; an empty key matches nothing. `how` keeps `left` every main row, `right`
+    every lookup row (one lookup only), `inner` the matched ones, `full` all; the lookups join in order.
+    A lookup column whose name the table has gets the suffix of the lookup: the part of its address, else the
+    file stem, else `lookup<N>`. The `in_` options are of every source, the others of the target as in `convert`.
+    """
+    arguments = {**_CONVERT_DEFAULTS, **locals()}
+    return joins.join(
+        source,
+        os.fspath(target),
+        JoinOptions.taken_from(arguments),
+        ReadOptions.taken_from(arguments, "in"),
+        WriteOptions.taken_from(arguments, "out"),
+    )
 
 
 def info(

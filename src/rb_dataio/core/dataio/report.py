@@ -2,6 +2,7 @@
 
 A dry run reports the target as a `PlannedTarget` (whether it exists, its rows before and after);
 a batch reports `targets` (`BatchTarget`, `PlannedBatchTarget` in a dry run) and, when some failed, `errors` (`BatchError`);
+a join reports `lookups` (`LookupPart`: how many main rows found a match in each lookup);
 a `Backup` is one entry of the backup store, listed by `backups()` and named in a restore report.
 """
 
@@ -39,6 +40,20 @@ class TargetPart(_Part):
     mode: Mode
     rows: int | None  # None only in a restore of a backup whose content dataio could not read
     columns: list[str] | None
+
+
+class LookupPart(_Part):
+    """One lookup of a join: its address, its rows and how many main rows found a match in it.
+
+    `matched` and `unmatched` add up to the rows the lookup was joined to; `empty_keys` are the unmatched
+    ones with an empty key cell.
+    """
+
+    uri: str
+    rows: int
+    matched: int
+    unmatched: int
+    empty_keys: int
 
 
 class PlannedTarget(TargetPart):
@@ -90,6 +105,7 @@ class Report(_Part):
     targets: list[SerializeAsAny[BatchTarget]] | None = None  # a batch: every target written (or planned)
     errors: list[BatchError] | None = None  # a batch that failed in part: the failures, so the run is not ok
     backup: Backup | None = None  # the backup a restore brings back
+    lookups: list[LookupPart] | None = None  # a join: one entry per lookup, in order
     warnings: list[str] = Field(default_factory=list)
     data: Any = None  # the data of an object format written to `-` (records under the CLI's --json)
 
