@@ -2,8 +2,8 @@
 id: DATAIO-029
 title: 'CLI Standard v1.25.0: a usage error under --json prints the INVALID_ARGUMENTS
   envelope; the gate is rb-release check'
-status: queue
-attempts: 0
+status: in_progress
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -41,7 +41,7 @@ budget_usd: null
 epic: null
 spec_refs: []
 checks:
-- uv run pytest tests/test_cli.py tests/test_ci.py tests/test_scripts.py
+- uv run pytest --no-cov tests/test_cli.py tests/test_ci.py tests/test_scripts.py
 - uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.0#subdirectory=gate"
   rb-release check
 resident: null
@@ -139,3 +139,13 @@ cli-generator template v1.25.0: template/src/{{ package_name }}/output/__init__.
 - .github/dependabot.yml, and the Recommended rules the gate does not check
 - tests/contracts/schema.json and tests/test_contracts.py: their comments that name release.py stay
 - scripts/deploy.sh and the install line of README.md
+
+## Feedback
+
+### Attempt 1: file docstring
+
+- add a docstring to src/rb_dataio/output/__init__.py: what it holds and why
+
+### Blocked: environment_broken (checks ['uv run pytest tests/test_cli.py tests/test_ci.py tests/test_scripts.py'])
+
+The task check ran a subset of tests under the coverage floor (fail_under = 90): it was red on main and on the branch for that reason only. The Architect changed it to --no-cov; the work stays as it is.
