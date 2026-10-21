@@ -3,8 +3,8 @@ id: DATAIO-035
 title: 'join() in the library: a main source and lookups joined by named key columns'
 status: publish
 attempts: 0
-blocked: true
-blocked_reason: idea_wait
+blocked: false
+blocked_reason: null
 phase: null
 tests_hash: null
 publish_stage: null
