@@ -24,6 +24,8 @@ versioning = "semver"
 changelog = "CHANGELOG.md"
 deploy_command = "sh scripts/deploy.sh"
 regenerate = { "uv.lock" = "uv lock" }
+gate = "remote"
+gate_status_url = "https://homeserver.tailee01ab.ts.net:3000/api/v1/repos/bolandeu/dataio/commits/{commit}/status"
 
 [connector]
 webhook_secret = "PLANE_WEBHOOK_SECRET_TOOLS"
