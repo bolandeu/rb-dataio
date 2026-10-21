@@ -7,7 +7,7 @@
 ```bash
 uv sync
 uv run dataio --help
-uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.0#subdirectory=gate" rb-release check   # the full gate (run before every commit; CI runs it too)
+uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.8#subdirectory=gate" rb-release check   # the full gate (run before every commit; CI runs it too)
 uv run pytest --snapshot-update  # after changing a command's help; review tests/snapshots/help/
 ```
 

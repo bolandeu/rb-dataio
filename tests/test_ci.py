@@ -9,7 +9,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".gitea" / "workflows" / "ci.yml"
 # The tag of the gate, not `_commit` of .copier-answers.yml: that stays at the generated version until a `copier update`.
-GATE_TAG = "v1.25.0"
+GATE_TAG = "v1.25.8"
 GATE = (
     'uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git'
     f'@{GATE_TAG}#subdirectory=gate" rb-release check'
