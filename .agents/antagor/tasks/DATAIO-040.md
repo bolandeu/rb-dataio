@@ -1,8 +1,8 @@
 ---
 id: DATAIO-040
 title: 'Template update v1.15.0 -> v1.27.1: apply the merged patch'
-status: in_progress
-attempts: 0
+status: queue
+attempts: 1
 blocked: false
 blocked_reason: null
 phase: null
@@ -51,3 +51,10 @@ The patch /Users/bolandau/Work/tools/dataio/docs/plans/template-v1.27.1.patch is
 - AGENTS.md, CODING_STANDARDS.md, CONTEXT.md, CHANGELOG.md, .agents/antagor/antagor.toml, scripts/deploy.sh
 - Python 3.14-only syntax: keep requires-python >=3.11 and write except (A, B):
 - Any change of the package's own commands, public API or error catalogue
+
+## Feedback
+
+### Attempt 1: file docstring
+
+- update the docstring of src/rb_dataio/core/opencli.py: +argument +cleaned +info +jsonable +option
+- update the docstring of src/rb_dataio/core/version.py: +optional_module
