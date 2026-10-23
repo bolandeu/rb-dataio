@@ -12,7 +12,7 @@ versioning = "semver"
 changelog = "CHANGELOG.md"
 deploy_command = "sh scripts/deploy.sh"
 gate = "remote"
-gate_status_url = "https://homeserver.tailee01ab.ts.net:3000/api/v1/repos/bolandeu/rb-dataio/commits/{commit}/status"
+gate_status_url = "https://homeserver.tailee01ab.ts.net:3000/api/v1/repos/bolandeu/dataio/commits/{commit}/status"
 
 [connector]
 webhook_secret = "PLANE_WEBHOOK_SECRET_TOOLS"
@@ -30,3 +30,6 @@ in_review = "In Review"
 publish = "Publishing"
 done = "Done"
 cancelled = "Cancelled"
+
+[daemon]
+enabled = true
