@@ -1,4 +1,6 @@
-"""The distribution name and the command-name identifier, written down because an editable install cannot find them."""
+"""The distribution name and the tool namespace copier writes from its answers, because an editable install cannot map
+this import package to its distribution at runtime.
+"""
 
 # Rendered by copier from the `dist_name` answer: the [project] name in
 # pyproject.toml (`rb-<slug>`, the Standard, Technology), which may differ from this
@@ -19,4 +21,4 @@ DIST_NAME_LEGACY: str | None = None
 TOOL = "dataio"
 # The cli-generator release this project was generated or last updated from
 # (copier's `_commit`), for `describe --json`; None for a project not made by copier.
-TEMPLATE_VERSION: str | None = "v1.15.0"
+TEMPLATE_VERSION: str | None = "v1.27.1"

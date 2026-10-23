@@ -15,11 +15,11 @@ import logging
 import sys
 import weakref
 from collections.abc import Callable
-from typing import NoReturn, cast
+from typing import ClassVar, NoReturn, cast
 
 import typer
 from rich.markup import escape
-from typer.core import TyperGroup
+from typer.core import TyperGroup, TyperOption
 
 from ..core.errors import Aborted, CliError, InvalidArguments
 from ..core.version import cli_name
@@ -49,6 +49,7 @@ __all__ = [
 ]
 
 _CLI_NAME = cli_name()
+_PACKAGE_NAME = __name__.split(".")[0]
 # Click's UsageError (unknown option, missing argument, bad value): recent Typer ships its own copy of Click,
 # so it is taken from Typer's BadParameter, never imported from the `click` package.
 _UsageError = cast("type[Exception]", typer.BadParameter.__bases__[0])
@@ -115,7 +116,15 @@ class RootGroup(TyperGroup):
     Click reports a usage error while it parses the arguments, before any
     command runs, so `guard` never sees it. The root's own arguments fail in
     `make_context`, a subcommand's inside `invoke`; both end here.
+
+    An optional part adds its global options (`--project`, `--ai`) to `part_options`
+    when it registers; they reach no callback argument (`expose_value=False`).
     """
+
+    part_options: ClassVar[list[TyperOption]] = []
+
+    def __init__(self, *, params=None, **kwargs):
+        super().__init__(params=[*(params or []), *self.part_options], **kwargs)
 
     def make_context(self, info_name, args, parent=None, **extra):
         argv = list(args)  # Click consumes `args` while it parses
@@ -167,9 +176,9 @@ def emit_report(
     else:
         if not ctx.obj.get("quiet"):
             render_human(payload)
-        human.err_console.print(f"[red]Error:[/red] {problem.message}")
+        human.err_console.print(f"[red]Error:[/red] {escape(problem.message)}")
         if problem.action:
-            human.err_console.print(f"[dim]{problem.action}[/dim]")
+            human.err_console.print(f"[dim]{escape(problem.action)}[/dim]")
     raise typer.Exit(code=problem.exit_code)
 
 
@@ -177,9 +186,9 @@ def emit_error(ctx: typer.Context, error: CliError) -> None:
     if ctx.obj.get("json"):
         json_output.emit({"ok": False, "error": error.to_dict()})
     else:
-        human.err_console.print(f"[red]Error:[/red] {error.message}")
+        human.err_console.print(f"[red]Error:[/red] {escape(error.message)}")
         if error.action:
-            human.err_console.print(f"[dim]{error.action}[/dim]")
+            human.err_console.print(f"[dim]{escape(error.action)}[/dim]")
     raise typer.Exit(code=error.exit_code)
 
 
@@ -203,7 +212,7 @@ def vecho(ctx: typer.Context, message: str) -> None:
     `logging.getLogger(__name__).debug(...)` instead — see configure_logging.
     """
     if ctx.obj.get("verbose") and not ctx.obj.get("json") and not ctx.obj.get("quiet"):
-        human.err_console.print(f"[dim]{message}[/dim]")
+        human.err_console.print(f"[dim]{escape(message)}[/dim]")
 
 
 def require_confirmation(ctx: typer.Context, description: str, confirm: bool) -> None:
@@ -261,10 +270,12 @@ def guard(func: Callable) -> Callable:
             )
 
     # Docstrings are the --help text; `{cli}` in their `Example:` lines becomes
-    # this CLI's name, so template-born commands need no Jinja rendering.
+    # this CLI's name and `{package}` the package's (the project folder's name),
+    # so template-born commands need no Jinja rendering.
     # Escaped because Typer renders help as rich markup, which silently drops
     # anything in brackets (`[[tool.rb.external]]`, `[x]`).
-    wrapper.__doc__ = escape((func.__doc__ or "").replace("{cli}", _CLI_NAME)) or None
+    doc = (func.__doc__ or "").replace("{cli}", _CLI_NAME).replace("{package}", _PACKAGE_NAME)
+    wrapper.__doc__ = escape(doc) or None
     _GUARDED.add(wrapper)
     return wrapper
 

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import functools
+import importlib
 import importlib.util
 from importlib.metadata import Distribution, PackageNotFoundError, distribution
+from types import ModuleType
 
 from .._distribution import DIST_NAME, DIST_NAME_LEGACY
 
@@ -35,6 +37,11 @@ def module_exists(name: str) -> bool:
         return importlib.util.find_spec(name) is not None
     except ModuleNotFoundError:  # a parent package is missing entirely
         return False
+
+
+def optional_module(name: str) -> ModuleType | None:
+    """Module `name` (dotted) of an optional part, or None when the package was generated without that part."""
+    return importlib.import_module(name) if module_exists(name) else None
 
 
 @functools.cache

@@ -18,7 +18,7 @@ uv tool install "rb-dataio @ git+https://github.com/bolandeu/rb-dataio.git@vX.Y.
 ```
 
 Replace `vX.Y.Z` with the latest release tag (install from a tag, never a
-branch).
+branch: [the Standard](https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator/src/branch/main/skills/cli-builder/reference/standard.md), Install).
 
 Same command on macOS, Linux and Windows; `uv tool upgrade rb-dataio`
 updates it. Do not run from source unless asked to develop the CLI.
@@ -84,7 +84,8 @@ uv tool install "rb-dataio @ git+ssh://git@github.com/bolandeu/rb-dataio.git@vX.
   get sign-off after `--dry-run`, before `--confirm`. In Python:
   `join(source, target, lookups=[...], on=[...])`.
 - **`doctor --json`** first when something looks off — it reports
-  project, config, version compatibility and credential readiness.
+  what the CLI needs to run: its version, the project, its config,
+  credential readiness and the external programs.
 - **`describe --json`** — the whole CLI as one machine-readable OpenCLI
   document (commands, options, exit codes, env vars, data): the bare
   document, no `{"ok": ...}` envelope.
