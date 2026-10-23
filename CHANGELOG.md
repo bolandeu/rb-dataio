@@ -5,6 +5,12 @@ All notable changes to this project are documented here. Versions follow
 
 The changelog is written by `antagor publish`; don't edit it by hand.
 
+## v0.1.32 — 2026-10-23
+
+### Outside epics
+
+- Template update v1.15.0 -> v1.27.1: apply the merged patch (DATAIO-040)
+
 ## v0.1.31 — 2026-10-21
 
 ### Outside epics

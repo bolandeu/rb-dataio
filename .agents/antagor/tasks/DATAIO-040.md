@@ -1,7 +1,7 @@
 ---
 id: DATAIO-040
 title: 'Template update v1.15.0 -> v1.27.1: apply the merged patch'
-status: publish
+status: done
 attempts: 1
 blocked: false
 blocked_reason: null
