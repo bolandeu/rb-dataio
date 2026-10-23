@@ -18,6 +18,7 @@ owns_paths:
 - .github
 - .gitignore
 - pyproject.toml
+- uv.lock
 - scripts/detach.py
 - src/rb_dataio
 - tests
@@ -34,6 +35,7 @@ budget_usd: null
 epic: null
 spec_refs: []
 checks:
+- uv lock --check
 - uv run pytest -q
 - uv run ruff check .
 - uv run ruff format --check .
