@@ -1,6 +1,6 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
 _commit: v1.15.0
-_src_path: gh:bolandeu/cli-generator
+_src_path: https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git
 antagor_prefix: DIO
 author_name: net.paradox
 cli_name: dataio
