@@ -44,10 +44,10 @@ tool: null
 pr: null
 ---
 
-The patch /Users/bolandau/Work/tools/dataio/docs/plans/template-v1.27.1.patch is the verified 3-way merge of the cli-generator template v1.27.1 into dataio (795 tests pass, ruff clean, made on a copy). Apply it with 'git apply' from the repo root, then delete docs/plans/template-v1.27.1.patch in the same commit. Delete the empty .github/ directory if it remains (test_no_github_workflow fails while it exists). Do not edit the patched code by hand beyond fixing a check that fails; if one fails, report which and why. Run the three checks. Known and accepted: with no project, doctor now prints the template wording 'doctor runs outside a project'.
+The patch /Users/bolandau/Work/tools/dataio/docs/plans/template-v1.27.1.patch is the verified 3-way merge of the cli-generator template v1.27.1 into dataio (795 tests pass, ruff clean, made on a copy). Apply it with 'git apply' from the repo root, then delete docs/plans/template-v1.27.1.patch in the same commit. Delete the empty .github/ directory if it remains (test_no_github_workflow fails while it exists). If 'uv lock --check' fails, run 'uv lock' and commit uv.lock. Do not edit the patched code by hand beyond fixing a check that fails; if one fails, report which and why. Run the four checks. Known and accepted: with no project, doctor now prints the template wording 'doctor runs outside a project'.
 
 ## Out of scope
 
-- AGENTS.md, CODING_STANDARDS.md, CONTEXT.md, CHANGELOG.md, .agents/antagor/antagor.toml, scripts/deploy.sh, uv.lock
+- AGENTS.md, CODING_STANDARDS.md, CONTEXT.md, CHANGELOG.md, .agents/antagor/antagor.toml, scripts/deploy.sh
 - Python 3.14-only syntax: keep requires-python >=3.11 and write except (A, B):
 - Any change of the package's own commands, public API or error catalogue
