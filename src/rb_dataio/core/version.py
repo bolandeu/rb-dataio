@@ -1,4 +1,7 @@
-"""The installed version, the command name and the distribution name, read from package metadata."""
+"""The installed version, the command name and the distribution name, read from package metadata.
+
+Also `module_exists` and `optional_module`: probe for an optional module and import it only when it is present.
+"""
 
 from __future__ import annotations
 

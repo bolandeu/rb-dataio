@@ -13,6 +13,10 @@ programs and template version.
 The output is a cross-tool contract like `auth status`: tests/test_describe.py
 validates it against the OpenCLI schema and snapshots it. Changing or removing
 anything in it is a breaking change.
+
+Public helpers: `info` (the tool's identity block), `option` and `argument` (one
+parameter each), `jsonable` (a default as a JSON value) and `cleaned` (help text
+without Click's line wrapping).
 """
 
 from __future__ import annotations
