@@ -1,3 +1,7 @@
+"""Tests of `auth status` and the credential store with test providers; the report shape is the contract with other
+tools.
+"""
+
 from __future__ import annotations
 
 import json
@@ -15,11 +19,11 @@ from rb_dataio.credentials import health
 from rb_dataio.credentials import manager as credentials
 from rb_dataio.providers import Health, Provider, Quota
 
-from .test_cli import invoke, invoke_json
+from .test_cli import invoke, invoke_json, plain
 
 NS = "dataio"  # keychain service and env prefix use the command name, not the package
 PREFIX = re.sub(r"[^A-Z0-9]", "_", NS.upper())
-GOOD, BAD = "good-secret-123", "bad-secret-456"
+GOOD, BAD = "good-secret-123", "bad-secret-456"  # gitleaks:allow (fake keys)
 
 
 # --- test providers: a required API key one, an optional two-field one ----------
@@ -201,8 +205,8 @@ def test_provider_filter_and_unknown_provider(demo_providers) -> None:
 def test_human_output(demo_providers) -> None:
     result = invoke("auth", "status", env=env(demo=BAD))
     assert result.exit_code == 0
-    assert "demo: unchecked (env:" in result.stdout
-    assert "extra (optional): missing" in result.stdout
+    assert "demo: unchecked (env:" in plain(result.stdout)
+    assert "extra (optional): missing" in plain(result.stdout)
     assert BAD not in result.output
 
 
@@ -373,8 +377,14 @@ def test_unavailable_keychain_warns_once_and_only_without_env(
     assert [r.levelname for r in caplog.records].count("WARNING") == 1
 
 
-def test_doctor_reports_credential_checks(tmp_path: Path, fake_keyring) -> None:
-    _, payload = invoke_json("--project", str(tmp_path), "doctor")
+def doctor_checks(**values: str | None) -> tuple[dict, dict[str, dict]]:
+    result = invoke("doctor", "--json", env=env(**values))
+    payload = json.loads(result.stdout)
+    return payload, {check["name"]: check for check in payload["checks"]}
+
+
+def test_doctor_reports_credential_checks(fake_keyring) -> None:
+    _, payload = invoke_json("doctor")
     names = [check["name"] for check in payload["checks"]]
     assert "credential_store" in names
     assert "credential" in names
@@ -383,7 +393,7 @@ def test_doctor_reports_credential_checks(tmp_path: Path, fake_keyring) -> None:
 # --- doctor: the credential checks follow the auth status rule ---------------------------
 
 
-def doctor_checks(tmp_path: Path, **env: str) -> tuple[bool, dict[str, dict]]:
+def project_doctor_checks(tmp_path: Path, **env: str) -> tuple[bool, dict[str, dict]]:
     code, payload = invoke_json("--project", str(tmp_path), "doctor", env=env)
     assert code == 0
     return payload["healthy"], {check["name"]: check for check in payload["checks"]}
@@ -395,7 +405,7 @@ def test_doctor_is_healthy_with_env_credentials_and_no_keychain_or_project(
     monkeypatch.setattr(credentials.keyring, "get_keyring", lambda: fail.Keyring())
     env = {"DATAIO_GOOGLE_CLIENT_EMAIL": "a@b.c", "DATAIO_GOOGLE_PRIVATE_KEY": GOOD}
 
-    healthy, checks = doctor_checks(tmp_path, **env)
+    healthy, checks = project_doctor_checks(tmp_path, **env)
 
     assert healthy is True
     for name in ("credential_store", "credential", "project"):
@@ -414,7 +424,7 @@ def test_doctor_fails_the_credential_check_of_a_bad_provider(
     real = health.report
     monkeypatch.setattr(health, "report", lambda *a, **k: _with_status(real(*a, **k), status))
 
-    healthy, checks = doctor_checks(tmp_path, **env(demo=GOOD))
+    healthy, checks = project_doctor_checks(tmp_path, **env(demo=GOOD))
 
     assert healthy is False
     assert checks["credential"]["ok"] is False
@@ -429,7 +439,41 @@ def _with_status(payload: dict, status: str) -> dict:
 
 
 def test_doctor_fails_when_a_required_provider_is_missing(tmp_path: Path, demo_providers) -> None:
-    healthy, checks = doctor_checks(tmp_path)
+    healthy, checks = project_doctor_checks(tmp_path)
 
     assert healthy is False
     assert "demo: missing" in checks["credential"]["detail"]
+
+
+def test_doctor_is_healthy_with_env_credentials_and_no_keychain(
+    demo_providers, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(credentials, "store_backend", lambda: None)
+    payload, checks = doctor_checks(demo=GOOD)
+    assert checks["credential_store"]["ok"] is True
+    assert "environment variables" in checks["credential_store"]["detail"]
+    assert checks["credential"]["ok"] is True
+    assert "demo" in checks["credential"]["detail"]
+    assert payload["healthy"] is True
+
+
+def test_doctor_makes_no_provider_health_call(demo_providers, monkeypatch: pytest.MonkeyPatch) -> None:
+    def forbidden(self) -> Health:
+        pytest.fail("doctor must stay offline: no provider health call")
+
+    monkeypatch.setattr(Demo, "health_check", forbidden)
+    payload, checks = doctor_checks(demo=GOOD)
+    assert checks["credential"]["ok"] is True
+    assert "demo: unchecked" in checks["credential"]["detail"]
+    assert payload["healthy"] is True
+
+
+def test_doctor_fails_for_a_missing_required_credential(demo_providers) -> None:
+    payload, checks = doctor_checks()
+    assert checks["credential"]["ok"] is False
+    assert payload["healthy"] is False
+
+
+def test_doctor_never_names_a_provider_the_package_does_not_register(demo_providers) -> None:
+    result = invoke("doctor", "--json", env=env(demo=BAD))
+    assert "default" not in result.stdout

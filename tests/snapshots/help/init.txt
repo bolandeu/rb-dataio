@@ -1,7 +1,7 @@
 
  Usage: dataio init [OPTIONS]
 
- Initialize a project: creates .dataio/config.toml in the target directory.
+ Initialize a project: creates .rb_dataio/config.toml in the target directory.
 
  Example: dataio init --name demo
 

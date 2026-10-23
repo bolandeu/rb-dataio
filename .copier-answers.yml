@@ -1,7 +1,7 @@
 # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
-_commit: v1.15.0
+_commit: v1.27.1
 _src_path: https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git
-antagor_prefix: DIO
+antagor_prefix: DATAIO
 author_name: net.paradox
 cli_name: dataio
 description: 'Универсальное чтение и запись таблиц: строки, списки, DataFrame, txt,
@@ -9,9 +9,14 @@ description: 'Универсальное чтение и запись табли
 dist_name: rb-dataio
 dist_name_legacy: ''
 include_auth: true
-include_ci: false
+include_contracts: true
 include_db: false
+include_describe: true
 include_http_provider: true
+include_project: true
+include_skill: true
+install_homeserver_users: rbtools
+install_mac: true
 package_name: rb_dataio
 project_name: dataio
 repository_url: https://github.com/bolandeu/rb-dataio

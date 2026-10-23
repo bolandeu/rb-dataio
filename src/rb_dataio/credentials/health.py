@@ -1,6 +1,6 @@
 """The `auth status [--check] --json` report (the Standard, Health), and `doctor_check`, the same rule for `doctor`.
 
-Its shape is a cross-tool contract — `tools-watch` reads it from every CLI
+Its shape is a cross-tool contract — a consumer reads it from every CLI
 without knowing any provider — so it is pinned by `tests/test_auth.py`, and
 changing it is a breaking change. Credential values never leave this
 module: they are used only to scrub messages. Knows only `providers.Provider`:
@@ -15,6 +15,7 @@ from rich.markup import escape
 
 from .. import output, providers
 from ..core.errors import AuthRequired, CliError, CredentialsUnhealthy, InvalidArguments, ProviderError
+from ..core.version import DEV_VERSION, cli_name, installed_version
 from ..providers import Health, Provider
 from . import manager
 
@@ -200,3 +201,15 @@ def render(payload: dict) -> None:
         expires = f", expires {entry['expires_at']}" if entry["expires_at"] else ""
         line = f"{entry['provider']}{optional}: {entry['status']} ({entry['source']}: {entry['source_ref']}){expires}{detail}"
         output.human.echo_markup(f"{mark} {escape(line)}")
+
+
+def doctor_checks() -> list[dict]:
+    """The `credential_store` and `credential` checks of `doctor`: the rule of `auth status`, offline (presence only)."""
+    return [
+        {
+            "name": "credential_store",
+            "ok": True,  # the keychain is a convenience of development; environment variables are the source in production
+            "detail": manager.store_backend() or "no OS keychain; credentials come from environment variables",
+        },
+        doctor_check(cli_name(), installed_version() or DEV_VERSION),
+    ]

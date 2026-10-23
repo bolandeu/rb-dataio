@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import importlib.util
-import re
+import shutil
+import subprocess
 from pathlib import Path
 from types import ModuleType
 
@@ -27,47 +28,23 @@ def test_antagor_project_config() -> None:
 
     root = SCRIPTS.parent
     config = tomllib.loads((root / ".agents" / "antagor" / "antagor.toml").read_text())
-    assert config["schema"] == 1
-    # The prefix must equal the Plane project identifier (DATAIO here), so it may be longer than 4 letters.
-    assert re.fullmatch(r"[A-Z]{2,12}", config["prefix"])
-    assert config["worker"] == "claude-code"
-    assert config["checks"] == ["python3 scripts/check_command_docstrings.py", GATE]
-    assert config["review"]["required_types"] == ["feature", "bugfix"]
-    assert config["publish"] == {
-        "versioning": "semver",
-        "changelog": "CHANGELOG.md",
-        "deploy_command": "sh scripts/deploy.sh",
-        "regenerate": {"uv.lock": "uv lock"},
-        "gate": "remote",
-        "gate_status_url": "https://homeserver.tailee01ab.ts.net:3000/api/v1/repos/bolandeu/dataio/commits/{commit}/status",
-    }
-    # The Human sets the mode (`antagor mode set`); dataio runs in `fast`.
-    assert config.get("mode") in (None, "strict", "default", "free", "fast")
-    # Antagor owns this file and may add entries on upgrade.
-    assert {"state/", "receipts/"} <= set((root / ".agents" / "antagor" / ".gitignore").read_text().split())
-    assert "ANTAGOR_VERSION" in (SCRIPTS / "deploy.sh").read_text()
+    # A package may add or reorder checks; the template guarantees only the package's own facts.
+    assert "python3 scripts/check_command_docstrings.py" in config["checks"]
+    assert "rb-release check" in config["heavy"]
+    publish = config["publish"]
+    if publish.get("gate") == "remote":
+        status_url = publish["gate_status_url"]
+        assert status_url.startswith("https://homeserver.tailee01ab.ts.net:3000/api/v1/repos/bolandeu/")
+        assert status_url.endswith("/commits/{commit}/status")
+    expected = {"versioning": "semver", "changelog": "CHANGELOG.md", "deploy_command": "sh scripts/deploy.sh"}
+    assert {k: config["publish"].get(k) for k in expected} == expected  # Antagor may add its own keys
+    assert "git push origin main --follow-tags" in (SCRIPTS / "deploy.sh").read_text()
 
 
-def test_antagor_layout() -> None:
-    # The method's layout: AGENTS.md holds pointers only, the rules live in their own files (`antagor layout check` runs in check_template.sh).
-    root = SCRIPTS.parent
-    for name in ("AGENTS.md", "CLAUDE.md", "CONTEXT.md", "CODING_STANDARDS.md", "docs/adr/README.md"):
-        assert (root / name).is_file(), name
-    agents = (root / "AGENTS.md").read_text()
-    for pointer in ("`CONTEXT.md`", "`docs/adr/`", "`CODING_STANDARDS.md`", "`.agents/antagor/`"):
-        assert pointer in agents
-    for moved in ("TDD", "--dry-run", "expand/contract"):
-        assert moved not in agents, moved
-    assert "AGENTS.md" in (root / "CLAUDE.md").read_text()
-    context = (root / "CONTEXT.md").read_text()
-    assert re.fullmatch(r"# \S.*", context.splitlines()[0])
-    assert re.search(r"^\*\*[^*]+\*\*:$", re.sub(r"<!--.*?-->", "", context, flags=re.DOTALL), re.MULTILINE)
-    readme = (root / "README.md").read_text()
-    assert "antagor publish" not in readme
-    assert "ticket" not in readme
-    assert "the git tag" in readme
-    assert "install_hooks" not in readme
-    assert "towncrier" not in readme
+def test_agents_file_names_the_standard_and_the_gate() -> None:
+    agents = (SCRIPTS.parent / "AGENTS.md").read_text()
+    assert "cli-generator/src/branch/main/skills/cli-builder/reference/standard.md" in agents
+    assert "rb-release check" in agents
 
 
 def test_docstring_check_reads_the_working_tree_only() -> None:
@@ -76,3 +53,34 @@ def test_docstring_check_reads_the_working_tree_only() -> None:
     check = _load("check_command_docstrings")
     assert list(inspect.signature(check.stale_commands).parameters) == ["paths"]
     assert "index" not in (check.stale_commands.__doc__ or "")
+
+
+def _git(repo: Path, *args: str) -> str:
+    result = subprocess.run(  # noqa: S603
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout
+
+
+def test_env_files_are_ignored(tmp_path: Path) -> None:
+    shutil.copy(SCRIPTS.parent / ".gitignore", tmp_path / ".gitignore")
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "i")
+    (tmp_path / ".env").write_text("TOKEN=x\n")
+    (tmp_path / ".env.local").write_text("TOKEN=y\n")
+    assert _git(tmp_path, "status", "--porcelain", "--untracked-files=all") == ""
+
+
+GITEA_INDEX = "https://homeserver.tailee01ab.ts.net:3000/api/packages/bolandeu/pypi/simple"
+
+
+def test_project_declares_the_gitea_index_explicit() -> None:
+    import tomllib
+
+    config = tomllib.loads((SCRIPTS.parent / "pyproject.toml").read_text())
+    assert {"name": "gitea", "url": GITEA_INDEX, "explicit": True} in config["tool"]["uv"]["index"]
