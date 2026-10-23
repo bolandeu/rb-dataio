@@ -1,0 +1,4204 @@
+diff --git a/.copier-answers.yml b/.copier-answers.yml
+index b13f5fd..b9684a0 100644
+--- a/.copier-answers.yml
++++ b/.copier-answers.yml
+@@ -1,7 +1,7 @@
+ # Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+-_commit: v1.15.0
++_commit: v1.27.1
+ _src_path: https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git
+-antagor_prefix: DIO
++antagor_prefix: DATAIO
+ author_name: net.paradox
+ cli_name: dataio
+ description: 'Универсальное чтение и запись таблиц: строки, списки, DataFrame, txt,
+@@ -9,9 +9,14 @@ description: 'Универсальное чтение и запись табли
+ dist_name: rb-dataio
+ dist_name_legacy: ''
+ include_auth: true
+-include_ci: false
++include_contracts: true
+ include_db: false
++include_describe: true
+ include_http_provider: true
++include_project: true
++include_skill: true
++install_homeserver_users: rbtools
++install_mac: true
+ package_name: rb_dataio
+ project_name: dataio
+ repository_url: https://github.com/bolandeu/rb-dataio
+diff --git a/.gitea/workflows/ci.yml b/.gitea/workflows/ci.yml
+index 311d577..9437712 100644
+--- a/.gitea/workflows/ci.yml
++++ b/.gitea/workflows/ci.yml
+@@ -49,7 +49,7 @@ jobs:
+         run: echo "UV_PYTHON=$(grep -m1 '^requires-python' pyproject.toml | grep -oE '[0-9]+\.[0-9]+' | head -1)" >> "$GITHUB_ENV"
+       # Everything: lock, lint, format, types, tests (incl. help snapshots and
+       # the auth status shape), wheel build + install + `--version` / `--help`.
+-      # The gate of the template tag v1.25.8, through uvx.
++      # The gate of the template tag of this project (.copier-answers.yml `_commit`), through uvx.
+       - name: Gate
+         run: |
+-          uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.25.8#subdirectory=gate" rb-release check
++          uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git@v1.27.1#subdirectory=gate" rb-release check
+diff --git a/.github/dependabot.yml b/.github/dependabot.yml
+deleted file mode 100644
+index 22dae19..0000000
+--- a/.github/dependabot.yml
++++ /dev/null
+@@ -1,17 +0,0 @@
+-# One grouped PR per ecosystem per month.
+-version: 2
+-updates:
+-  - package-ecosystem: "uv"
+-    directory: "/"
+-    schedule:
+-      interval: "monthly"
+-    groups:
+-      uv:
+-        patterns: ["*"]
+-  - package-ecosystem: "github-actions"
+-    directory: "/"
+-    schedule:
+-      interval: "monthly"
+-    groups:
+-      github-actions:
+-        patterns: ["*"]
+diff --git a/.gitignore b/.gitignore
+index c30bc35..7888d3e 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -10,5 +10,9 @@ dist/
+ htmlcov/
+ # mutmut's working copy and results (uv run --group mutation mutmut run)
+ mutants/
++# Local env files hold keys: keys never go into the repo (the gate's secret scan)
++.env
++.env.*
++# The root lines Antagor adds
+ .DS_Store
+ Thumbs.db
+diff --git a/pyproject.toml b/pyproject.toml
+index 7d5523e..19082f4 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -45,6 +45,18 @@ fallback-version = "0.0.0"
+ # Rebuild the editable install when a commit or tag moves, so `--version` follows the tag.
+ cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
+ 
++# Our packages come only from the Gitea registry: a version range in
++# `dependencies` ("rb-serp>=0.3") and a source line per package, never a git
++# tag. explicit = true: only the packages named in [tool.uv.sources] are looked
++# up there, and they are never taken from PyPI (an unrelated package of the
++# same name may live there).
++# [tool.uv.sources]
++# rb-serp = { index = "gitea" }
++[[tool.uv.index]]
++name = "gitea"
++url = "https://homeserver.tailee01ab.ts.net:3000/api/packages/bolandeu/pypi/simple"
++explicit = true
++
+ [tool.hatch.build.targets.wheel]
+ packages = ["src/rb_dataio"]
+ 
+@@ -60,7 +72,7 @@ mutation = ["mutmut>=3.3"]
+ dev = [
+     "jsonschema>=4.23",
+     "pytest>=8.0",
+-    "pyyaml>=6.0",  # tests/contracts/*.yaml
++    "pyyaml>=6.0",  # .copier-answers.yml, the CI workflow, tests/contracts/*.yaml
+     "pytest-cov>=5.0",
+     "ruff>=0.6",
+     "syrupy>=4.8",
+@@ -81,6 +93,10 @@ dev = [
+ # dist = "rb-serp"              # for one of our CLIs: its distribution (default rb-<name>)
+ # url = "https://github.com/bolandeu/serp"  # its repo: DEPENDENCY_TOO_OLD then prints a pinned install
+ 
++# Where sysadmin's tool-updater installs this tool after its first tag. The
++# installation is sysadmin's; this section only says where. homeserver: users
++# to install for (empty = build and publish only); mac: install on the Mac.
++# extras (optional): the extras to install with, e.g. extras = ["browser"].
+ [tool.rb.install]
+ homeserver = ["rbtools"]
+ mac = true
+@@ -89,6 +105,8 @@ mac = true
+ # Where scripts/check_command_docstrings.py (called by the project's checks)
+ # looks for commands: a glob or a list of globs, relative to the repo root.
+ commands = ["src/rb_dataio/commands/*.py"]
++# rb-release check (the gate): extras to install before ruff/ty/pytest.
++# gate_extras = ["browser"]
+ 
+ [tool.pytest.ini_options]
+ # Only tests/: mutmut leaves a copy of the tree in mutants/.
+diff --git a/scripts/detach.py b/scripts/detach.py
+index 522f6c1..ea8871b 100755
+--- a/scripts/detach.py
++++ b/scripts/detach.py
+@@ -64,6 +64,21 @@ def runs_dir() -> Path:
+     return base / tool_name() / "runs"
+ 
+ 
++def _zombie(pid: int) -> bool:
++    """Exited but not reaped by its parent (state Z). Where PID 1 never reaps (`tail -f /dev/null` in a CI job), a killed run stays one."""
++    try:
++        stat = Path(f"/proc/{pid}/stat").read_text()
++        return (
++            stat.rpartition(")")[2].split()[0] == "Z"
++        )  # after the last ')': the command name may hold spaces and parentheses
++    except (OSError, IndexError):
++        pass
++    with contextlib.suppress(OSError):  # macOS has no /proc
++        ps = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True, check=False)
++        return ps.stdout.strip().startswith("Z")
++    return False
++
++
+ def _alive(pid: int) -> bool:
+     try:
+         os.kill(pid, 0)
+@@ -71,7 +86,7 @@ def _alive(pid: int) -> bool:
+         return False
+     except PermissionError:
+         return True
+-    return True
++    return not _zombie(pid)
+ 
+ 
+ def _pid(runs: Path, label: str) -> int | None:
+diff --git a/src/rb_dataio/_distribution.py b/src/rb_dataio/_distribution.py
+index 26141da..f3dcc76 100644
+--- a/src/rb_dataio/_distribution.py
++++ b/src/rb_dataio/_distribution.py
+@@ -1,4 +1,6 @@
+-"""The distribution name and the command-name identifier, written down because an editable install cannot find them."""
++"""The distribution name and the tool namespace copier writes from its answers, because an editable install cannot map
++this import package to its distribution at runtime.
++"""
+ 
+ # Rendered by copier from the `dist_name` answer: the [project] name in
+ # pyproject.toml (`rb-<slug>`, the Standard, Technology), which may differ from this
+@@ -19,4 +21,4 @@ DIST_NAME_LEGACY: str | None = None
+ TOOL = "dataio"
+ # The cli-generator release this project was generated or last updated from
+ # (copier's `_commit`), for `describe --json`; None for a project not made by copier.
+-TEMPLATE_VERSION: str | None = "v1.15.0"
++TEMPLATE_VERSION: str | None = "v1.27.1"
+diff --git a/src/rb_dataio/cli.py b/src/rb_dataio/cli.py
+index c251a7b..6962e83 100644
+--- a/src/rb_dataio/cli.py
++++ b/src/rb_dataio/cli.py
+@@ -6,16 +6,16 @@ Each command lives in `commands/`; this module only names it.
+ 
+ from __future__ import annotations
+ 
+-from importlib import resources
+-
+ import typer
+ 
+ from . import output
+-from .commands import auth, backups, convert, describe, doctor, formats, info, init, join, restore, skill, status
+-from .commands import config as config_cmd
+-from .core.version import DEV_VERSION, cli_name, installed_version, package_summary
++from .commands import auth, backups, convert, doctor, formats, info, join, restore
++from .core.version import DEV_VERSION, cli_name, installed_version, optional_module, package_summary
+ 
+ _PACKAGE_NAME = __name__.split(".")[0]
++# Optional parts (copier questions, dropped by _exclude): each one ships a module that registers its
++# commands and global options. Probed at runtime, so this file needs no template logic.
++PARTS = ("project", "skill", "describe", "db")
+ 
+ # A bare `<cli>` is the discovery entry point for humans and agents alike:
+ # name + version + description, then every command with the first line of
+@@ -26,12 +26,7 @@ app = typer.Typer(
+     help=f"{cli_name()} {installed_version() or DEV_VERSION} — {package_summary() or 'project-aware automation CLI'}",
+ )
+ 
+-app.add_typer(config_cmd.app, name="config")
+ app.add_typer(auth.app, name="auth")  # `auth status` in every CLI; login/logout only with credentials
+-app.add_typer(skill.app, name="skill")
+-
+-app.command(name="init")(init.init)
+-app.command(name="status")(status.status)
+ app.command(name="doctor")(doctor.doctor)
+ app.command(name="convert")(convert.convert)
+ app.command(name="info")(info.info)
+@@ -39,7 +34,9 @@ app.command(name="join")(join.join)
+ app.command(name="formats")(formats.formats)
+ app.command(name="backups")(backups.backups)
+ app.command(name="restore")(restore.restore)
+-app.command(name="describe")(describe.describe)
++for part in PARTS:
++    if module := optional_module(f"{_PACKAGE_NAME}.commands.{part}"):
++        module.register(app)
+ 
+ 
+ def _version_callback(value: bool) -> None:
+@@ -49,24 +46,9 @@ def _version_callback(value: bool) -> None:
+     raise typer.Exit()
+ 
+ 
+-def _ai_callback(value: bool) -> None:
+-    """Print the bundled agent skill doc to stdout.
+-
+-    For agents that can execute this CLI but cannot read files from disk
+-    (e.g. a sandboxed shell with no access to a SKILL.md on the filesystem),
+-    this is the fallback way to get full usage guidance.
+-    """
+-    if not value:
+-        return
+-    content = resources.files(f"{_PACKAGE_NAME}.data").joinpath("SKILL.md").read_text()
+-    typer.echo(content)
+-    raise typer.Exit()
+-
+-
+ @app.callback(invoke_without_command=True)
+ def main_options(
+     ctx: typer.Context,
+-    project: str = typer.Option(None, "--project", help="Path to the project root."),
+     json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON output."),
+     quiet: bool = typer.Option(False, "--quiet", help="Suppress non-essential output."),
+     verbose: bool = typer.Option(False, "--verbose", help="Emit extra diagnostic output."),
+@@ -75,16 +57,8 @@ def main_options(
+     version: bool = typer.Option(
+         False, "--version", callback=_version_callback, is_eager=True, help="Show the version and exit."
+     ),
+-    ai: bool = typer.Option(
+-        False,
+-        "--ai",
+-        callback=_ai_callback,
+-        is_eager=True,
+-        help="Print AI-oriented usage documentation (the bundled skill doc) and exit.",
+-    ),
+ ) -> None:
+-    ctx.ensure_object(dict)
+-    ctx.obj["project"] = project
++    ctx.ensure_object(dict)  # a part's global option (--project) may have put its value here already
+     ctx.obj["json"] = json_output
+     ctx.obj["quiet"] = quiet
+     ctx.obj["verbose"] = verbose
+diff --git a/src/rb_dataio/commands/__init__.py b/src/rb_dataio/commands/__init__.py
+index e69de29..03c72e8 100644
+--- a/src/rb_dataio/commands/__init__.py
++++ b/src/rb_dataio/commands/__init__.py
+@@ -0,0 +1 @@
++"""The commands of the CLI, one module per command or command group."""
+diff --git a/src/rb_dataio/commands/auth.py b/src/rb_dataio/commands/auth.py
+index 99715ff..affffcd 100644
+--- a/src/rb_dataio/commands/auth.py
++++ b/src/rb_dataio/commands/auth.py
+@@ -1,4 +1,6 @@
+-"""`auth status`, and the `auth` group that `auth login` / `auth logout` join when `commands/login.py` exists."""
++"""The `auth` command group: `status` reports the health of the credentials of every provider, or an empty report when
++the package has none.
++"""
+ 
+ from __future__ import annotations
+ 
+@@ -9,7 +11,7 @@ import typer
+ 
+ from .. import output
+ from ..core.errors import InvalidArguments
+-from ..core.version import DEV_VERSION, cli_name, installed_version, module_exists
++from ..core.version import DEV_VERSION, cli_name, installed_version, module_exists, optional_module
+ 
+ # `auth status` exists in every CLI (the Standard, Health); a CLI
+ # generated without credentials (no credentials/ package, no commands/login.py)
+@@ -59,7 +61,6 @@ def auth_status(
+     output.emit_report(ctx, payload, health.render, problem)
+ 
+ 
+-if module_exists(f"{_PACKAGE_NAME}.commands.login"):
+-    _login = importlib.import_module(f"{_PACKAGE_NAME}.commands.login")
++if _login := optional_module(f"{_PACKAGE_NAME}.commands.login"):
+     app.command("login")(_login.login)
+     app.command("logout")(_login.logout)
+diff --git a/src/rb_dataio/commands/config.py b/src/rb_dataio/commands/config.py
+index 1d4a107..6c5d5f6 100644
+--- a/src/rb_dataio/commands/config.py
++++ b/src/rb_dataio/commands/config.py
+@@ -1,3 +1,5 @@
++"""The `config` command group: show and change the project's config file."""
++
+ from __future__ import annotations
+ 
+ from pathlib import Path
+diff --git a/src/rb_dataio/commands/describe.py b/src/rb_dataio/commands/describe.py
+index 674e2d7..7675452 100644
+--- a/src/rb_dataio/commands/describe.py
++++ b/src/rb_dataio/commands/describe.py
+@@ -1,3 +1,5 @@
++"""The `describe` command: the machine-readable description (OpenCLI document) of this CLI for agents."""
++
+ from __future__ import annotations
+ 
+ import json
+@@ -25,3 +27,8 @@ def describe(
+     """
+     document = opencli.document(ctx.find_root().command)
+     typer.echo(json.dumps(document, ensure_ascii=False, indent=None if ctx.obj.get("json") else 2))
++
++
++def register(root: typer.Typer) -> None:
++    """Add `describe` to the CLI's root (the describe part, copier's include_describe)."""
++    root.command(name="describe")(describe)
+diff --git a/src/rb_dataio/commands/doctor.py b/src/rb_dataio/commands/doctor.py
+index e8a6a1a..3d4fd7d 100644
+--- a/src/rb_dataio/commands/doctor.py
++++ b/src/rb_dataio/commands/doctor.py
+@@ -1,44 +1,16 @@
+-"""The `doctor` command: diagnostic checks and the `healthy` verdict.
+-
+-A missing project and a missing OS keychain are reported, not failed: dataio
+-works without them. The credential check follows the `auth status` rule.
+-"""
++"""The `doctor` command: checks of this CLI's own setup, one line per check."""
+ 
+ from __future__ import annotations
+ 
+-import importlib
+-from pathlib import Path
+-
+ import typer
+ 
+ from .. import output
+-from ..core import deps, services
+-from ..core.errors import CliTooOld
+-from ..core.models import ProjectConfig
+-from ..core.version import DEV_VERSION, cli_name, installed_version, module_exists
++from ..core import deps
++from ..core.version import DEV_VERSION, installed_version, optional_module
+ 
+ _PACKAGE_NAME = __name__.split(".")[0]
+ 
+ 
+-def _auth_checks() -> list[dict]:
+-    # credentials/ is dropped at generation time when include_auth=false;
+-    # detecting it at runtime keeps this file free of template logic.
+-    if not module_exists(f"{_PACKAGE_NAME}.credentials.manager"):
+-        return []
+-    credentials = importlib.import_module(f"{_PACKAGE_NAME}.credentials.manager")
+-    health = importlib.import_module(f"{_PACKAGE_NAME}.credentials.health")
+-
+-    backend = credentials.store_backend()
+-    return [
+-        {
+-            "name": "credential_store",
+-            "ok": True,
+-            "detail": backend or "no OS keychain; credentials come from environment variables",
+-        },
+-        health.doctor_check(cli_name(), installed_version() or DEV_VERSION),
+-    ]
+-
+-
+ @output.guard
+ def doctor(
+     ctx: typer.Context,
+@@ -56,31 +28,14 @@ def doctor(
+     checks: list[dict] = [{"name": "python", "ok": True}]
+     checks.append({"name": "cli_version", "ok": True, "detail": installed_version() or DEV_VERSION})
+ 
+-    start = Path(ctx.obj.get("project") or Path.cwd())
+-    output.vecho(ctx, f"Searching for a project root starting at: {start}")
+-    root = services.find_project_root(start)
+-    checks.append(
+-        {"name": "project", "ok": True, "detail": str(root) if root else "no project; dataio works without one"}
+-    )
+-
+-    config: ProjectConfig | None = None
+-    if root is not None:
+-        try:
+-            config = services.load_config(root, check_compat=False)
+-            checks.append({"name": "config", "ok": True})
+-        except Exception as exc:
+-            checks.append({"name": "config", "ok": False, "detail": str(exc)})
+-    if config is not None:
+-        try:
+-            services.check_cli_compat(config)
+-            checks.append({"name": "cli_compat", "ok": True, "detail": f"project requires >= {config.cli.min_version}"})
+-        except CliTooOld as exc:
+-            checks.append({"name": "cli_compat", "ok": False, "detail": exc.message})
++    if project := optional_module(f"{_PACKAGE_NAME}.commands.project"):  # include_project=false drops it
++        checks.extend(project.doctor_checks(ctx))
+ 
+-    checks.extend(_auth_checks())
++    if credentials := optional_module(f"{_PACKAGE_NAME}.credentials.health"):  # include_auth=false drops it
++        checks.extend(credentials.doctor_checks())
+     checks.extend(deps.doctor_checks())  # [[tool.rb.external]] in pyproject.toml
+-    if module_exists(f"{_PACKAGE_NAME}.core.db"):  # include_db=false drops it at generation time
+-        checks.extend(importlib.import_module(f"{_PACKAGE_NAME}.core.db").doctor_checks())
++    if db := optional_module(f"{_PACKAGE_NAME}.core.db"):  # include_db=false drops it at generation time
++        checks.extend(db.doctor_checks())
+ 
+     all_ok = all(check["ok"] for check in checks)
+     output.emit_success(
+diff --git a/src/rb_dataio/commands/init.py b/src/rb_dataio/commands/init.py
+index 0929171..40e5fe6 100644
+--- a/src/rb_dataio/commands/init.py
++++ b/src/rb_dataio/commands/init.py
+@@ -1,3 +1,5 @@
++"""The `init` command: create the project folder with its config file in the target directory."""
++
+ from __future__ import annotations
+ 
+ from pathlib import Path
+@@ -17,7 +19,7 @@ def init(
+     quiet: bool = output.QuietOption,
+     verbose: bool = output.VerboseOption,
+ ) -> None:
+-    """Initialize a project: creates .{cli}/config.toml in the target directory.
++    """Initialize a project: creates .{package}/config.toml in the target directory.
+ 
+     Example: {cli} init --name demo
+     """
+diff --git a/src/rb_dataio/commands/project.py b/src/rb_dataio/commands/project.py
+new file mode 100644
+index 0000000..a11156c
+--- /dev/null
++++ b/src/rb_dataio/commands/project.py
+@@ -0,0 +1,55 @@
++"""The project part (copier's include_project): `init`, `status`, `config`, the global --project and its doctor checks."""
++
++from __future__ import annotations
++
++from pathlib import Path
++
++import typer
++from typer.core import TyperOption
++
++from .. import output
++from ..core import services
++from ..core.errors import CliTooOld
++from . import config, init, status
++
++
++def _remember_project(ctx: typer.Context, _param: object, value: str | None) -> None:
++    ctx.ensure_object(dict)["project"] = value
++
++
++def register(app: typer.Typer) -> None:
++    """Add the project commands and the global --project to the CLI's root."""
++    app.add_typer(config.app, name="config")
++    app.command(name="init")(init.init)
++    app.command(name="status")(status.status)
++    output.RootGroup.part_options.append(
++        TyperOption(
++            param_decls=["--project"],
++            metavar="TEXT",
++            help="Path to the project root.",
++            expose_value=False,
++            callback=_remember_project,
++        )
++    )
++
++
++def doctor_checks(ctx: typer.Context) -> list[dict]:
++    """The `project`, `config` and `cli_compat` checks of `doctor`; outside a project only `project`, and it is ok."""
++    start = Path(ctx.obj.get("project") or Path.cwd())
++    output.vecho(ctx, f"Searching for a project root starting at: {start}")
++    root = services.find_project_root(start)
++    if root is None:
++        return [{"name": "project", "ok": True, "detail": "doctor runs outside a project"}]
++    checks: list[dict] = [{"name": "project", "ok": True, "detail": str(root)}]
++    try:
++        config = services.load_config(root, check_compat=False)
++    except Exception as exc:
++        checks.append({"name": "config", "ok": False, "detail": str(exc)})
++        return checks
++    checks.append({"name": "config", "ok": True})
++    try:
++        services.check_cli_compat(config)
++        checks.append({"name": "cli_compat", "ok": True, "detail": f"project requires >= {config.cli.min_version}"})
++    except CliTooOld as exc:
++        checks.append({"name": "cli_compat", "ok": False, "detail": exc.message})
++    return checks
+diff --git a/src/rb_dataio/commands/skill.py b/src/rb_dataio/commands/skill.py
+index c5e0362..751a4e7 100644
+--- a/src/rb_dataio/commands/skill.py
++++ b/src/rb_dataio/commands/skill.py
+@@ -1,33 +1,71 @@
++"""The `skill` command group: print this CLI's agent skill or install it for AI tools."""
++
+ from __future__ import annotations
+ 
+-from importlib import resources
+ from pathlib import Path
+ 
+ import typer
++from typer.core import TyperOption
+ 
+ from .. import output
+-from ..core.version import cli_name
++from ..core import skills
+ 
+ app = output.group("Install this CLI's agent skill for AI tools.")
+ 
+-_PACKAGE_NAME = __name__.split(".")[0]
+-_SKILL_NAME = cli_name()  # matches `name:` in the bundled SKILL.md
++
++def _print_skill(ctx: typer.Context, _param: object, value: bool) -> None:
++    """Print the bundled agent skill doc to stdout.
++
++    For agents that can execute this CLI but cannot read files from disk
++    (e.g. a sandboxed shell with no access to a SKILL.md on the filesystem),
++    this is the fallback way to get full usage guidance.
++    """
++    if not value:
++        return
++    typer.echo(skills.conventions().text)
++    raise typer.Exit()
++
++
++def register(root: typer.Typer) -> None:
++    """Add the `skill` group and the global --ai to the CLI's root (the package skill part, copier's include_skill)."""
++    root.add_typer(app, name="skill")
++    output.RootGroup.part_options.append(
++        TyperOption(
++            param_decls=["--ai"],
++            is_flag=True,
++            default=False,
++            is_eager=True,
++            expose_value=False,
++            callback=_print_skill,
++            help="Print AI-oriented usage documentation (the bundled skill doc) and exit.",
++        )
++    )
++
+ 
+ # Where each AI tool looks for personal (user-level) and project-level skills.
+ _TOOL_TARGETS = {
+     "claude-code": {
+-        "user": Path.home() / ".claude" / "skills" / _SKILL_NAME,
+-        "project": Path(".claude") / "skills" / _SKILL_NAME,
++        "user": Path.home() / ".claude" / "skills",
++        "project": Path(".claude") / "skills",
+     },
+     "agents": {
+-        "user": Path.home() / ".agents" / "skills" / _SKILL_NAME,
+-        "project": Path(".agents") / "skills" / _SKILL_NAME,
++        "user": Path.home() / ".agents" / "skills",
++        "project": Path(".agents") / "skills",
+     },
+ }
+ 
+ 
+-def _skill_content() -> str:
+-    return resources.files(f"{_PACKAGE_NAME}.data").joinpath("SKILL.md").read_text()
++def _chosen(wanted: str | None) -> list[skills.Skill]:
++    """Every bundled skill, or the one `--skill` names (by its name or its short name)."""
++    from ..core.errors import InvalidArguments
++
++    bundled = skills.bundled()
++    if wanted is None:
++        return bundled
++    found = [s for s in bundled if wanted in (s.name, s.short_name)]
++    if not found:
++        raise InvalidArguments(f"Unknown --skill '{wanted}'. Bundled skills: {', '.join(s.name for s in bundled)}.")
++    return found
+ 
+ 
+ @app.command("install")
+@@ -42,10 +80,15 @@ def install(
+     project: bool = typer.Option(
+         False, "--project", help="Install into the current project instead of the user-level directory."
+     ),
++    skill: str = typer.Option(
++        None, "--skill", help="Install only this bundled skill (see `skill list`); by default all."
++    ),
+     json_output: bool = output.JsonOption,
+     quiet: bool = output.QuietOption,
+ ) -> None:
+-    """Copy this CLI's bundled SKILL.md into an AI tool's skill directory.
++    """Copy this CLI's bundled skills into an AI tool's skill directory.
++
++    The conventions skill and every extra skill the package ships, each into its own directory.
+ 
+     Example: {cli} skill install --tool claude-code
+     """
+@@ -54,14 +97,42 @@ def install(
+     if tool not in _TOOL_TARGETS:
+         raise InvalidArguments(f"Unknown --tool '{tool}'. Choose one of: {', '.join(_TOOL_TARGETS)}.")
+ 
++    chosen = _chosen(skill)
+     scope = "project" if project else "user"
+-    target_dir = _TOOL_TARGETS[tool][scope]
+-    target_dir.mkdir(parents=True, exist_ok=True)
+-    target_path = target_dir / "SKILL.md"
+-    target_path.write_text(_skill_content())
++    paths = []
++    for item in chosen:
++        target_dir = _TOOL_TARGETS[tool][scope] / item.name
++        target_dir.mkdir(parents=True, exist_ok=True)
++        target_path = target_dir / "SKILL.md"
++        target_path.write_text(item.text)
++        paths.append(str(target_path.resolve()))
+ 
++    data = {"tool": tool, "scope": scope, "path": paths[0]}
++    if len(paths) > 1:
++        data["paths"] = paths
++    output.emit_success(
++        ctx,
++        data,
++        render_human=lambda d: output.human.echo(
++            f"Installed skill for '{d['tool']}' ({d['scope']}) at " + "\n  ".join(d.get("paths", [d["path"]]))
++        ),
++    )
++
++
++@app.command("list")
++@output.guard
++def list_skills(
++    ctx: typer.Context,
++    json_output: bool = output.JsonOption,
++    quiet: bool = output.QuietOption,
++) -> None:
++    """List the agent skills this CLI bundles: name and description.
++
++    Example: {cli} skill list
++    """
++    found = [{"name": s.name, "description": s.description} for s in skills.bundled()]
+     output.emit_success(
+         ctx,
+-        {"tool": tool, "scope": scope, "path": str(target_path.resolve())},
+-        render_human=lambda d: output.human.echo(f"Installed skill for '{d['tool']}' ({d['scope']}) at {d['path']}"),
++        {"skills": found},
++        render_human=lambda d: output.human.echo("\n".join(f"{s['name']}: {s['description']}" for s in d["skills"])),
+     )
+diff --git a/src/rb_dataio/commands/status.py b/src/rb_dataio/commands/status.py
+index ec8183a..268d04d 100644
+--- a/src/rb_dataio/commands/status.py
++++ b/src/rb_dataio/commands/status.py
+@@ -1,3 +1,5 @@
++"""The `status` command: the state of the current project."""
++
+ from __future__ import annotations
+ 
+ from pathlib import Path
+diff --git a/src/rb_dataio/core/__init__.py b/src/rb_dataio/core/__init__.py
+index e69de29..3ef6860 100644
+--- a/src/rb_dataio/core/__init__.py
++++ b/src/rb_dataio/core/__init__.py
+@@ -0,0 +1 @@
++"""The core: logic the commands share, free of Typer and of output."""
+diff --git a/src/rb_dataio/core/models.py b/src/rb_dataio/core/models.py
+index 1094b4b..ec62c02 100644
+--- a/src/rb_dataio/core/models.py
++++ b/src/rb_dataio/core/models.py
+@@ -1,3 +1,5 @@
++"""The pydantic models of the project's config file."""
++
+ from __future__ import annotations
+ 
+ from pydantic import BaseModel, Field
+diff --git a/src/rb_dataio/core/opencli.py b/src/rb_dataio/core/opencli.py
+index bf39b7d..86846cc 100644
+--- a/src/rb_dataio/core/opencli.py
++++ b/src/rb_dataio/core/opencli.py
+@@ -31,7 +31,7 @@ import platformdirs
+ from .._distribution import DIST_NAME, TEMPLATE_VERSION, TOOL
+ from . import data_files, deps
+ from .errors import EXIT_CODES
+-from .version import DEV_VERSION, cli_name, installed_version, module_exists, package_summary
++from .version import DEV_VERSION, cli_name, installed_version, module_exists, optional_module, package_summary
+ 
+ OPENCLI_VERSION = "0.1"
+ _PACKAGE_NAME = __name__.split(".")[0]
+@@ -51,22 +51,34 @@ def document(root: Any) -> dict:
+             "x-rb-env": env_vars(),
+             "x-rb-data": data(),
+             "x-rb-external": [asdict(spec) for spec in deps.declared().values()],
++            "x-rb-skills": _bundled_skills(),
+         }
+     )
+-    info = {"title": cli_name(), "version": installed_version() or DEV_VERSION}
++    return {"opencli": OPENCLI_VERSION, "info": info(), "command": command}
++
++
++def _bundled_skills() -> list[dict]:
++    """The agent skills the package ships (the package skill part, copier's include_skill); none without it."""
++    skills = optional_module(f"{_PACKAGE_NAME}.core.skills")
++    return [{"name": s.name, "description": s.description} for s in skills.bundled()] if skills else []
++
++
++def info() -> dict:
++    """The `info` of the document: the name of the CLI, its version and its summary."""
++    found = {"title": cli_name(), "version": installed_version() or DEV_VERSION}
+     if summary := package_summary():
+-        info["summary"] = summary
+-    return {"opencli": OPENCLI_VERSION, "info": info, "command": command}
++        found["summary"] = summary
++    return found
+ 
+ 
+ def _command(name: str, cmd: Any) -> dict:
+     out: dict[str, Any] = {"name": name}
+-    if description := _text(cmd.help):
++    if description := cleaned(cmd.help):
+         out["description"] = description
+     if cmd.hidden:
+         out["hidden"] = True
+-    options = [_option(p) for p in cmd.params if p.param_type_name == "option"]
+-    arguments = [_argument(p) for p in cmd.params if p.param_type_name == "argument"]
++    options = [option(p) for p in cmd.params if p.param_type_name == "option"]
++    arguments = [argument(p) for p in cmd.params if p.param_type_name == "argument"]
+     if options:
+         out["options"] = options
+     if arguments:
+@@ -77,7 +89,8 @@ def _command(name: str, cmd: Any) -> dict:
+     return out
+ 
+ 
+-def _option(param: Any) -> dict:
++def option(param: Any) -> dict:
++    """The OpenCLI entry of a Click option."""
+     names = sorted(param.opts, key=len, reverse=True)  # the long form is the name
+     out: dict[str, Any] = {"name": names[0]}
+     if aliases := [*names[1:], *param.secondary_opts]:
+@@ -85,11 +98,13 @@ def _option(param: Any) -> dict:
+     if param.required:
+         out["required"] = True
+     if not param.is_flag and not param.count:
+-        value = {"name": param.metavar or (param.name or "value").upper(), "required": True}
++        value: dict[str, Any] = {"name": param.metavar or (param.name or "value").upper(), "required": True}
++        if not param.multiple:
++            value["arity"] = {"maximum": 1}
+         if choices := _choices(param.type):
+             value["acceptedValues"] = choices
+         out["arguments"] = [value]
+-    if description := _text(param.help):
++    if description := cleaned(param.help):
+         out["description"] = description
+     if param.hidden:
+         out["hidden"] = True
+@@ -97,7 +112,8 @@ def _option(param: Any) -> dict:
+     return out
+ 
+ 
+-def _argument(param: Any) -> dict:
++def argument(param: Any) -> dict:
++    """The OpenCLI entry of a Click argument."""
+     out: dict[str, Any] = {"name": param.name or "argument"}
+     out["required"] = param.required
+     maximum = None if param.nargs == -1 else param.nargs
+@@ -106,7 +122,7 @@ def _argument(param: Any) -> dict:
+         out["arity"]["maximum"] = maximum
+     if choices := _choices(param.type):
+         out["acceptedValues"] = choices
+-    if description := _text(getattr(param, "help", None)):  # Typer's arguments carry help
++    if description := cleaned(getattr(param, "help", None)):  # Typer's arguments carry help
+         out["description"] = description
+     if getattr(param, "hidden", False):
+         out["hidden"] = True
+@@ -118,7 +134,7 @@ def _param_meta(param: Any, *, multiple: bool) -> list[dict]:
+     meta: dict[str, Any] = {"x-rb-type": param.type.name}
+     default = param.default
+     if default is not None and not callable(default) and default != ():
+-        meta["x-rb-default"] = _jsonable(default)
++        meta["x-rb-default"] = jsonable(default)
+     if multiple:
+         meta["x-rb-multiple"] = True
+     return _meta(meta)
+@@ -126,16 +142,16 @@ def _param_meta(param: Any, *, multiple: bool) -> list[dict]:
+ 
+ def _choices(param_type: Any) -> list[str] | None:
+     choices = getattr(param_type, "choices", None)  # a Choice (or an Enum Typer turned into one)
+-    return [str(_jsonable(choice)) for choice in choices] if choices else None
++    return [str(jsonable(choice)) for choice in choices] if choices else None
+ 
+ 
+-def _jsonable(value: Any) -> Any:
++def jsonable(value: Any) -> Any:
+     if isinstance(value, enum.Enum):
+         return value.value
+     if isinstance(value, PurePath):
+         return str(value)
+     if isinstance(value, (list, tuple)):
+-        return [_jsonable(item) for item in value]
++        return [jsonable(item) for item in value]
+     try:
+         json.dumps(value)
+     except TypeError:
+@@ -143,7 +159,8 @@ def _jsonable(value: Any) -> Any:
+     return value
+ 
+ 
+-def _text(text: str | None) -> str:
++def cleaned(text: str | None) -> str:
++    """A help text as the docstring wrote it."""
+     # output.guard escaped `[` for Typer's rich markup; the document wants the docstring itself.
+     return inspect.cleandoc(text or "").replace("\\[", "[").strip()
+ 
+diff --git a/src/rb_dataio/core/services.py b/src/rb_dataio/core/services.py
+index fe721cb..5d1f9a8 100644
+--- a/src/rb_dataio/core/services.py
++++ b/src/rb_dataio/core/services.py
+@@ -1,3 +1,7 @@
++"""Project services: find the project folder, read and write its config file, and the check that the installed CLI is
++new enough for it.
++"""
++
+ from __future__ import annotations
+ 
+ import tomllib
+diff --git a/src/rb_dataio/core/skills.py b/src/rb_dataio/core/skills.py
+new file mode 100644
+index 0000000..8f2e441
+--- /dev/null
++++ b/src/rb_dataio/core/skills.py
+@@ -0,0 +1,64 @@
++"""The agent skills bundled in the package data.
++
++The conventions skill is `data/SKILL.md` (frontmatter name = the CLI's name). A package may ship
++extra skills, one per kind of work, as `data/skills/<name>/SKILL.md` (frontmatter name =
++`<cli>-<name>`). `skill install`, `skill list` and `describe` read them from here.
++"""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from importlib import resources
++from importlib.resources.abc import Traversable
++
++from .version import cli_name
++
++_PACKAGE_NAME = __name__.split(".")[0]
++EXTRAS_DIR = "skills"
++
++
++@dataclass(frozen=True)
++class Skill:
++    name: str  # the frontmatter name: also the directory it is installed into
++    short_name: str  # what `skill install --skill` takes: the directory name of an extra skill
++    description: str
++    text: str
++
++
++def _data() -> Traversable:
++    return resources.files(f"{_PACKAGE_NAME}.data")
++
++
++def frontmatter(text: str) -> dict[str, str]:
++    """The `key: value` lines between the leading `---` lines; empty when there is no frontmatter."""
++    lines = text.splitlines()
++    if not lines or lines[0].strip() != "---":
++        return {}
++    found: dict[str, str] = {}
++    for line in lines[1:]:
++        if line.strip() == "---":
++            return found
++        key, _, value = line.partition(":")
++        if value:
++            found[key.strip()] = value.strip()
++    return {}  # never closed
++
++
++def _skill(text: str, short_name: str) -> Skill:
++    meta = frontmatter(text)
++    return Skill(meta["name"], short_name, meta.get("description", ""), text)
++
++
++def conventions() -> Skill:
++    return _skill(_data().joinpath("SKILL.md").read_text(), cli_name())
++
++
++def bundled() -> list[Skill]:
++    """The conventions skill, then the extra skills by directory name."""
++    found = [conventions()]
++    extras = _data().joinpath(EXTRAS_DIR)
++    if extras.is_dir():
++        for entry in sorted(extras.iterdir(), key=lambda e: e.name):
++            if entry.joinpath("SKILL.md").is_file():
++                found.append(_skill(entry.joinpath("SKILL.md").read_text(), entry.name))
++    return found
+diff --git a/src/rb_dataio/core/version.py b/src/rb_dataio/core/version.py
+index 8ddb099..3e97fde 100644
+--- a/src/rb_dataio/core/version.py
++++ b/src/rb_dataio/core/version.py
+@@ -3,8 +3,10 @@
+ from __future__ import annotations
+ 
+ import functools
++import importlib
+ import importlib.util
+ from importlib.metadata import Distribution, PackageNotFoundError, distribution
++from types import ModuleType
+ 
+ from .._distribution import DIST_NAME, DIST_NAME_LEGACY
+ 
+@@ -37,6 +39,11 @@ def module_exists(name: str) -> bool:
+         return False
+ 
+ 
++def optional_module(name: str) -> ModuleType | None:
++    """Module `name` (dotted) of an optional part, or None when the package was generated without that part."""
++    return importlib.import_module(name) if module_exists(name) else None
++
++
+ @functools.cache
+ def cli_name() -> str:
+     """The command users type: this package's console script (`[project.scripts]`, copier's `cli_name`).
+diff --git a/src/rb_dataio/credentials/__init__.py b/src/rb_dataio/credentials/__init__.py
+index e69de29..472f485 100644
+--- a/src/rb_dataio/credentials/__init__.py
++++ b/src/rb_dataio/credentials/__init__.py
+@@ -0,0 +1 @@
++"""Credentials of the providers: the keyring store (`manager`) and the checks of their health (`health`)."""
+diff --git a/src/rb_dataio/credentials/health.py b/src/rb_dataio/credentials/health.py
+index d2be478..f2f1d00 100644
+--- a/src/rb_dataio/credentials/health.py
++++ b/src/rb_dataio/credentials/health.py
+@@ -1,6 +1,6 @@
+ """The `auth status [--check] --json` report (the Standard, Health), and `doctor_check`, the same rule for `doctor`.
+ 
+-Its shape is a cross-tool contract — `tools-watch` reads it from every CLI
++Its shape is a cross-tool contract — a consumer reads it from every CLI
+ without knowing any provider — so it is pinned by `tests/test_auth.py`, and
+ changing it is a breaking change. Credential values never leave this
+ module: they are used only to scrub messages. Knows only `providers.Provider`:
+@@ -15,6 +15,7 @@ from rich.markup import escape
+ 
+ from .. import output, providers
+ from ..core.errors import AuthRequired, CliError, CredentialsUnhealthy, InvalidArguments, ProviderError
++from ..core.version import DEV_VERSION, cli_name, installed_version
+ from ..providers import Health, Provider
+ from . import manager
+ 
+@@ -200,3 +201,15 @@ def render(payload: dict) -> None:
+         expires = f", expires {entry['expires_at']}" if entry["expires_at"] else ""
+         line = f"{entry['provider']}{optional}: {entry['status']} ({entry['source']}: {entry['source_ref']}){expires}{detail}"
+         output.human.echo_markup(f"{mark} {escape(line)}")
++
++
++def doctor_checks() -> list[dict]:
++    """The `credential_store` and `credential` checks of `doctor`: the rule of `auth status`, offline (presence only)."""
++    return [
++        {
++            "name": "credential_store",
++            "ok": True,  # the keychain is a convenience of development; environment variables are the source in production
++            "detail": manager.store_backend() or "no OS keychain; credentials come from environment variables",
++        },
++        doctor_check(cli_name(), installed_version() or DEV_VERSION),
++    ]
+diff --git a/src/rb_dataio/data/SKILL.md b/src/rb_dataio/data/SKILL.md
+index 0c510e6..a5f2f13 100644
+--- a/src/rb_dataio/data/SKILL.md
++++ b/src/rb_dataio/data/SKILL.md
+@@ -18,7 +18,7 @@ uv tool install "rb-dataio @ git+https://github.com/bolandeu/rb-dataio.git@vX.Y.
+ ```
+ 
+ Replace `vX.Y.Z` with the latest release tag (install from a tag, never a
+-branch).
++branch: [the Standard](https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator/src/branch/main/skills/cli-builder/reference/standard.md), Install).
+ 
+ Same command on macOS, Linux and Windows; `uv tool upgrade rb-dataio`
+ updates it. Do not run from source unless asked to develop the CLI.
+@@ -84,7 +84,8 @@ uv tool install "rb-dataio @ git+ssh://git@github.com/bolandeu/rb-dataio.git@vX.
+   get sign-off after `--dry-run`, before `--confirm`. In Python:
+   `join(source, target, lookups=[...], on=[...])`.
+ - **`doctor --json`** first when something looks off — it reports
+-  project, config, version compatibility and credential readiness.
++  what the CLI needs to run: its version, the project, its config,
++  credential readiness and the external programs.
+ - **`describe --json`** — the whole CLI as one machine-readable OpenCLI
+   document (commands, options, exit codes, env vars, data): the bare
+   document, no `{"ok": ...}` envelope.
+diff --git a/src/rb_dataio/data/__init__.py b/src/rb_dataio/data/__init__.py
+index e69de29..ada5faa 100644
+--- a/src/rb_dataio/data/__init__.py
++++ b/src/rb_dataio/data/__init__.py
+@@ -0,0 +1 @@
++"""The data files this package ships (the agent skill), read through importlib.resources."""
+diff --git a/src/rb_dataio/output/__init__.py b/src/rb_dataio/output/__init__.py
+index fd73de3..e1a3bfa 100644
+--- a/src/rb_dataio/output/__init__.py
++++ b/src/rb_dataio/output/__init__.py
+@@ -15,11 +15,11 @@ import logging
+ import sys
+ import weakref
+ from collections.abc import Callable
+-from typing import NoReturn, cast
++from typing import ClassVar, NoReturn, cast
+ 
+ import typer
+ from rich.markup import escape
+-from typer.core import TyperGroup
++from typer.core import TyperGroup, TyperOption
+ 
+ from ..core.errors import Aborted, CliError, InvalidArguments
+ from ..core.version import cli_name
+@@ -49,6 +49,7 @@ __all__ = [
+ ]
+ 
+ _CLI_NAME = cli_name()
++_PACKAGE_NAME = __name__.split(".")[0]
+ # Click's UsageError (unknown option, missing argument, bad value): recent Typer ships its own copy of Click,
+ # so it is taken from Typer's BadParameter, never imported from the `click` package.
+ _UsageError = cast("type[Exception]", typer.BadParameter.__bases__[0])
+@@ -115,8 +116,16 @@ class RootGroup(TyperGroup):
+     Click reports a usage error while it parses the arguments, before any
+     command runs, so `guard` never sees it. The root's own arguments fail in
+     `make_context`, a subcommand's inside `invoke`; both end here.
++
++    An optional part adds its global options (`--project`, `--ai`) to `part_options`
++    when it registers; they reach no callback argument (`expose_value=False`).
+     """
+ 
++    part_options: ClassVar[list[TyperOption]] = []
++
++    def __init__(self, *, params=None, **kwargs):
++        super().__init__(params=[*(params or []), *self.part_options], **kwargs)
++
+     def make_context(self, info_name, args, parent=None, **extra):
+         argv = list(args)  # Click consumes `args` while it parses
+         try:
+@@ -167,9 +176,9 @@ def emit_report(
+     else:
+         if not ctx.obj.get("quiet"):
+             render_human(payload)
+-        human.err_console.print(f"[red]Error:[/red] {problem.message}")
++        human.err_console.print(f"[red]Error:[/red] {escape(problem.message)}")
+         if problem.action:
+-            human.err_console.print(f"[dim]{problem.action}[/dim]")
++            human.err_console.print(f"[dim]{escape(problem.action)}[/dim]")
+     raise typer.Exit(code=problem.exit_code)
+ 
+ 
+@@ -177,9 +186,9 @@ def emit_error(ctx: typer.Context, error: CliError) -> None:
+     if ctx.obj.get("json"):
+         json_output.emit({"ok": False, "error": error.to_dict()})
+     else:
+-        human.err_console.print(f"[red]Error:[/red] {error.message}")
++        human.err_console.print(f"[red]Error:[/red] {escape(error.message)}")
+         if error.action:
+-            human.err_console.print(f"[dim]{error.action}[/dim]")
++            human.err_console.print(f"[dim]{escape(error.action)}[/dim]")
+     raise typer.Exit(code=error.exit_code)
+ 
+ 
+@@ -203,7 +212,7 @@ def vecho(ctx: typer.Context, message: str) -> None:
+     `logging.getLogger(__name__).debug(...)` instead — see configure_logging.
+     """
+     if ctx.obj.get("verbose") and not ctx.obj.get("json") and not ctx.obj.get("quiet"):
+-        human.err_console.print(f"[dim]{message}[/dim]")
++        human.err_console.print(f"[dim]{escape(message)}[/dim]")
+ 
+ 
+ def require_confirmation(ctx: typer.Context, description: str, confirm: bool) -> None:
+@@ -261,10 +270,12 @@ def guard(func: Callable) -> Callable:
+             )
+ 
+     # Docstrings are the --help text; `{cli}` in their `Example:` lines becomes
+-    # this CLI's name, so template-born commands need no Jinja rendering.
++    # this CLI's name and `{package}` the package's (the project folder's name),
++    # so template-born commands need no Jinja rendering.
+     # Escaped because Typer renders help as rich markup, which silently drops
+     # anything in brackets (`[[tool.rb.external]]`, `[x]`).
+-    wrapper.__doc__ = escape((func.__doc__ or "").replace("{cli}", _CLI_NAME)) or None
++    doc = (func.__doc__ or "").replace("{cli}", _CLI_NAME).replace("{package}", _PACKAGE_NAME)
++    wrapper.__doc__ = escape(doc) or None
+     _GUARDED.add(wrapper)
+     return wrapper
+ 
+diff --git a/src/rb_dataio/output/human.py b/src/rb_dataio/output/human.py
+index bb944b6..441165c 100644
+--- a/src/rb_dataio/output/human.py
++++ b/src/rb_dataio/output/human.py
+@@ -1,3 +1,5 @@
++"""Human-readable output (messages, key-value lists, the doctor report), kept apart from the JSON output."""
++
+ from __future__ import annotations
+ 
+ from rich.console import Console
+diff --git a/src/rb_dataio/output/json.py b/src/rb_dataio/output/json.py
+index 99434ef..e44acfe 100644
+--- a/src/rb_dataio/output/json.py
++++ b/src/rb_dataio/output/json.py
+@@ -1,3 +1,5 @@
++"""Machine-readable output: the one function that prints a JSON document to stdout."""
++
+ from __future__ import annotations
+ 
+ import json
+diff --git a/tests/__init__.py b/tests/__init__.py
+index e69de29..3434709 100644
+--- a/tests/__init__.py
++++ b/tests/__init__.py
+@@ -0,0 +1 @@
++"""The tests of the package."""
+diff --git a/tests/contracts/tools-catalog/dataio.yaml b/tests/contracts/tools-catalog/dataio.yaml
+index 536e426..049cf61 100644
+--- a/tests/contracts/tools-catalog/dataio.yaml
++++ b/tests/contracts/tools-catalog/dataio.yaml
+@@ -1,9 +1,9 @@
+-# The tools catalog (~/Work/tools/docs/catalog.json) is built by the root agent from
++# The tools catalog is built from
+ # every installed tool's `describe --json`. This is what it relies on.
+ contract: 1
+ consumer: tools-catalog
+ provider: dataio
+-contact: "tools (root agent)"
++contact: "cli-generator"
+ static:
+   commands:
+     - path: [describe]
+diff --git a/tests/help_allowlist.txt b/tests/help_allowlist.txt
+new file mode 100644
+index 0000000..96c18dc
+--- /dev/null
++++ b/tests/help_allowlist.txt
+@@ -0,0 +1,3 @@
++# Commands not yet brought to the help standard (the Standard, Commands):
++# one command path per line, e.g. `config set`; comments start with #.
++# The help test fails when a listed command already meets the standard: remove its line.
+diff --git a/tests/snapshots/describe.json b/tests/snapshots/describe.json
+index ce20661..2f6cc35 100644
+--- a/tests/snapshots/describe.json
++++ b/tests/snapshots/describe.json
+@@ -8,22 +8,6 @@
+   "command": {
+     "name": "dataio",
+     "options": [
+-      {
+-        "name": "--project",
+-        "arguments": [
+-          {
+-            "name": "PROJECT",
+-            "required": true
+-          }
+-        ],
+-        "description": "Path to the project root.",
+-        "metadata": [
+-          {
+-            "name": "x-rb-type",
+-            "value": "str"
+-          }
+-        ]
+-      },
+       {
+         "name": "--json",
+         "description": "Emit machine-readable JSON output.",
+@@ -108,6 +92,25 @@
+           }
+         ]
+       },
++      {
++        "name": "--project",
++        "arguments": [
++          {
++            "name": "TEXT",
++            "required": true,
++            "arity": {
++              "maximum": 1
++            }
++          }
++        ],
++        "description": "Path to the project root.",
++        "metadata": [
++          {
++            "name": "x-rb-type",
++            "value": "str"
++          }
++        ]
++      },
+       {
+         "name": "--ai",
+         "description": "Print AI-oriented usage documentation (the bundled skill doc) and exit.",
+@@ -144,132 +147,6 @@
+       }
+     ],
+     "commands": [
+-      {
+-        "name": "init",
+-        "description": "Initialize a project: creates .dataio/config.toml in the target directory.\n\nExample: dataio init --name demo",
+-        "options": [
+-          {
+-            "name": "--name",
+-            "arguments": [
+-              {
+-                "name": "NAME",
+-                "required": true
+-              }
+-            ],
+-            "description": "Project name (defaults to directory name).",
+-            "metadata": [
+-              {
+-                "name": "x-rb-type",
+-                "value": "str"
+-              }
+-            ]
+-          },
+-          {
+-            "name": "--force",
+-            "description": "Overwrite an already-initialized project's config.",
+-            "metadata": [
+-              {
+-                "name": "x-rb-type",
+-                "value": "boolean"
+-              },
+-              {
+-                "name": "x-rb-default",
+-                "value": false
+-              }
+-            ]
+-          },
+-          {
+-            "name": "--json",
+-            "description": "Emit machine-readable JSON output.",
+-            "metadata": [
+-              {
+-                "name": "x-rb-type",
+-                "value": "boolean"
+-              },
+-              {
+-                "name": "x-rb-default",
+-                "value": false
+-              }
+-            ]
+-          },
+-          {
+-            "name": "--quiet",
+-            "description": "Suppress non-essential output.",
+-            "metadata": [
+-              {
+-                "name": "x-rb-type",
+-                "value": "boolean"
+-              },
+-              {
+-                "name": "x-rb-default",
+-                "value": false
+-              }
+-            ]
+-          },
+-          {
+-            "name": "--verbose",
+-            "description": "Emit extra diagnostic output.",
+-            "metadata": [
+-              {
+-                "name": "x-rb-type",
+-                "value": "boolean"
+-              },
+-              {
+-                "name": "x-rb-default",
+-                "value": false
+-              }
+-            ]
+-          }
+-        ]
+-      },
+-      {
+-        "name": "status",
+-        "description": "Show the current project's status.\n\nExample: dataio status --json",
+-        "options": [
+-          {
+-            "name": "--json",
+-            "description": "Emit machine-readable JSON output.",
+-            "metadata": [
+-              {
+-                "name": "x-rb-type",
+-                "value": "boolean"
+-              },
+-              {
+-                "name": "x-rb-default",
+-                "value": false
+-              }
+-            ]
+-          },
+-          {
+-            "name": "--quiet",
+-            "description": "Suppress non-essential output.",
+-            "metadata": [
+-              {
+-                "name": "x-rb-type",
+-                "value": "boolean"
+-              },
+-              {
+-                "name": "x-rb-default",
+-                "value": false
+-              }
+-            ]
+-          },
+-          {
+-            "name": "--verbose",
+-            "description": "Emit extra diagnostic output.",
+-            "metadata": [
+-              {
+-                "name": "x-rb-type",
+-                "value": "boolean"
+-              },
+-              {
+-                "name": "x-rb-default",
+-                "value": false
+-              }
+-            ]
+-          }
+-        ]
+-      },
+       {
+         "name": "doctor",
+         "description": "Run diagnostic checks and report readiness.\n\nAlways exits 0 — the report itself is the result; `healthy` says\nwhether every check passed.\n\nExample: dataio doctor --json",
+@@ -327,7 +204,10 @@
+             "arguments": [
+               {
+                 "name": "IN_FORMAT",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Format name; wins over the extension (see the formats command).",
+@@ -343,7 +223,10 @@
+             "arguments": [
+               {
+                 "name": "IN_SHEET",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Sheet name; wins over the part of the address after #.",
+@@ -359,7 +242,10 @@
+             "arguments": [
+               {
+                 "name": "IN_TABLE",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Table name; wins over the part of the address after #.",
+@@ -375,7 +261,10 @@
+             "arguments": [
+               {
+                 "name": "IN_ENCODING",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Text encoding, e.g. utf-8 or cp1251.",
+@@ -391,7 +280,10 @@
+             "arguments": [
+               {
+                 "name": "IN_SEP",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Field delimiter, e.g. ';' or '|'.",
+@@ -424,7 +316,10 @@
+             "arguments": [
+               {
+                 "name": "IN_CREDENTIALS",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+@@ -477,7 +372,10 @@
+             "arguments": [
+               {
+                 "name": "LIMIT",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Read at most this many rows.",
+@@ -493,7 +391,10 @@
+             "arguments": [
+               {
+                 "name": "QUERY",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "SQL whose result is read: inside a base its tables, over any other source the table data.",
+@@ -509,7 +410,10 @@
+             "arguments": [
+               {
+                 "name": "SOURCE_COLUMN",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Column that names the source of each row when an address names many sources.",
+@@ -546,7 +450,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_FORMAT",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Format name; wins over the extension (see the formats command).",
+@@ -562,7 +469,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_SHEET",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Sheet name; wins over the part of the address after #.",
+@@ -578,7 +488,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_TABLE",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Table name; wins over the part of the address after #.",
+@@ -594,7 +507,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_ENCODING",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Text encoding, e.g. utf-8 or cp1251.",
+@@ -610,7 +526,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_SEP",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Field delimiter, e.g. ';' or '|'.",
+@@ -643,7 +562,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_CREDENTIALS",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+@@ -660,6 +582,9 @@
+               {
+                 "name": "MODE",
+                 "required": true,
++                "arity": {
++                  "maximum": 1
++                },
+                 "acceptedValues": [
+                   "replace",
+                   "append",
+@@ -684,7 +609,10 @@
+             "arguments": [
+               {
+                 "name": "START",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Top-left cell of the table in a sheet of a service, e.g. A5 (default A1).",
+@@ -701,6 +629,9 @@
+               {
+                 "name": "VALUE_INPUT",
+                 "required": true,
++                "arity": {
++                  "maximum": 1
++                },
+                 "acceptedValues": [
+                   "raw",
+                   "user"
+@@ -764,7 +695,10 @@
+             "arguments": [
+               {
+                 "name": "PROFILE",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Write profile, e.g. excel.",
+@@ -814,7 +748,10 @@
+             "arguments": [
+               {
+                 "name": "SPLIT_BY",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Column whose values split the table into one target each, in a target with {column}.",
+@@ -830,7 +767,10 @@
+             "arguments": [
+               {
+                 "name": "CHUNK_ROWS",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Rows per part, in a target with {n}.",
+@@ -974,7 +914,10 @@
+             "arguments": [
+               {
+                 "name": "FORMAT",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Format name; wins over the extension (see the formats command).",
+@@ -990,7 +933,10 @@
+             "arguments": [
+               {
+                 "name": "SHEET",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Sheet name; wins over the part of the address after #.",
+@@ -1006,7 +952,10 @@
+             "arguments": [
+               {
+                 "name": "TABLE",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Table name; wins over the part of the address after #.",
+@@ -1022,7 +971,10 @@
+             "arguments": [
+               {
+                 "name": "ENCODING",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Text encoding, e.g. utf-8 or cp1251.",
+@@ -1038,8 +990,11 @@
+             "arguments": [
+               {
+                 "name": "SEP",
+-                "required": true
+-              }
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
++              }
+             ],
+             "description": "Field delimiter, e.g. ';' or '|'.",
+             "metadata": [
+@@ -1071,7 +1026,10 @@
+             "arguments": [
+               {
+                 "name": "CREDENTIALS",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+@@ -1124,7 +1082,10 @@
+             "arguments": [
+               {
+                 "name": "LIMIT",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Read at most this many rows.",
+@@ -1140,7 +1101,10 @@
+             "arguments": [
+               {
+                 "name": "QUERY",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "SQL whose result is read: inside a base its tables, over any other source the table data.",
+@@ -1156,7 +1120,10 @@
+             "arguments": [
+               {
+                 "name": "SOURCE_COLUMN",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Column that names the source of each row when an address names many sources.",
+@@ -1285,6 +1252,9 @@
+               {
+                 "name": "HOW",
+                 "required": true,
++                "arity": {
++                  "maximum": 1
++                },
+                 "acceptedValues": [
+                   "left",
+                   "right",
+@@ -1310,7 +1280,10 @@
+             "arguments": [
+               {
+                 "name": "IN_FORMAT",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Format name; wins over the extension (see the formats command).",
+@@ -1326,7 +1299,10 @@
+             "arguments": [
+               {
+                 "name": "IN_SHEET",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Sheet name; wins over the part of the address after #.",
+@@ -1342,7 +1318,10 @@
+             "arguments": [
+               {
+                 "name": "IN_TABLE",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Table name; wins over the part of the address after #.",
+@@ -1358,7 +1337,10 @@
+             "arguments": [
+               {
+                 "name": "IN_ENCODING",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Text encoding, e.g. utf-8 or cp1251.",
+@@ -1374,7 +1356,10 @@
+             "arguments": [
+               {
+                 "name": "IN_SEP",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Field delimiter, e.g. ';' or '|'.",
+@@ -1407,7 +1392,10 @@
+             "arguments": [
+               {
+                 "name": "IN_CREDENTIALS",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Source: Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+@@ -1423,7 +1411,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_FORMAT",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Format name; wins over the extension (see the formats command).",
+@@ -1439,7 +1430,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_SHEET",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Sheet name; wins over the part of the address after #.",
+@@ -1455,7 +1449,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_TABLE",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Table name; wins over the part of the address after #.",
+@@ -1471,7 +1468,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_ENCODING",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Text encoding, e.g. utf-8 or cp1251.",
+@@ -1487,7 +1487,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_SEP",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Field delimiter, e.g. ';' or '|'.",
+@@ -1520,7 +1523,10 @@
+             "arguments": [
+               {
+                 "name": "OUT_CREDENTIALS",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Target: Key file (JSON) of the service, e.g. a Google service-account key; default: the standard order.",
+@@ -1537,6 +1543,9 @@
+               {
+                 "name": "MODE",
+                 "required": true,
++                "arity": {
++                  "maximum": 1
++                },
+                 "acceptedValues": [
+                   "replace",
+                   "append",
+@@ -1561,7 +1570,10 @@
+             "arguments": [
+               {
+                 "name": "START",
+-                "required": true
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
+               }
+             ],
+             "description": "Top-left cell of the table in a sheet of a service, e.g. A5 (default A1).",
+@@ -1578,6 +1590,9 @@
+               {
+                 "name": "VALUE_INPUT",
+                 "required": true,
++                "arity": {
++                  "maximum": 1
++                },
+                 "acceptedValues": [
+                   "raw",
+                   "user"
+@@ -1907,6 +1922,135 @@
+           }
+         ]
+       },
++      {
++        "name": "init",
++        "description": "Initialize a project: creates .rb_dataio/config.toml in the target directory.\n\nExample: dataio init --name demo",
++        "options": [
++          {
++            "name": "--name",
++            "arguments": [
++              {
++                "name": "NAME",
++                "required": true,
++                "arity": {
++                  "maximum": 1
++                }
++              }
++            ],
++            "description": "Project name (defaults to directory name).",
++            "metadata": [
++              {
++                "name": "x-rb-type",
++                "value": "str"
++              }
++            ]
++          },
++          {
++            "name": "--force",
++            "description": "Overwrite an already-initialized project's config.",
++            "metadata": [
++              {
++                "name": "x-rb-type",
++                "value": "boolean"
++              },
++              {
++                "name": "x-rb-default",
++                "value": false
++              }
++            ]
++          },
++          {
++            "name": "--json",
++            "description": "Emit machine-readable JSON output.",
++            "metadata": [
++              {
++                "name": "x-rb-type",
++                "value": "boolean"
++              },
++              {
++                "name": "x-rb-default",
++                "value": false
++              }
++            ]
++          },
++          {
++            "name": "--quiet",
++            "description": "Suppress non-essential output.",
++            "metadata": [
++              {
++                "name": "x-rb-type",
++                "value": "boolean"
++              },
++              {
++                "name": "x-rb-default",
++                "value": false
++              }
++            ]
++          },
++          {
++            "name": "--verbose",
++            "description": "Emit extra diagnostic output.",
++            "metadata": [
++              {
++                "name": "x-rb-type",
++                "value": "boolean"
++              },
++              {
++                "name": "x-rb-default",
++                "value": false
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "name": "status",
++        "description": "Show the current project's status.\n\nExample: dataio status --json",
++        "options": [
++          {
++            "name": "--json",
++            "description": "Emit machine-readable JSON output.",
++            "metadata": [
++              {
++                "name": "x-rb-type",
++                "value": "boolean"
++              },
++              {
++                "name": "x-rb-default",
++                "value": false
++              }
++            ]
++          },
++          {
++            "name": "--quiet",
++            "description": "Suppress non-essential output.",
++            "metadata": [
++              {
++                "name": "x-rb-type",
++                "value": "boolean"
++              },
++              {
++                "name": "x-rb-default",
++                "value": false
++              }
++            ]
++          },
++          {
++            "name": "--verbose",
++            "description": "Emit extra diagnostic output.",
++            "metadata": [
++              {
++                "name": "x-rb-type",
++                "value": "boolean"
++              },
++              {
++                "name": "x-rb-default",
++                "value": false
++              }
++            ]
++          }
++        ]
++      },
+       {
+         "name": "describe",
+         "description": "Print this CLI's machine-readable contract: an OpenCLI document (opencli.org).\n\nCommands, options, arguments, exit codes, plus `x-rb-*` metadata: env vars,\ntables, v1 views, data files, external programs. With --json it is the bare\ndocument on one line (no {\"ok\": ...} envelope); without, the same indented.\n\nExample: dataio describe --json",
+@@ -1956,16 +2100,16 @@
+         ]
+       },
+       {
+-        "name": "config",
+-        "description": "Manage project configuration.",
++        "name": "auth",
++        "description": "Credentials: report their health (and store them, if this CLI has any).",
+         "commands": [
+           {
+-            "name": "list",
+-            "description": "List all configuration values.\n\nExample: dataio config list --json",
++            "name": "status",
++            "description": "Report every provider's credential: where it comes from and whether it works. Never prints values.\n\nWithout --check only presence is reported (status `unchecked` or `missing`).\nExits 0 when every required provider is ok/unchecked (an optional one may be\nmissing), 3 when any required provider has a problem or any credential is\ninvalid/expired, 2 on a usage error. A per-target provider (one credential per\nsite/host/account) gets one entry per stored target, named `<kind>:<target>`. The --json shape is a cross-tool contract:\n`tool`, `version`, `checked_at`, `credentials[]` with `provider`, `required`,\n`fields`, `source`, `source_ref`, `status`, `expires_at`, `quota`, `message`.\n\nExample: dataio auth status --check --json",
+             "options": [
+               {
+-                "name": "--json",
+-                "description": "Emit machine-readable JSON output.",
++                "name": "--check",
++                "description": "Also make one cheap read-only call per provider (10 s timeout) to prove each works.",
+                 "metadata": [
+                   {
+                     "name": "x-rb-type",
+@@ -1978,25 +2122,24 @@
+                 ]
+               },
+               {
+-                "name": "--quiet",
+-                "description": "Suppress non-essential output.",
++                "name": "--provider",
++                "arguments": [
++                  {
++                    "name": "PROVIDER",
++                    "required": true,
++                    "arity": {
++                      "maximum": 1
++                    }
++                  }
++                ],
++                "description": "Report only this provider, or one target as <kind>:<target> (default: all).",
+                 "metadata": [
+                   {
+                     "name": "x-rb-type",
+-                    "value": "boolean"
+-                  },
+-                  {
+-                    "name": "x-rb-default",
+-                    "value": false
++                    "value": "str"
+                   }
+                 ]
+-              }
+-            ]
+-          },
+-          {
+-            "name": "get",
+-            "description": "Get a single configuration value.\n\nExample: dataio config get cli.min_version",
+-            "options": [
++              },
+               {
+                 "name": "--json",
+                 "description": "Emit machine-readable JSON output.",
+@@ -2025,67 +2168,47 @@
+                   }
+                 ]
+               }
+-            ],
+-            "arguments": [
++            ]
++          },
++          {
++            "name": "login",
++            "description": "Store a credential for a provider; with --credentials, the fields of a key file.\n\nExample: dataio auth login --provider google --credentials key.json",
++            "options": [
+               {
+-                "name": "key",
+-                "required": true,
+-                "arity": {
+-                  "minimum": 1,
+-                  "maximum": 1
+-                },
+-                "description": "Dotted config key, e.g. cli.min_version (see `config list`).",
+-                "metadata": [
++                "name": "--provider",
++                "arguments": [
+                   {
+-                    "name": "x-rb-type",
+-                    "value": "str"
++                    "name": "PROVIDER",
++                    "required": true,
++                    "arity": {
++                      "maximum": 1
++                    }
+                   }
+-                ]
+-              }
+-            ]
+-          },
+-          {
+-            "name": "set",
+-            "description": "Set a single, non-secret configuration value.\n\nExample: dataio config set cli.min_version 0.2.0",
+-            "options": [
+-              {
+-                "name": "--json",
+-                "description": "Emit machine-readable JSON output.",
++                ],
++                "description": "Provider/profile name.",
+                 "metadata": [
+                   {
+                     "name": "x-rb-type",
+-                    "value": "boolean"
++                    "value": "str"
+                   },
+                   {
+                     "name": "x-rb-default",
+-                    "value": false
++                    "value": "default"
+                   }
+                 ]
+               },
+               {
+-                "name": "--quiet",
+-                "description": "Suppress non-essential output.",
+-                "metadata": [
+-                  {
+-                    "name": "x-rb-type",
+-                    "value": "boolean"
+-                  },
++                "name": "--credentials",
++                "arguments": [
+                   {
+-                    "name": "x-rb-default",
+-                    "value": false
++                    "name": "KEY_FILE",
++                    "required": true,
++                    "arity": {
++                      "maximum": 1
++                    }
+                   }
+-                ]
+-              }
+-            ],
+-            "arguments": [
+-              {
+-                "name": "key",
+-                "required": true,
+-                "arity": {
+-                  "minimum": 1,
+-                  "maximum": 1
+-                },
+-                "description": "Dotted config key, e.g. cli.min_version (see `config list`).",
++                ],
++                "description": "Key file (JSON) to store the provider's fields from, e.g. a Google service-account key.",
+                 "metadata": [
+                   {
+                     "name": "x-rb-type",
+@@ -2094,35 +2217,8 @@
+                 ]
+               },
+               {
+-                "name": "value",
+-                "required": true,
+-                "arity": {
+-                  "minimum": 1,
+-                  "maximum": 1
+-                },
+-                "description": "New value (stored as a string).",
+-                "metadata": [
+-                  {
+-                    "name": "x-rb-type",
+-                    "value": "str"
+-                  }
+-                ]
+-              }
+-            ]
+-          }
+-        ]
+-      },
+-      {
+-        "name": "auth",
+-        "description": "Credentials: report their health (and store them, if this CLI has any).",
+-        "commands": [
+-          {
+-            "name": "status",
+-            "description": "Report every provider's credential: where it comes from and whether it works. Never prints values.\n\nWithout --check only presence is reported (status `unchecked` or `missing`).\nExits 0 when every required provider is ok/unchecked (an optional one may be\nmissing), 3 when any required provider has a problem or any credential is\ninvalid/expired, 2 on a usage error. A per-target provider (one credential per\nsite/host/account) gets one entry per stored target, named `<kind>:<target>`. The --json shape is a cross-tool contract:\n`tool`, `version`, `checked_at`, `credentials[]` with `provider`, `required`,\n`fields`, `source`, `source_ref`, `status`, `expires_at`, `quota`, `message`.\n\nExample: dataio auth status --check --json",
+-            "options": [
+-              {
+-                "name": "--check",
+-                "description": "Also make one cheap read-only call per provider (10 s timeout) to prove each works.",
++                "name": "--non-interactive",
++                "description": "Never prompt; fail instead.",
+                 "metadata": [
+                   {
+                     "name": "x-rb-type",
+@@ -2134,22 +2230,6 @@
+                   }
+                 ]
+               },
+-              {
+-                "name": "--provider",
+-                "arguments": [
+-                  {
+-                    "name": "PROVIDER",
+-                    "required": true
+-                  }
+-                ],
+-                "description": "Report only this provider, or one target as <kind>:<target> (default: all).",
+-                "metadata": [
+-                  {
+-                    "name": "x-rb-type",
+-                    "value": "str"
+-                  }
+-                ]
+-              },
+               {
+                 "name": "--json",
+                 "description": "Emit machine-readable JSON output.",
+@@ -2181,15 +2261,18 @@
+             ]
+           },
+           {
+-            "name": "login",
+-            "description": "Store a credential for a provider; with --credentials, the fields of a key file.\n\nExample: dataio auth login --provider google --credentials key.json",
++            "name": "logout",
++            "description": "Remove a stored credential.\n\nExample: dataio auth logout --provider default",
+             "options": [
+               {
+                 "name": "--provider",
+                 "arguments": [
+                   {
+                     "name": "PROVIDER",
+-                    "required": true
++                    "required": true,
++                    "arity": {
++                      "maximum": 1
++                    }
+                   }
+                 ],
+                 "description": "Provider/profile name.",
+@@ -2205,24 +2288,22 @@
+                 ]
+               },
+               {
+-                "name": "--credentials",
+-                "arguments": [
+-                  {
+-                    "name": "KEY_FILE",
+-                    "required": true
+-                  }
+-                ],
+-                "description": "Key file (JSON) to store the provider's fields from, e.g. a Google service-account key.",
++                "name": "--json",
++                "description": "Emit machine-readable JSON output.",
+                 "metadata": [
+                   {
+                     "name": "x-rb-type",
+-                    "value": "str"
++                    "value": "boolean"
++                  },
++                  {
++                    "name": "x-rb-default",
++                    "value": false
+                   }
+                 ]
+               },
+               {
+-                "name": "--non-interactive",
+-                "description": "Never prompt; fail instead.",
++                "name": "--quiet",
++                "description": "Suppress non-essential output.",
+                 "metadata": [
+                   {
+                     "name": "x-rb-type",
+@@ -2233,7 +2314,19 @@
+                     "value": false
+                   }
+                 ]
+-              },
++              }
++            ]
++          }
++        ]
++      },
++      {
++        "name": "config",
++        "description": "Manage project configuration.",
++        "commands": [
++          {
++            "name": "list",
++            "description": "List all configuration values.\n\nExample: dataio config list --json",
++            "options": [
+               {
+                 "name": "--json",
+                 "description": "Emit machine-readable JSON output.",
+@@ -2265,29 +2358,60 @@
+             ]
+           },
+           {
+-            "name": "logout",
+-            "description": "Remove a stored credential.\n\nExample: dataio auth logout --provider default",
++            "name": "get",
++            "description": "Get a single configuration value.\n\nExample: dataio config get cli.min_version",
+             "options": [
+               {
+-                "name": "--provider",
+-                "arguments": [
++                "name": "--json",
++                "description": "Emit machine-readable JSON output.",
++                "metadata": [
+                   {
+-                    "name": "PROVIDER",
+-                    "required": true
++                    "name": "x-rb-type",
++                    "value": "boolean"
++                  },
++                  {
++                    "name": "x-rb-default",
++                    "value": false
+                   }
+-                ],
+-                "description": "Provider/profile name.",
++                ]
++              },
++              {
++                "name": "--quiet",
++                "description": "Suppress non-essential output.",
+                 "metadata": [
+                   {
+                     "name": "x-rb-type",
+-                    "value": "str"
++                    "value": "boolean"
+                   },
+                   {
+                     "name": "x-rb-default",
+-                    "value": "default"
++                    "value": false
+                   }
+                 ]
+-              },
++              }
++            ],
++            "arguments": [
++              {
++                "name": "key",
++                "required": true,
++                "arity": {
++                  "minimum": 1,
++                  "maximum": 1
++                },
++                "description": "Dotted config key, e.g. cli.min_version (see `config list`).",
++                "metadata": [
++                  {
++                    "name": "x-rb-type",
++                    "value": "str"
++                  }
++                ]
++              }
++            ]
++          },
++          {
++            "name": "set",
++            "description": "Set a single, non-secret configuration value.\n\nExample: dataio config set cli.min_version 0.2.0",
++            "options": [
+               {
+                 "name": "--json",
+                 "description": "Emit machine-readable JSON output.",
+@@ -2316,6 +2440,38 @@
+                   }
+                 ]
+               }
++            ],
++            "arguments": [
++              {
++                "name": "key",
++                "required": true,
++                "arity": {
++                  "minimum": 1,
++                  "maximum": 1
++                },
++                "description": "Dotted config key, e.g. cli.min_version (see `config list`).",
++                "metadata": [
++                  {
++                    "name": "x-rb-type",
++                    "value": "str"
++                  }
++                ]
++              },
++              {
++                "name": "value",
++                "required": true,
++                "arity": {
++                  "minimum": 1,
++                  "maximum": 1
++                },
++                "description": "New value (stored as a string).",
++                "metadata": [
++                  {
++                    "name": "x-rb-type",
++                    "value": "str"
++                  }
++                ]
++              }
+             ]
+           }
+         ]
+@@ -2326,14 +2482,17 @@
+         "commands": [
+           {
+             "name": "install",
+-            "description": "Copy this CLI's bundled SKILL.md into an AI tool's skill directory.\n\nExample: dataio skill install --tool claude-code",
++            "description": "Copy this CLI's bundled skills into an AI tool's skill directory.\n\nThe conventions skill and every extra skill the package ships, each into its own directory.\n\nExample: dataio skill install --tool claude-code",
+             "options": [
+               {
+                 "name": "--tool",
+                 "arguments": [
+                   {
+                     "name": "TOOL",
+-                    "required": true
++                    "required": true,
++                    "arity": {
++                      "maximum": 1
++                    }
+                   }
+                 ],
+                 "description": "Target AI tool: one of claude-code, agents.",
+@@ -2362,6 +2521,59 @@
+                   }
+                 ]
+               },
++              {
++                "name": "--skill",
++                "arguments": [
++                  {
++                    "name": "SKILL",
++                    "required": true,
++                    "arity": {
++                      "maximum": 1
++                    }
++                  }
++                ],
++                "description": "Install only this bundled skill (see `skill list`); by default all.",
++                "metadata": [
++                  {
++                    "name": "x-rb-type",
++                    "value": "str"
++                  }
++                ]
++              },
++              {
++                "name": "--json",
++                "description": "Emit machine-readable JSON output.",
++                "metadata": [
++                  {
++                    "name": "x-rb-type",
++                    "value": "boolean"
++                  },
++                  {
++                    "name": "x-rb-default",
++                    "value": false
++                  }
++                ]
++              },
++              {
++                "name": "--quiet",
++                "description": "Suppress non-essential output.",
++                "metadata": [
++                  {
++                    "name": "x-rb-type",
++                    "value": "boolean"
++                  },
++                  {
++                    "name": "x-rb-default",
++                    "value": false
++                  }
++                ]
++              }
++            ]
++          },
++          {
++            "name": "list",
++            "description": "List the agent skills this CLI bundles: name and description.\n\nExample: dataio skill list",
++            "options": [
+               {
+                 "name": "--json",
+                 "description": "Emit machine-readable JSON output.",
+@@ -2482,6 +2694,15 @@
+       {
+         "name": "x-rb-external",
+         "value": []
++      },
++      {
++        "name": "x-rb-skills",
++        "value": [
++          {
++            "name": "dataio",
++            "description": "Conventions for driving the dataio CLI from an agent — install, JSON output, exit codes, credentials, destructive-command gating. Invoke when a task involves this project's operations."
++          }
++        ]
+       }
+     ]
+   }
+diff --git a/tests/snapshots/help/init.txt b/tests/snapshots/help/init.txt
+index 0e6371f..b77f864 100644
+--- a/tests/snapshots/help/init.txt
++++ b/tests/snapshots/help/init.txt
+@@ -1,7 +1,7 @@
+ 
+  Usage: dataio init [OPTIONS]
+ 
+- Initialize a project: creates .dataio/config.toml in the target directory.
++ Initialize a project: creates .rb_dataio/config.toml in the target directory.
+ 
+  Example: dataio init --name demo
+ 
+diff --git a/tests/snapshots/help/skill-install.txt b/tests/snapshots/help/skill-install.txt
+index 6a306d4..a537bc3 100644
+--- a/tests/snapshots/help/skill-install.txt
++++ b/tests/snapshots/help/skill-install.txt
+@@ -1,13 +1,16 @@
+ 
+  Usage: dataio skill install [OPTIONS]
+ 
+- Copy this CLI's bundled SKILL.md into an AI tool's skill directory.
++ Copy this CLI's bundled skills into an AI tool's skill directory.
++
++ The conventions skill and every extra skill the package ships, each into its own directory.
+ 
+  Example: dataio skill install --tool claude-code
+ 
+ ╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
+ │ --tool           <str>  Target AI tool: one of claude-code, agents. [default: claude-code]       │
+ │ --project               Install into the current project instead of the user-level directory.    │
++│ --skill          <str>  Install only this bundled skill (see `skill list`); by default all.      │
+ │ --json                  Emit machine-readable JSON output.                                       │
+ │ --quiet                 Suppress non-essential output.                                           │
+ │ --help                  Show this message and exit.                                              │
+diff --git a/tests/snapshots/help/skill-list.txt b/tests/snapshots/help/skill-list.txt
+new file mode 100644
+index 0000000..46715fe
+--- /dev/null
++++ b/tests/snapshots/help/skill-list.txt
+@@ -0,0 +1,13 @@
++
++ Usage: dataio skill list [OPTIONS]
++
++ List the agent skills this CLI bundles: name and description.
++
++ Example: dataio skill list
++
++╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
++│ --json           Emit machine-readable JSON output.                                              │
++│ --quiet          Suppress non-essential output.                                                  │
++│ --help           Show this message and exit.                                                     │
++╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
++
+diff --git a/tests/snapshots/help/skill.txt b/tests/snapshots/help/skill.txt
+index cc90ea4..5234c2c 100644
+--- a/tests/snapshots/help/skill.txt
++++ b/tests/snapshots/help/skill.txt
+@@ -7,6 +7,7 @@
+ │ --help          Show this message and exit.                                                      │
+ ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+ ╭─ Commands ───────────────────────────────────────────────────────────────────────────────────────╮
+-│ install  Copy this CLI's bundled SKILL.md into an AI tool's skill directory.                     │
++│ install  Copy this CLI's bundled skills into an AI tool's skill directory.                       │
++│ list     List the agent skills this CLI bundles: name and description.                           │
+ ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+ 
+diff --git a/tests/test_auth.py b/tests/test_auth.py
+index 730ac07..1a09610 100644
+--- a/tests/test_auth.py
++++ b/tests/test_auth.py
+@@ -1,3 +1,7 @@
++"""Tests of `auth status` and the credential store with test providers; the report shape is the contract with other
++tools.
++"""
++
+ from __future__ import annotations
+ 
+ import json
+@@ -15,11 +19,11 @@ from rb_dataio.credentials import health
+ from rb_dataio.credentials import manager as credentials
+ from rb_dataio.providers import Health, Provider, Quota
+ 
+-from .test_cli import invoke, invoke_json
++from .test_cli import invoke, invoke_json, plain
+ 
+ NS = "dataio"  # keychain service and env prefix use the command name, not the package
+ PREFIX = re.sub(r"[^A-Z0-9]", "_", NS.upper())
+-GOOD, BAD = "good-secret-123", "bad-secret-456"
++GOOD, BAD = "good-secret-123", "bad-secret-456"  # gitleaks:allow (fake keys)
+ 
+ 
+ # --- test providers: a required API key one, an optional two-field one ----------
+@@ -201,8 +205,8 @@ def test_provider_filter_and_unknown_provider(demo_providers) -> None:
+ def test_human_output(demo_providers) -> None:
+     result = invoke("auth", "status", env=env(demo=BAD))
+     assert result.exit_code == 0
+-    assert "demo: unchecked (env:" in result.stdout
+-    assert "extra (optional): missing" in result.stdout
++    assert "demo: unchecked (env:" in plain(result.stdout)
++    assert "extra (optional): missing" in plain(result.stdout)
+     assert BAD not in result.output
+ 
+ 
+@@ -373,8 +377,14 @@ def test_unavailable_keychain_warns_once_and_only_without_env(
+     assert [r.levelname for r in caplog.records].count("WARNING") == 1
+ 
+ 
+-def test_doctor_reports_credential_checks(tmp_path: Path, fake_keyring) -> None:
+-    _, payload = invoke_json("--project", str(tmp_path), "doctor")
++def doctor_checks(**values: str | None) -> tuple[dict, dict[str, dict]]:
++    result = invoke("doctor", "--json", env=env(**values))
++    payload = json.loads(result.stdout)
++    return payload, {check["name"]: check for check in payload["checks"]}
++
++
++def test_doctor_reports_credential_checks(fake_keyring) -> None:
++    _, payload = invoke_json("doctor")
+     names = [check["name"] for check in payload["checks"]]
+     assert "credential_store" in names
+     assert "credential" in names
+@@ -383,7 +393,7 @@ def test_doctor_reports_credential_checks(tmp_path: Path, fake_keyring) -> None:
+ # --- doctor: the credential checks follow the auth status rule ---------------------------
+ 
+ 
+-def doctor_checks(tmp_path: Path, **env: str) -> tuple[bool, dict[str, dict]]:
++def project_doctor_checks(tmp_path: Path, **env: str) -> tuple[bool, dict[str, dict]]:
+     code, payload = invoke_json("--project", str(tmp_path), "doctor", env=env)
+     assert code == 0
+     return payload["healthy"], {check["name"]: check for check in payload["checks"]}
+@@ -395,7 +405,7 @@ def test_doctor_is_healthy_with_env_credentials_and_no_keychain_or_project(
+     monkeypatch.setattr(credentials.keyring, "get_keyring", lambda: fail.Keyring())
+     env = {"DATAIO_GOOGLE_CLIENT_EMAIL": "a@b.c", "DATAIO_GOOGLE_PRIVATE_KEY": GOOD}
+ 
+-    healthy, checks = doctor_checks(tmp_path, **env)
++    healthy, checks = project_doctor_checks(tmp_path, **env)
+ 
+     assert healthy is True
+     for name in ("credential_store", "credential", "project"):
+@@ -414,7 +424,7 @@ def test_doctor_fails_the_credential_check_of_a_bad_provider(
+     real = health.report
+     monkeypatch.setattr(health, "report", lambda *a, **k: _with_status(real(*a, **k), status))
+ 
+-    healthy, checks = doctor_checks(tmp_path, **env(demo=GOOD))
++    healthy, checks = project_doctor_checks(tmp_path, **env(demo=GOOD))
+ 
+     assert healthy is False
+     assert checks["credential"]["ok"] is False
+@@ -429,7 +439,41 @@ def _with_status(payload: dict, status: str) -> dict:
+ 
+ 
+ def test_doctor_fails_when_a_required_provider_is_missing(tmp_path: Path, demo_providers) -> None:
+-    healthy, checks = doctor_checks(tmp_path)
++    healthy, checks = project_doctor_checks(tmp_path)
+ 
+     assert healthy is False
+     assert "demo: missing" in checks["credential"]["detail"]
++
++
++def test_doctor_is_healthy_with_env_credentials_and_no_keychain(
++    demo_providers, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    monkeypatch.setattr(credentials, "store_backend", lambda: None)
++    payload, checks = doctor_checks(demo=GOOD)
++    assert checks["credential_store"]["ok"] is True
++    assert "environment variables" in checks["credential_store"]["detail"]
++    assert checks["credential"]["ok"] is True
++    assert "demo" in checks["credential"]["detail"]
++    assert payload["healthy"] is True
++
++
++def test_doctor_makes_no_provider_health_call(demo_providers, monkeypatch: pytest.MonkeyPatch) -> None:
++    def forbidden(self) -> Health:
++        pytest.fail("doctor must stay offline: no provider health call")
++
++    monkeypatch.setattr(Demo, "health_check", forbidden)
++    payload, checks = doctor_checks(demo=GOOD)
++    assert checks["credential"]["ok"] is True
++    assert "demo: unchecked" in checks["credential"]["detail"]
++    assert payload["healthy"] is True
++
++
++def test_doctor_fails_for_a_missing_required_credential(demo_providers) -> None:
++    payload, checks = doctor_checks()
++    assert checks["credential"]["ok"] is False
++    assert payload["healthy"] is False
++
++
++def test_doctor_never_names_a_provider_the_package_does_not_register(demo_providers) -> None:
++    result = invoke("doctor", "--json", env=env(demo=BAD))
++    assert "default" not in result.stdout
+diff --git a/tests/test_ci.py b/tests/test_ci.py
+index cee2e06..3225f96 100644
+--- a/tests/test_ci.py
++++ b/tests/test_ci.py
+@@ -1,31 +1,86 @@
+-"""The Gitea Actions workflow: it runs the gate of the template tag (the Standard, CI)."""
++"""The Gitea Actions workflow: every package has one (the Standard, CI)."""
+ 
+ from __future__ import annotations
+ 
++import re
+ from pathlib import Path
+ 
+ import yaml
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ WORKFLOW = ROOT / ".gitea" / "workflows" / "ci.yml"
+-# The tag of the gate, not `_commit` of .copier-answers.yml: that stays at the generated version until a `copier update`.
+-GATE_TAG = "v1.25.8"
++# The gate of the template tag this project was generated or last updated from, run through uvx.
++TEMPLATE_TAG = yaml.safe_load((ROOT / ".copier-answers.yml").read_text())["_commit"]
+ GATE = (
+     'uvx --from "git+https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator.git'
+-    f'@{GATE_TAG}#subdirectory=gate" rb-release check'
++    f'@{TEMPLATE_TAG}#subdirectory=gate" rb-release check'
+ )
++STANDARD = "https://homeserver.tailee01ab.ts.net:3000/bolandeu/cli-generator/src/branch/main/skills/cli-builder/reference/standard.md"
++
++
++def test_no_github_workflow() -> None:
++    assert not (ROOT / ".github").exists()
+ 
+ 
+ def test_workflow_runs_the_gate_on_the_docker_runner() -> None:
+     job = yaml.safe_load(WORKFLOW.read_text())["jobs"]["gate"]
+     assert job["runs-on"] == "docker"
++    assert "ci-cache:/cache" in job["container"]["volumes"]
+     checkout = next(step for step in job["steps"] if str(step.get("uses", "")).startswith("actions/checkout@"))
+     assert checkout["with"]["fetch-depth"] == 0
+     assert job["steps"][-1]["run"].strip() == GATE
+ 
+ 
+-def test_workflow_runs_on_a_push_to_main_and_to_a_publish_candidate() -> None:
+-    workflow = yaml.safe_load(WORKFLOW.read_text())
+-    # PyYAML (YAML 1.1) reads the key `on` as the boolean True.
+-    triggers = workflow.get("on", workflow.get(True))
++def _steps() -> list[dict]:
++    return yaml.safe_load(WORKFLOW.read_text())["jobs"]["gate"]["steps"]
++
++
++def test_scanners_are_installed_before_the_gate_at_pinned_versions() -> None:
++    steps = _steps()
++    gate = next(i for i, step in enumerate(steps) if str(step.get("run", "")).strip() == GATE)
++    scripts = [step["run"] for step in steps[:gate] if "run" in step]
++    for tool in ("osv-scanner", "gitleaks"):
++        script = next(s for s in scripts if f"/cache/bin/{tool}-" in s)
++        urls = re.findall(r"https://github\.com/\S+", script)
++        assert urls
++        assert all(re.search(r"/download/v\d+\.\d+\.\d+/", url) for url in urls)
++        assert "latest" not in script
++
++
++def test_scanners_are_cached_per_pinned_version() -> None:
++    script = next(step["run"] for step in _steps() if "gitleaks" in step.get("run", ""))
++    lines = script.splitlines()
++    for tool, version in (("osv-scanner", "2.7.0"), ("gitleaks", "8.30.1")):
++        cached = f"/cache/bin/{tool}-{version}"
++        var = next(line.split("=")[0] for line in lines if line.endswith(f"={cached}"))
++        download = next(line for line in lines if line.startswith(f"[ -x ${var} ] ||"))
++        assert f"/download/v{version}/" in download
++        assert f"ln -sf ${var} /usr/local/bin/{tool}" in lines
++
++
++def test_only_the_workflow_writes_the_gate_command_and_the_files_point_to_it() -> None:
++    import tomllib
++
++    config = tomllib.loads((ROOT / ".agents" / "antagor" / "antagor.toml").read_text())
++    assert "python3 scripts/check_command_docstrings.py" in config["checks"]
++    assert not any("rb-release" in check for check in config["checks"])
++    publish = config["publish"]
++    if publish.get("gate") == "remote":
++        assert publish["gate_status_url"].endswith("/commits/{commit}/status")
++    for name in ("AGENTS.md", "CODING_STANDARDS.md"):
++        text = (ROOT / name).read_text()
++        assert ".gitea/workflows/ci.yml" in text
++        assert "rb-release check" in text
++        assert "uvx --from" not in text
++    # README.md is the project's own (copier skips it on update): not checked here.
++    assert not (ROOT / "scripts" / "release.py").exists()
++
++
++def test_agents_file_links_the_standard() -> None:
++    assert STANDARD in (ROOT / "AGENTS.md").read_text()
++
++
++def test_workflow_runs_on_main_tags_and_the_remote_gate_branch() -> None:
++    triggers = yaml.safe_load(WORKFLOW.read_text())[True]  # YAML reads the key `on` as True
+     assert triggers["push"]["branches"] == ["main", "antagor/publish-*"]
++    assert triggers["push"]["tags"] == ["v*"]
+diff --git a/tests/test_cli.py b/tests/test_cli.py
+index 64660d0..dbc2998 100644
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -1,3 +1,7 @@
++"""Tests of the CLI as a whole: the distribution name, root and group help, the output layer's errors and exit codes,
++and the built-in commands.
++"""
++
+ from __future__ import annotations
+ 
+ import json
+@@ -8,12 +12,13 @@ from pathlib import Path
+ 
+ import pytest
+ import typer
++import yaml
+ from typer.testing import CliRunner
+ 
+ from rb_dataio import output
+ from rb_dataio._distribution import DIST_NAME
+ from rb_dataio.cli import app
+-from rb_dataio.core import services
++from rb_dataio.core import errors
+ from rb_dataio.core.errors import InvalidArguments
+ 
+ runner = CliRunner()
+@@ -23,6 +28,11 @@ def invoke(*args: str, **kwargs):
+     return runner.invoke(app, list(args), **kwargs)
+ 
+ 
++def plain(text: str) -> str:
++    """The text without ANSI colour codes: CI forces Rich colours the Mac does not."""
++    return re.sub(r"\x1b\[[0-9;]*m", "", text)
++
++
+ def invoke_json(*args: str, **kwargs) -> tuple[int, dict]:
+     """Run a command with --json and parse stdout — the contract agents rely on."""
+     result = invoke(*args, "--json", **kwargs)
+@@ -30,10 +40,6 @@ def invoke_json(*args: str, **kwargs) -> tuple[int, dict]:
+     return result.exit_code, json.loads(result.stdout)
+ 
+ 
+-def init(tmp_path: Path, name: str = "demo") -> None:
+-    assert invoke("--project", str(tmp_path), "init", "--name", name).exit_code == 0
+-
+-
+ # --- names ----------------------------------------------------------------------
+ 
+ 
+@@ -65,6 +71,21 @@ def test_distribution_name_matches_pyproject() -> None:
+     assert pyproject["project"]["name"] == DIST_NAME
+ 
+ 
++def test_install_section_matches_copier_answers() -> None:
++    """[tool.rb.install] is rendered from the copier answers: users split on commas, mac as a bool.
++
++    extras is not a copier answer: a hand-added one only has to be a list of strings.
++    """
++    root = Path(__file__).resolve().parents[1]
++    install = tomllib.loads((root / "pyproject.toml").read_text())["tool"]["rb"]["install"]
++    answers = yaml.safe_load((root / ".copier-answers.yml").read_text())
++    users = [name.strip() for name in answers["install_homeserver_users"].split(",") if name.strip()]
++    assert install["homeserver"] == users
++    assert install["mac"] is answers["install_mac"]
++    extras = install.get("extras", [])
++    assert isinstance(extras, list) and all(isinstance(extra, str) for extra in extras)
++
++
+ # --- help-on-no-args -------------------------------------------------------
+ 
+ 
+@@ -74,106 +95,24 @@ def test_bare_invocation_shows_help_and_exits_zero() -> None:
+     assert "Usage:" in result.output
+ 
+ 
+-@pytest.mark.parametrize("group", ["config", "skill", "auth"])
+-def test_bare_group_shows_help_and_exits_zero(group: str) -> None:
+-    result = invoke(group)
++def test_bare_group_shows_help_and_exits_zero() -> None:
++    result = invoke("auth")
+     assert result.exit_code == 0
+     assert "Usage:" in result.output
+     assert "Missing command" not in result.output
+ 
+ 
+-# --- init / status / config ------------------------------------------------
+-
+-
+-def test_init_and_status(tmp_path: Path) -> None:
+-    init(tmp_path)
+-    code, payload = invoke_json("--project", str(tmp_path), "status")
+-    assert code == 0
+-    assert payload["ok"] is True
+-    assert payload["project"] == "demo"
+-
+-
+-def test_init_is_idempotent_without_force(tmp_path: Path) -> None:
+-    init(tmp_path)
+-    invoke("--project", str(tmp_path), "config", "set", "provider.name", "custom")
+-
+-    code, payload = invoke_json("--project", str(tmp_path), "init", "--name", "ignored")
+-    assert code == 0
+-    assert payload["already_initialized"] is True
+-
+-    _, payload = invoke_json("--project", str(tmp_path), "config", "get", "provider.name")
+-    assert payload["value"] == "custom"
+-
+-
+-def test_init_force_resets_config(tmp_path: Path) -> None:
+-    init(tmp_path)
+-    invoke("--project", str(tmp_path), "config", "set", "provider.name", "custom")
+-
+-    code, payload = invoke_json("--project", str(tmp_path), "init", "--name", "demo", "--force")
+-    assert code == 0
+-    assert payload["already_initialized"] is False
+-
+-    _, payload = invoke_json("--project", str(tmp_path), "config", "get", "provider.name")
+-    assert payload["value"] == "default"
+-
+-
+-def test_status_without_init_fails(tmp_path: Path) -> None:
+-    code, payload = invoke_json("--project", str(tmp_path), "status")
+-    assert code == 4
+-    assert payload["ok"] is False
+-    assert payload["error"]["code"] == "PROJECT_NOT_INITIALIZED"
+-    assert "init" in payload["error"]["action"]
+-
+-
+-def test_config_get_set_round_trip(tmp_path: Path) -> None:
+-    init(tmp_path)
+-    assert invoke("--project", str(tmp_path), "config", "set", "provider.name", "custom").exit_code == 0
+-    code, payload = invoke_json("--project", str(tmp_path), "config", "get", "provider.name")
+-    assert code == 0
+-    assert payload["value"] == "custom"
+-
+-
+-def test_config_get_unknown_key_fails(tmp_path: Path) -> None:
+-    init(tmp_path)
+-    code, payload = invoke_json("--project", str(tmp_path), "config", "get", "does.not.exist")
+-    assert code == 2
+-    assert payload["error"]["code"] == "INVALID_ARGUMENTS"
+-
+-
+-def test_config_set_unknown_key_fails_without_persisting(tmp_path: Path) -> None:
+-    init(tmp_path)
+-    code, payload = invoke_json("--project", str(tmp_path), "config", "set", "does.not.exist", "x")
+-    assert code == 2
+-    assert payload["error"]["code"] == "INVALID_ARGUMENTS"
+-
+-    _, payload = invoke_json("--project", str(tmp_path), "config", "list")
+-    assert "does" not in payload
+-
+-
+-# --- version compatibility -------------------------------------------------
+-
+-
+-def test_min_version_gate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+-    # Pin the installed version: an untagged checkout builds as 0.0.0, which the gate skips.
+-    monkeypatch.setattr(services, "installed_version", lambda: "1.0.0")
+-    init(tmp_path)
+-    assert invoke("--project", str(tmp_path), "config", "set", "cli.min_version", "99.0.0").exit_code == 0
+-
+-    code, payload = invoke_json("--project", str(tmp_path), "status")
+-    assert code == 6
+-    assert payload["error"]["code"] == "CLI_TOO_OLD"
+-    assert "uv tool upgrade" in payload["error"]["action"]
+-
+-    monkeypatch.setattr(services, "installed_version", lambda: "99.0.0")
+-    code, _ = invoke_json("--project", str(tmp_path), "status")
+-    assert code == 0
++def test_init_help_names_the_project_folder_by_the_package() -> None:
++    result = invoke("init", "--help")
++    assert result.exit_code == 0
++    assert ".rb_dataio/config.toml" in result.output
+ 
+ 
+ # --- doctor ------------------------------------------------------------------
+ 
+ 
+-def test_doctor_json(tmp_path: Path) -> None:
+-    code, payload = invoke_json("--project", str(tmp_path), "doctor")
++def test_doctor_json() -> None:
++    code, payload = invoke_json("doctor")
+     assert code == 0
+     names = [check["name"] for check in payload["checks"]]
+     assert names[:3] == ["python", "cli_version", "project"]
+@@ -184,27 +123,10 @@ def test_doctor_json(tmp_path: Path) -> None:
+     assert "default" not in json.dumps(payload["checks"])
+ 
+ 
+-def test_doctor_reports_config_parse_error(tmp_path: Path) -> None:
+-    init(tmp_path)
+-    (tmp_path / ".rb_dataio" / "config.toml").write_text("this is not valid toml [[[")
+-
+-    code, payload = invoke_json("--project", str(tmp_path), "doctor")
+-    assert code == 0
+-    config_check = next(check for check in payload["checks"] if check["name"] == "config")
+-    assert config_check["ok"] is False
+-    assert config_check["detail"]
+-
+-
+-def test_doctor_reports_incompatible_cli_instead_of_failing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+-    monkeypatch.setattr(services, "installed_version", lambda: "1.0.0")
+-    init(tmp_path)
+-    invoke("--project", str(tmp_path), "config", "set", "cli.min_version", "99.0.0")
+-
+-    code, payload = invoke_json("--project", str(tmp_path), "doctor")
+-    assert code == 0
+-    compat = next(check for check in payload["checks"] if check["name"] == "cli_compat")
+-    assert compat["ok"] is False
+-    assert "99.0.0" in compat["detail"]
++def test_doctor_prints_one_line_per_check_for_a_human() -> None:
++    result = invoke("doctor")
++    assert result.exit_code == 0
++    assert plain(result.stdout).splitlines()[0] == "✓ python"
+ 
+ 
+ # --- error handling contract ---------------------------------------------------
+@@ -230,6 +152,51 @@ def _app_with(command):
+     return test_app
+ 
+ 
++def test_error_message_and_action_in_square_brackets_reach_stderr_whole() -> None:
++    def fail(ctx: typer.Context) -> None:
++        raise errors.CliError("PATH_NOT_FOUND", "[library] path not found", action="use [a-z0-9-]")
++
++    result = runner.invoke(_app_with(fail), ["cmd"])
++    assert result.exit_code == 1
++    assert "[library] path not found" in plain(result.stderr)
++    assert "use [a-z0-9-]" in plain(result.stderr)
++
++
++def test_verbose_line_in_square_brackets_reaches_stderr_whole() -> None:
++    def progress(ctx: typer.Context) -> None:
++        output.vecho(ctx, "step [1/3] of [a-z0-9-]")
++
++    result = runner.invoke(_app_with(progress), ["--verbose", "cmd"])
++    assert "step [1/3] of [a-z0-9-]" in plain(result.stderr)
++
++
++@pytest.mark.parametrize(
++    ("error", "code", "exit_code"),
++    [
++        (errors.InvalidArguments("bad"), "INVALID_ARGUMENTS", 2),
++        (errors.AuthRequired("demo"), "AUTH_REQUIRED", 3),
++        (errors.CredentialsUnhealthy({"demo": "invalid"}), "CREDENTIALS_UNHEALTHY", 3),
++        (errors.ProjectNotInitialized("/work"), "PROJECT_NOT_INITIALIZED", 4),
++        (errors.ProviderError("demo", "down", status=503), "PROVIDER_ERROR", 5),
++        (errors.DatabaseUnavailable("down"), "DATABASE_UNAVAILABLE", 5),
++        (errors.CliTooOld("1.0.0", "2.0.0"), "CLI_TOO_OLD", 6),
++        (errors.DatabaseTooNew("0009"), "CLI_TOO_OLD", 6),
++        (errors.DatabaseNotMigrated(None, "0002"), "DATABASE_NOT_MIGRATED", 1),
++        (errors.DependencyTooOld("serp", None, "0.3"), "DEPENDENCY_TOO_OLD", 1),
++        (errors.CredentialStoreUnavailable("demo", "locked"), "CREDENTIAL_STORE_UNAVAILABLE", 1),
++        (errors.Aborted("Delete everything"), "ABORTED", 1),
++    ],
++    ids=lambda value: type(value).__name__ if isinstance(value, errors.CliError) else None,
++)
++def test_each_error_has_the_code_and_exit_code_of_the_standard(
++    error: errors.CliError, code: str, exit_code: int
++) -> None:
++    """The error codes table of the Standard (Errors): the code in the envelope and the exit code."""
++    payload = error.to_dict()
++    assert (payload["code"], error.exit_code) == (code, exit_code)
++    assert payload["message"]
++
++
+ def test_report_with_a_problem_keeps_the_payload() -> None:
+     """output.emit_report: data plus ok=false + error, exit code from the problem (auth status uses it)."""
+ 
+@@ -247,7 +214,7 @@ def test_report_with_a_problem_keeps_the_payload() -> None:
+     )
+     result = runner.invoke(_app_with(report), ["cmd"])
+     assert result.exit_code == 2
+-    assert "items: [1]" in result.stdout
++    assert "items: [1]" in plain(result.stdout)
+     assert "bad" in result.stderr
+ 
+ 
+@@ -278,13 +245,6 @@ def test_unexpected_exception_prints_traceback_only_with_verbose() -> None:
+     assert "Traceback" in loud.stderr or "RuntimeError" in loud.stderr
+ 
+ 
+-def test_human_error_goes_to_stderr(tmp_path: Path) -> None:
+-    result = invoke("--project", str(tmp_path), "status")
+-    assert result.exit_code == 4
+-    assert result.stdout == ""
+-    assert "Error:" in result.stderr
+-
+-
+ def test_require_confirmation_blocks_non_interactive_without_confirm() -> None:
+     def destroy(ctx: typer.Context, confirm: bool = output.ConfirmOption) -> None:
+         output.require_confirmation(ctx, "Delete everything", confirm=confirm)
+diff --git a/tests/test_deps.py b/tests/test_deps.py
+index 04bcd74..829660c 100644
+--- a/tests/test_deps.py
++++ b/tests/test_deps.py
+@@ -1,3 +1,5 @@
++"""Tests of `core.deps`: finding the CLIs this package depends on and the errors for a missing or too old one."""
++
+ from __future__ import annotations
+ 
+ import re
+diff --git a/tests/test_describe.py b/tests/test_describe.py
+index 93b2d2a..f429c55 100644
+--- a/tests/test_describe.py
++++ b/tests/test_describe.py
+@@ -14,7 +14,7 @@ from __future__ import annotations
+ import enum
+ import json
+ import re
+-from collections.abc import Iterator
++from collections.abc import Callable, Iterator
+ from pathlib import Path
+ 
+ import jsonschema
+@@ -132,6 +132,10 @@ class DescribeSnapshot(SingleFileSnapshotExtension):
+         return "describe"
+ 
+ 
++def test_describe_is_the_same_in_ci(same_in_ci: Callable[[str], None]) -> None:
++    same_in_ci("test_describe_snapshot")
++
++
+ def test_describe_snapshot(snapshot) -> None:
+     document = json.loads(json.dumps(DOCUMENT))
+     # Versions move with every release and template update — not a contract change.
+@@ -178,6 +182,8 @@ def test_parameter_shapes() -> None:
+     assert _meta(options["--color"])["x-rb-default"] == "red"
+     assert _meta(options["--out"])["x-rb-default"] == "out"
+     assert _meta(options["--tag"])["x-rb-multiple"] is True
++    assert options["--color"]["arguments"][0]["arity"] == {"maximum": 1}
++    assert "arity" not in options["--tag"]["arguments"][0]
+     assert options["--secret"]["hidden"] is True
+     assert options["--force"]["aliases"] == ["--no-force"] and "arguments" not in options["--force"]
+     assert options["--name"]["required"] is True
+diff --git a/tests/test_detach.py b/tests/test_detach.py
+index c60277b..a778924 100644
+--- a/tests/test_detach.py
++++ b/tests/test_detach.py
+@@ -41,6 +41,14 @@ def wait_for(label: str, state: str, timeout: float = 15) -> dict:
+     return current
+ 
+ 
++def load_detach():
++    spec = importlib.util.spec_from_file_location("detach", SCRIPTS / "detach.py")
++    assert spec is not None and spec.loader is not None
++    detach = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(detach)
++    return detach
++
++
+ def py(code: str) -> list[str]:
+     return [sys.executable, "-c", code]
+ 
+@@ -87,10 +95,7 @@ def test_killed_outright(runs: Path) -> None:
+ 
+ def test_state_lives_in_the_tools_state_dir(monkeypatch: pytest.MonkeyPatch) -> None:
+     monkeypatch.delenv("RUNS_DIR", raising=False)
+-    spec = importlib.util.spec_from_file_location("detach", SCRIPTS / "detach.py")
+-    assert spec is not None and spec.loader is not None
+-    detach = importlib.util.module_from_spec(spec)
+-    spec.loader.exec_module(detach)
++    detach = load_detach()
+     pyproject = (SCRIPTS.parent / "pyproject.toml").read_text()
+     assert f'\n{detach.tool_name()} = "' in pyproject.split("[project.scripts]")[1]
+     assert detach.runs_dir().parts[-2:] == (detach.tool_name(), "runs")
+@@ -103,3 +108,54 @@ def test_bad_input(runs: Path) -> None:
+     missing = sh("run_detached.sh", "ghost", "no-such-program-xyz")
+     assert missing.returncode == 0
+     assert wait_for("ghost", "done")["exit_code"] == 127
++
++
++def exited(pid: int) -> None:
++    """Wait until the child has exited, without reaping it: state Z (/proc on Linux, `ps` where there is no /proc)."""
++    deadline = time.monotonic() + 10
++    while not _state_z(pid):
++        assert time.monotonic() < deadline, f"pid {pid} did not become a zombie"
++        time.sleep(0.05)
++
++
++def _state_z(pid: int) -> bool:
++    if Path("/proc").is_dir():  # after the last ')': the command name may hold spaces and parentheses
++        return Path(f"/proc/{pid}/stat").read_text().rpartition(")")[2].split()[0] == "Z"
++    command = ["ps", "-o", "stat=", "-p", str(pid)]
++    return subprocess.run(command, capture_output=True, text=True, check=False).stdout.startswith("Z")  # noqa: S603
++
++
++def zombie() -> subprocess.Popen[bytes]:
++    """A child that has exited and that nobody has waited for — what PID 1 `tail -f /dev/null` leaves behind."""
++    child = subprocess.Popen(["true"])  # noqa: S607
++    exited(child.pid)
++    return child
++
++
++def test_a_zombie_is_not_alive() -> None:
++    child = zombie()
++    try:
++        assert not load_detach()._alive(child.pid)
++    finally:
++        child.wait()
++
++
++def test_a_live_process_is_alive() -> None:
++    child = subprocess.Popen(py("import time; time.sleep(60)"))  # noqa: S603
++    try:
++        assert load_detach()._alive(child.pid)
++    finally:
++        child.kill()
++        child.wait()
++
++
++def test_a_killed_run_whose_supervisor_is_not_reaped_is_killed(runs: Path) -> None:
++    runs.mkdir()
++    supervisor = subprocess.Popen(py("import time; time.sleep(60)"), start_new_session=True)  # noqa: S603
++    (runs / "victim.pid").write_text(f"{supervisor.pid}\n")
++    os.killpg(supervisor.pid, 9)
++    exited(supervisor.pid)
++    try:
++        assert status("victim")["state"] == "killed"
++    finally:
++        supervisor.wait()
+diff --git a/tests/test_docs_install.py b/tests/test_docs_install.py
+new file mode 100644
+index 0000000..d95d9c8
+--- /dev/null
++++ b/tests/test_docs_install.py
+@@ -0,0 +1,45 @@
++"""The install lines of the readme and of the bundled skill, if any, fit the repository_url of the project."""
++
++from pathlib import Path
++
++import yaml
++
++ROOT = Path(__file__).resolve().parent.parent
++REGISTRY = "--index https://homeserver.tailee01ab.ts.net:3000/api/packages/bolandeu/pypi/simple"
++DOCS = {"readme": ROOT / "README.md"}
++DOCS.update(("skill", path) for path in ROOT.glob("src/*/data/SKILL.md"))  # the package skill is an optional part
++
++
++def _repository_url() -> str:
++    return yaml.safe_load((ROOT / ".copier-answers.yml").read_text())["repository_url"]
++
++
++def _texts() -> dict[str, str]:
++    return {name: path.read_text() for name, path in DOCS.items()}
++
++
++def test_no_jinja_tag_is_left_in_the_docs():
++    for name, text in _texts().items():
++        assert "{{" not in text and "{%" not in text, name
++
++
++def test_gitea_repository_gets_the_registry_line_and_no_github_advice():
++    url = _repository_url()
++    if not url or url.startswith("https://github.com/"):
++        return
++    for name, text in _texts().items():
++        assert REGISTRY in text, name
++        assert f"git+{url}.git@vX.Y.Z" in text, name
++        assert "git@github.com" not in text, name
++        assert "gh auth" not in text, name
++
++
++def test_github_or_blank_repository_keeps_the_ssh_line_and_gh_advice():
++    url = _repository_url()
++    if url and not url.startswith("https://github.com/"):
++        return
++    ssh = f"git+ssh://git@github.com/{url.removeprefix('https://github.com/') or '<owner>/<repo>'}.git@vX.Y.Z"
++    for name, text in _texts().items():
++        assert ssh in text, name
++        assert "gh auth setup-git" in text, name
++        assert REGISTRY not in text, name
+diff --git a/tests/test_help.py b/tests/test_help.py
+index bcba49c..7bb7044 100644
+--- a/tests/test_help.py
++++ b/tests/test_help.py
+@@ -4,10 +4,12 @@ Help text is rendered from command docstrings and `typer.Option`/`Argument`
+ `help=` strings — it's the documentation agents and humans read, so it's
+ tested like an API:
+ 
+-- contract tests: every command (walked from the app's registry, so a new
+-  command is covered automatically) has a docstring with an
+-  `Example: dataio <command> ...` line, every parameter has non-empty help,
+-  every group has a description;
++- the help standard (the cli-generator Standard, Commands) on every command, walked from the app's
++  registry so a new command is covered automatically: a one-line summary, one to three `Example:` lines that
++  parse against the command tree, help on every parameter, no parameter help repeated in the description.
++  A command not yet brought to the standard is listed in tests/help_allowlist.txt (one command path per line,
++  `#` comments); a failing run prints the failing commands as lines ready to paste there. Every group has a
++  description;
+ - snapshots: `<command> --help` is stored in tests/snapshots/help/<command>.txt
+   (syrupy). A changed help text fails until the snapshot is refreshed with
+   `uv run pytest --snapshot-update`, which puts the new text in the diff.
+@@ -20,14 +22,15 @@ from __future__ import annotations
+ import inspect
+ import json
+ import re
+-import typing
++import shlex
+ from collections.abc import Callable, Iterator
+ from pathlib import Path
++from typing import Any
+ 
+ import pytest
+ import typer
++import typer.rich_utils
+ from syrupy.extensions.single_file import SingleFileSnapshotExtension, WriteMode
+-from typer.models import ParameterInfo
+ from typer.testing import CliRunner
+ 
+ from rb_dataio import output
+@@ -35,6 +38,17 @@ from rb_dataio.cli import app
+ 
+ CLI = "dataio"
+ SNAPSHOT_DIR = Path(__file__).parent / "snapshots" / "help"
++ALLOWLIST = Path(__file__).parent / "help_allowlist.txt"
++MAX_EXAMPLES = 3
++EXAMPLE = "Example: "
++RESULT = "-> "  # the line after an example: what it gives
++# A docstring line that explains parameters: «mode: …», «`action`: …», «core, column: …», «first / last: …».
++PARAM_NAMES = r"`?\w+`?(?:(?:, | / )`?\w+`?)*"
++PARAM_LINE = re.compile(rf"^(?P<names>{PARAM_NAMES}): ")
++# The explanation of another parameter inside a line, after the end of a sentence: «… is bad. good: a phrase …».
++INLINE_PARAM = re.compile(rf"(?<=[.;]) (?P<names>{PARAM_NAMES}): ")
++LIST_ITEM = re.compile(r"^(?:[-*]|\d+[.)]) ")
++SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+ # Fixed width and no colour so the rendering doesn't depend on the terminal running the tests.
+ HELP_ENV = {"COLUMNS": "100", "NO_COLOR": "1", "TERM": "dumb"}
+ 
+@@ -61,6 +75,12 @@ GROUPS = dict(_groups(app))
+ HELP_PAGES = sorted([*COMMANDS, *GROUPS])
+ 
+ 
++@pytest.fixture(autouse=True)
++def _plain_help(monkeypatch: pytest.MonkeyPatch) -> None:
++    """Typer reads GITHUB_ACTIONS / FORCE_COLOR / PY_COLORS once, at import, and then forces terminal output (CI)."""
++    monkeypatch.setattr(typer.rich_utils, "FORCE_TERMINAL", False)
++
++
+ def _slug(path: tuple[str, ...]) -> str:
+     return "-".join(path)
+ 
+@@ -102,36 +122,357 @@ def test_no_orphan_help_snapshots() -> None:
+     assert stored <= expected, f"snapshots for commands that no longer exist: {sorted(stored - expected)}"
+ 
+ 
+-@pytest.mark.parametrize("path", sorted(COMMANDS), ids=_slug)
+-def test_command_docstring_has_summary_and_example(path: tuple[str, ...]) -> None:
+-    doc = inspect.getdoc(COMMANDS[path]) or ""
+-    assert doc.strip(), f"`{_slug(path)}` has no docstring — it is the command's --help text"
+-    invocation = f"{CLI} {' '.join(path)}"
+-    examples = [line for line in doc.splitlines() if line.startswith("Example:")]
+-    assert any(invocation in line for line in examples), (
+-        f"`{_slug(path)}` docstring needs an `Example: {{cli}} {' '.join(path)} ...` line"
+-    )
+-
+-
+ @pytest.mark.parametrize("path", sorted(COMMANDS), ids=_slug)
+ def test_every_command_is_guarded(path: tuple[str, ...]) -> None:
+     # output.guard gives the JSON error envelope, local --json/--quiet and the {cli} substitution in help.
+     assert output.is_guarded(COMMANDS[path]), f"`{_slug(path)}` must be wrapped in @output.guard"
+ 
+ 
+-@pytest.mark.parametrize("path", sorted(COMMANDS), ids=_slug)
+-def test_every_parameter_has_help(path: tuple[str, ...]) -> None:
+-    callback = inspect.unwrap(COMMANDS[path])
+-    hints = typing.get_type_hints(callback, include_extras=True)
+-    for name, param in inspect.signature(callback).parameters.items():
+-        hint = hints.get(name)
+-        if hint is typer.Context:
++def _leaves(command: Any, path: tuple[str, ...] = ()) -> Iterator[tuple[tuple[str, ...], Any]]:
++    if (subcommands := getattr(command, "commands", None)) is not None:
++        for name, sub in subcommands.items():
++            yield from _leaves(sub, (*path, name))
++    else:
++        yield path, command
++
++
++def _example_failure(path: tuple[str, ...], command: Any, example: str) -> str | None:
++    """Why `example` does not parse against the command: its path, options and arguments. Nothing is run."""
++    try:
++        tokens = shlex.split(example)
++    except ValueError as exc:
++        return f"{exc}"
++    if tokens[: len(path) + 1] != [CLI, *path]:
++        return f"does not start with `{CLI} {' '.join(path)}`"
++    ctx = typer.Context(command, info_name=path[-1])
++    try:
++        values, _, _ = command.make_parser(ctx).parse_args(tokens[len(path) + 1 :])
++        for param in command.get_params(ctx):  # type_cast_value stops before the option callbacks
++            if param.is_eager and param.name in values:  # --help, --version: the parser keeps only what is given
++                return "asks for help or the version instead of a command"
++            value, _ = param.consume_value(ctx, values)
++            if param.value_is_missing(value):
++                if param.required:
++                    return f"Missing {param.param_type_name} {param.get_error_hint(ctx)}."
++            else:
++                param.type_cast_value(ctx, value)
++    except Exception as exc:  # Click's own UsageError has format_message; anything else is a bug in the command
++        format_message = getattr(exc, "format_message", None)
++        return format_message() if callable(format_message) else f"raised {type(exc).__name__}: {exc}"
++    return None
++
++
++def _cleaned(text: str | None) -> str:
++    """A help text as the docstring wrote it: output.guard escaped `[` for Typer's rich markup."""
++    return inspect.cleandoc(text or "").replace("\\[", "[").strip()
++
++
++def _param_names(found: re.Match[str]) -> list[str]:
++    return [name.strip("`") for name in re.split(r", | / ", found["names"])]
++
++
++def _doc_lines(paragraph: str, params: set[str]) -> list[str]:
++    """The lines of a docstring paragraph as the help shows them.
++
++    A line goes on the line before it, unless it starts an item of a list, the explanation of parameters, an example or
++    its result; so does the explanation of a parameter that follows the end of a sentence.
++    """
++    lines: list[str] = []
++    for line in paragraph.splitlines():
++        text = line.strip()
++        if lines and not (PARAM_LINE.match(text) or LIST_ITEM.match(text) or text.startswith((EXAMPLE, RESULT))):
++            lines[-1] += f" {text}"
++        else:
++            lines.append(text)
++    split: list[str] = []
++    for line in lines:
++        start = 0
++        for found in INLINE_PARAM.finditer(line):
++            if all(name in params for name in _param_names(found)):
++                split.append(line[start : found.start()])
++                start = found.start() + 1
++        split.append(line[start:])
++    return split
++
++
++def _described(lines: list[str], params: set[str]) -> list[str]:
++    """The lines of a paragraph that describe the command: no parameter line (nor the items of its list), no example."""
++    kept, in_param = [], False
++    for line in lines:
++        if in_param and LIST_ITEM.match(line):
+             continue
+-        infos = [m for m in getattr(hint, "__metadata__", ()) if isinstance(m, ParameterInfo)]
+-        if isinstance(param.default, ParameterInfo):
+-            infos.append(param.default)
+-        assert infos, f"`{_slug(path)}` parameter `{name}` must be a typer.Option/Argument with help="
+-        assert all((info.help or "").strip() for info in infos), f"`{_slug(path)}` parameter `{name}` has no help"
++        found = PARAM_LINE.match(line)
++        in_param = bool(found) and any(name in params for name in _param_names(found))
++        if not in_param and not line.startswith((EXAMPLE, RESULT)):
++            kept.append(line)
++    return kept
++
++
++def _failures(path: tuple[str, ...], command: Any) -> list[str]:
++    """The rules of the help standard that the command breaks, each as a line naming the command."""
++    name = " ".join(path)
++    help_text = _cleaned(command.help)
++    found: list[str] = []
++    if not help_text:
++        return [f"`{name}`: no docstring"]
++    params = {param.name for param in command.params}
++    paragraphs = [_doc_lines(paragraph, params) for paragraph in help_text.split("\n\n")]
++    examples = [line.removeprefix(EXAMPLE) for lines in paragraphs for line in lines if line.startswith(EXAMPLE)]
++    described = [line for lines in paragraphs for line in _described(lines, params)]
++    summary = SENTENCE_END.split(described[0], maxsplit=1)[0] if described else ""
++    if not summary:
++        found.append(f"`{name}`: no summary")
++    elif not help_text.splitlines()[0].startswith(summary):
++        found.append(f"`{name}`: summary not one line")
++    if not examples:
++        found.append(f"`{name}`: no Example")
++    if len(examples) > MAX_EXAMPLES:
++        found.append(f"`{name}`: more than three examples")
++    for example in examples:
++        if problem := _example_failure(path, command, example):
++            found.append(f"`{name}`: example `{example}` {problem}")
++    flat = " ".join(" ".join(described).split())
++    for param in command.params:
++        help_of_param = " ".join((getattr(param, "help", None) or "").split())
++        if not help_of_param:
++            found.append(f"`{name}`: parameter `{param.name}` has no help")
++        elif help_of_param in flat:
++            found.append(f"`{name}`: description repeats the help of `{param.name}`")
++    return found
++
++
++def help_failures(root: typer.Typer) -> dict[tuple[str, ...], list[str]]:
++    """The failures of every command of `root`, by command path; a command that meets the standard is absent."""
++    found = {path: _failures(path, command) for path, command in _leaves(typer.main.get_command(root))}
++    return {path: failures for path, failures in found.items() if failures}
++
++
++def _allowed(text: str) -> set[tuple[str, ...]]:
++    lines = (line.split("#", 1)[0].strip() for line in text.splitlines())
++    return {tuple(line.split()) for line in lines if line}
++
++
++def _why_allowed_is_stale(click_root: Any, path: tuple[str, ...]) -> str:
++    """Why an allowlist line that no failure needs is there: the command passes, is a group, or does not exist."""
++    command = click_root
++    for name in path:
++        command = getattr(command, "commands", {}).get(name)
++        if command is None:
++            return "no such command"
++    return "is a group, not a command" if hasattr(command, "commands") else "it meets the standard"
++
++
++def check_help_standard(root: typer.Typer, allowlist: str) -> str:
++    """The report of a run against the allowlist: empty when the help meets the standard."""
++    failing, allowed = help_failures(root), _allowed(allowlist)
++    report = [line for path, lines in failing.items() if path not in allowed for line in lines]
++    click_root = typer.main.get_command(root)
++    report += [
++        f"remove from tests/help_allowlist.txt, {_why_allowed_is_stale(click_root, p)}: {' '.join(p)}"
++        for p in sorted(allowed - failing.keys())
++    ]
++    new = sorted(" ".join(path) for path in failing if path not in allowed)
++    if new:
++        report += ["Lines for tests/help_allowlist.txt:", *new]
++    return "\n".join(report)
++
++
++def test_help_meets_the_standard() -> None:
++    report = check_help_standard(app, ALLOWLIST.read_text(encoding="utf-8"))
++    assert not report, f"\n{report}"
++
++
++def _other(ctx: typer.Context) -> None:
++    """Stand beside the command under test.
++
++    Example: {cli} other
++    """
++
++
++def _probe(**commands: Callable[..., None]) -> typer.Typer:
++    probe = typer.Typer(add_completion=False)
++    for name, callback in commands.items():
++        probe.command(name)(output.guard(callback))
++    probe.command("other")(output.guard(_other))  # a Typer app of one command has no command name
++    return probe
++
++
++def _report(callback: Callable[..., None], allowlist: str = "") -> str:
++    return check_help_standard(_probe(cmd=callback), allowlist)
++
++
++def _good(ctx: typer.Context, size: int = typer.Option(3, "--size", help="The size.")) -> None:
++    """Do the thing.
++
++    Example: {cli} cmd --size 2
++    """
++
++
++def test_a_command_that_meets_the_standard_passes() -> None:
++    assert _report(_good) == ""
++
++
++def test_a_command_without_an_example_fails() -> None:
++    def cmd(ctx: typer.Context) -> None:
++        """Do the thing."""
++
++    assert "`cmd`: no Example" in _report(cmd)
++
++
++def test_a_summary_on_two_lines_fails() -> None:
++    def cmd(ctx: typer.Context) -> None:
++        """Do the thing that takes
++        two lines to say.
++
++        Example: {cli} cmd
++        """
++
++    assert "`cmd`: summary not one line" in _report(cmd)
++
++
++def test_a_description_that_repeats_an_option_help_fails() -> None:
++    def cmd(ctx: typer.Context, size: int = typer.Option(3, "--size", help="The size of it.")) -> None:
++        """Do the thing.
++
++        The size of it. Then it goes.
++
++        Example: {cli} cmd
++        """
++
++    assert "`cmd`: description repeats the help of `size`" in _report(cmd)
++
++
++def test_an_example_with_an_unknown_option_fails() -> None:
++    def cmd(ctx: typer.Context) -> None:
++        """Do the thing.
++
++        Example: {cli} cmd --nope
++        """
++
++    report = _report(cmd)
++    assert "`cmd`: example `dataio cmd --nope`" in report
++    assert "No such option: --nope" in report
++
++
++def test_an_example_does_not_run_the_callback_of_an_option() -> None:
++    calls: list[str] = []
++
++    def record(value: str) -> str:
++        calls.append(value)
++        return value
++
++    def cmd(ctx: typer.Context, name: str = typer.Option("x", "--name", help="The name.", callback=record)) -> None:
++        """Do the thing.
++
++        Example: {cli} cmd --name Ann
++        """
++
++    assert _report(cmd) == ""
++    assert calls == []
++
++
++def test_an_error_that_is_not_click_names_its_type() -> None:
++    def explode(value: str) -> str:
++        raise ZeroDivisionError("boom")
++
++    def cmd(ctx: typer.Context, name: str = typer.Option("x", "--name", help="The name.", parser=explode)) -> None:
++        """Do the thing.
++
++        Example: {cli} cmd --name Ann
++        """
++
++    assert "ZeroDivisionError" in _report(cmd)
++
++
++def test_an_allowlist_line_for_a_missing_command_says_so() -> None:
++    assert "remove from tests/help_allowlist.txt, no such command: ghost" in _report(_good, "ghost\n")
++
++
++def test_an_example_that_asks_for_help_fails() -> None:
++    def cmd(ctx: typer.Context) -> None:
++        """Do the thing.
++
++        Example: {cli} cmd --help
++        """
++
++    assert "`cmd`: example `dataio cmd --help` asks for help or the version instead of a command" in _report(cmd)
++
++
++def test_an_example_missing_a_required_option_names_the_flag() -> None:
++    def cmd(ctx: typer.Context, name: str = typer.Option(..., "--name", help="The name.")) -> None:
++        """Do the thing.
++
++        Example: {cli} cmd
++        """
++
++    assert "`cmd`: example `dataio cmd` Missing option '--name'." in _report(cmd)
++
++
++def test_an_allowlist_line_for_a_group_says_so() -> None:
++    probe = _probe(cmd=_good)
++    probe.add_typer(_probe(cmd=_good), name="sub", help="A group.")
++    assert "remove from tests/help_allowlist.txt, is a group, not a command: sub" in check_help_standard(probe, "sub\n")
++
++
++def test_an_example_outside_the_command_path_fails() -> None:
++    def cmd(ctx: typer.Context) -> None:
++        """Do the thing.
++
++        Example: {cli} other
++        """
++
++    assert "does not start with `dataio cmd`" in _report(cmd)
++
++
++def test_an_example_missing_an_argument_fails() -> None:
++    def cmd(ctx: typer.Context, key: str = typer.Argument(..., help="The key.")) -> None:
++        """Do the thing.
++
++        Example: {cli} cmd
++        """
++
++    assert "`cmd`: example `dataio cmd`" in _report(cmd)
++
++
++def test_a_parameter_without_help_fails() -> None:
++    def cmd(ctx: typer.Context, size: int = typer.Option(3, "--size")) -> None:
++        """Do the thing.
++
++        Example: {cli} cmd
++        """
++
++    assert "`cmd`: parameter `size` has no help" in _report(cmd)
++
++
++def test_more_than_three_examples_fail() -> None:
++    def cmd(ctx: typer.Context) -> None:
++        """Do the thing.
++
++        Example: {cli} cmd
++        Example: {cli} cmd
++        Example: {cli} cmd
++        Example: {cli} cmd
++        """
++
++    assert "`cmd`: more than three examples" in _report(cmd)
++
++
++def test_a_failing_command_in_the_allowlist_passes() -> None:
++    def cmd(ctx: typer.Context) -> None:
++        """Do the thing."""
++
++    assert _report(cmd, "# not yet\ncmd  # old\n") == ""
++
++
++def test_an_allowlisted_command_that_meets_the_standard_must_be_removed() -> None:
++    assert "remove from tests/help_allowlist.txt, it meets the standard: cmd" in _report(_good, "cmd\n")
++
++
++def test_a_failure_prints_the_lines_for_the_allowlist() -> None:
++    def cmd(ctx: typer.Context) -> None:
++        """Do the thing."""
++
++    assert _report(cmd).splitlines()[-2:] == ["Lines for tests/help_allowlist.txt:", "cmd"]
+ 
+ 
+ @pytest.mark.parametrize("path", sorted(GROUPS), ids=_slug)
+diff --git a/tests/test_project.py b/tests/test_project.py
+new file mode 100644
+index 0000000..43c1666
+--- /dev/null
++++ b/tests/test_project.py
+@@ -0,0 +1,155 @@
++"""The project part (copier's include_project): `init`, `status`, `config`, the global --project, doctor's checks."""
++
++from __future__ import annotations
++
++from pathlib import Path
++
++import pytest
++
++from rb_dataio.core import services
++
++from .test_cli import invoke, invoke_json
++
++
++def init(tmp_path: Path, name: str = "demo") -> None:
++    assert invoke("--project", str(tmp_path), "init", "--name", name).exit_code == 0
++
++
++def test_bare_config_group_shows_help_and_exits_zero() -> None:
++    result = invoke("config")
++    assert result.exit_code == 0
++    assert "Usage:" in result.output
++
++
++# --- init / status / config ------------------------------------------------
++
++
++def test_init_and_status(tmp_path: Path) -> None:
++    init(tmp_path)
++    code, payload = invoke_json("--project", str(tmp_path), "status")
++    assert code == 0
++    assert payload["ok"] is True
++    assert payload["project"] == "demo"
++
++
++def test_init_is_idempotent_without_force(tmp_path: Path) -> None:
++    init(tmp_path)
++    invoke("--project", str(tmp_path), "config", "set", "provider.name", "custom")
++
++    code, payload = invoke_json("--project", str(tmp_path), "init", "--name", "ignored")
++    assert code == 0
++    assert payload["already_initialized"] is True
++
++    _, payload = invoke_json("--project", str(tmp_path), "config", "get", "provider.name")
++    assert payload["value"] == "custom"
++
++
++def test_init_force_resets_config(tmp_path: Path) -> None:
++    init(tmp_path)
++    invoke("--project", str(tmp_path), "config", "set", "provider.name", "custom")
++
++    code, payload = invoke_json("--project", str(tmp_path), "init", "--name", "demo", "--force")
++    assert code == 0
++    assert payload["already_initialized"] is False
++
++    _, payload = invoke_json("--project", str(tmp_path), "config", "get", "provider.name")
++    assert payload["value"] == "default"
++
++
++def test_status_without_init_fails(tmp_path: Path) -> None:
++    code, payload = invoke_json("--project", str(tmp_path), "status")
++    assert code == 4
++    assert payload["ok"] is False
++    assert payload["error"]["code"] == "PROJECT_NOT_INITIALIZED"
++    assert "init" in payload["error"]["action"]
++
++
++def test_config_get_set_round_trip(tmp_path: Path) -> None:
++    init(tmp_path)
++    assert invoke("--project", str(tmp_path), "config", "set", "provider.name", "custom").exit_code == 0
++    code, payload = invoke_json("--project", str(tmp_path), "config", "get", "provider.name")
++    assert code == 0
++    assert payload["value"] == "custom"
++
++
++def test_config_get_unknown_key_fails(tmp_path: Path) -> None:
++    init(tmp_path)
++    code, payload = invoke_json("--project", str(tmp_path), "config", "get", "does.not.exist")
++    assert code == 2
++    assert payload["error"]["code"] == "INVALID_ARGUMENTS"
++
++
++def test_config_set_unknown_key_fails_without_persisting(tmp_path: Path) -> None:
++    init(tmp_path)
++    code, payload = invoke_json("--project", str(tmp_path), "config", "set", "does.not.exist", "x")
++    assert code == 2
++    assert payload["error"]["code"] == "INVALID_ARGUMENTS"
++
++    _, payload = invoke_json("--project", str(tmp_path), "config", "list")
++    assert "does" not in payload
++
++
++# --- version compatibility -------------------------------------------------
++
++
++def test_min_version_gate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
++    # Pin the installed version: an untagged checkout builds as 0.0.0, which the gate skips.
++    monkeypatch.setattr(services, "installed_version", lambda: "1.0.0")
++    init(tmp_path)
++    assert invoke("--project", str(tmp_path), "config", "set", "cli.min_version", "99.0.0").exit_code == 0
++
++    code, payload = invoke_json("--project", str(tmp_path), "status")
++    assert code == 6
++    assert payload["error"]["code"] == "CLI_TOO_OLD"
++    assert "uv tool upgrade" in payload["error"]["action"]
++
++    monkeypatch.setattr(services, "installed_version", lambda: "99.0.0")
++    code, _ = invoke_json("--project", str(tmp_path), "status")
++    assert code == 0
++
++
++# --- doctor ------------------------------------------------------------------
++
++
++def test_doctor_reports_a_missing_project(tmp_path: Path) -> None:
++    code, payload = invoke_json("--project", str(tmp_path), "doctor")
++    assert code == 0
++    names = [check["name"] for check in payload["checks"]]
++    assert names[:3] == ["python", "cli_version", "project"]
++    project = payload["checks"][2]
++    assert project["ok"] is True  # doctor outside a project is not a failure
++    assert "outside a project" in project["detail"]
++    assert "config" not in names
++
++
++def test_doctor_reports_config_parse_error(tmp_path: Path) -> None:
++    init(tmp_path)
++    (tmp_path / ".rb_dataio" / "config.toml").write_text("this is not valid toml [[[")
++
++    code, payload = invoke_json("--project", str(tmp_path), "doctor")
++    assert code == 0
++    config_check = next(check for check in payload["checks"] if check["name"] == "config")
++    assert config_check["ok"] is False
++    assert config_check["detail"]
++
++
++def test_doctor_reports_incompatible_cli_instead_of_failing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
++    monkeypatch.setattr(services, "installed_version", lambda: "1.0.0")
++    init(tmp_path)
++    invoke("--project", str(tmp_path), "config", "set", "cli.min_version", "99.0.0")
++
++    code, payload = invoke_json("--project", str(tmp_path), "doctor")
++    assert code == 0
++    compat = next(check for check in payload["checks"] if check["name"] == "cli_compat")
++    assert compat["ok"] is False
++    assert "99.0.0" in compat["detail"]
++
++
++# --- errors --------------------------------------------------------------------
++
++
++def test_human_error_goes_to_stderr(tmp_path: Path) -> None:
++    result = invoke("--project", str(tmp_path), "status")
++    assert result.exit_code == 4
++    assert result.stdout == ""
++    assert "Error:" in result.stderr
+diff --git a/tests/test_scripts.py b/tests/test_scripts.py
+index ca0739a..65aebf2 100644
+--- a/tests/test_scripts.py
++++ b/tests/test_scripts.py
+@@ -3,7 +3,8 @@
+ from __future__ import annotations
+ 
+ import importlib.util
+-import re
++import shutil
++import subprocess
+ from pathlib import Path
+ from types import ModuleType
+ 
+@@ -27,47 +28,23 @@ def test_antagor_project_config() -> None:
+ 
+     root = SCRIPTS.parent
+     config = tomllib.loads((root / ".agents" / "antagor" / "antagor.toml").read_text())
+-    assert config["schema"] == 1
+-    # The prefix must equal the Plane project identifier (DATAIO here), so it may be longer than 4 letters.
+-    assert re.fullmatch(r"[A-Z]{2,12}", config["prefix"])
+-    assert config["worker"] == "claude-code"
+-    assert config["checks"] == ["python3 scripts/check_command_docstrings.py", GATE]
+-    assert config["review"]["required_types"] == ["feature", "bugfix"]
+-    assert config["publish"] == {
+-        "versioning": "semver",
+-        "changelog": "CHANGELOG.md",
+-        "deploy_command": "sh scripts/deploy.sh",
+-        "regenerate": {"uv.lock": "uv lock"},
+-        "gate": "remote",
+-        "gate_status_url": "https://homeserver.tailee01ab.ts.net:3000/api/v1/repos/bolandeu/dataio/commits/{commit}/status",
+-    }
+-    # The Human sets the mode (`antagor mode set`); dataio runs in `fast`.
+-    assert config.get("mode") in (None, "strict", "default", "free", "fast")
+-    # Antagor owns this file and may add entries on upgrade.
+-    assert {"state/", "receipts/"} <= set((root / ".agents" / "antagor" / ".gitignore").read_text().split())
+-    assert "ANTAGOR_VERSION" in (SCRIPTS / "deploy.sh").read_text()
+-
+-
+-def test_antagor_layout() -> None:
+-    # The method's layout: AGENTS.md holds pointers only, the rules live in their own files (`antagor layout check` runs in check_template.sh).
+-    root = SCRIPTS.parent
+-    for name in ("AGENTS.md", "CLAUDE.md", "CONTEXT.md", "CODING_STANDARDS.md", "docs/adr/README.md"):
+-        assert (root / name).is_file(), name
+-    agents = (root / "AGENTS.md").read_text()
+-    for pointer in ("`CONTEXT.md`", "`docs/adr/`", "`CODING_STANDARDS.md`", "`.agents/antagor/`"):
+-        assert pointer in agents
+-    for moved in ("TDD", "--dry-run", "expand/contract"):
+-        assert moved not in agents, moved
+-    assert "AGENTS.md" in (root / "CLAUDE.md").read_text()
+-    context = (root / "CONTEXT.md").read_text()
+-    assert re.fullmatch(r"# \S.*", context.splitlines()[0])
+-    assert re.search(r"^\*\*[^*]+\*\*:$", re.sub(r"<!--.*?-->", "", context, flags=re.DOTALL), re.MULTILINE)
+-    readme = (root / "README.md").read_text()
+-    assert "antagor publish" not in readme
+-    assert "ticket" not in readme
+-    assert "the git tag" in readme
+-    assert "install_hooks" not in readme
+-    assert "towncrier" not in readme
++    # A package may add or reorder checks; the template guarantees only the package's own facts.
++    assert "python3 scripts/check_command_docstrings.py" in config["checks"]
++    assert "rb-release check" in config["heavy"]
++    publish = config["publish"]
++    if publish.get("gate") == "remote":
++        status_url = publish["gate_status_url"]
++        assert status_url.startswith("https://homeserver.tailee01ab.ts.net:3000/api/v1/repos/bolandeu/")
++        assert status_url.endswith("/commits/{commit}/status")
++    expected = {"versioning": "semver", "changelog": "CHANGELOG.md", "deploy_command": "sh scripts/deploy.sh"}
++    assert {k: config["publish"].get(k) for k in expected} == expected  # Antagor may add its own keys
++    assert "git push origin main --follow-tags" in (SCRIPTS / "deploy.sh").read_text()
++
++
++def test_agents_file_names_the_standard_and_the_gate() -> None:
++    agents = (SCRIPTS.parent / "AGENTS.md").read_text()
++    assert "cli-generator/src/branch/main/skills/cli-builder/reference/standard.md" in agents
++    assert "rb-release check" in agents
+ 
+ 
+ def test_docstring_check_reads_the_working_tree_only() -> None:
+@@ -76,3 +53,34 @@ def test_docstring_check_reads_the_working_tree_only() -> None:
+     check = _load("check_command_docstrings")
+     assert list(inspect.signature(check.stale_commands).parameters) == ["paths"]
+     assert "index" not in (check.stale_commands.__doc__ or "")
++
++
++def _git(repo: Path, *args: str) -> str:
++    result = subprocess.run(  # noqa: S603
++        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],  # noqa: S607
++        cwd=repo,
++        capture_output=True,
++        text=True,
++        check=True,
++    )
++    return result.stdout
++
++
++def test_env_files_are_ignored(tmp_path: Path) -> None:
++    shutil.copy(SCRIPTS.parent / ".gitignore", tmp_path / ".gitignore")
++    _git(tmp_path, "init", "-q", "-b", "main")
++    _git(tmp_path, "add", "-A")
++    _git(tmp_path, "commit", "-qm", "i")
++    (tmp_path / ".env").write_text("TOKEN=x\n")
++    (tmp_path / ".env.local").write_text("TOKEN=y\n")
++    assert _git(tmp_path, "status", "--porcelain", "--untracked-files=all") == ""
++
++
++GITEA_INDEX = "https://homeserver.tailee01ab.ts.net:3000/api/packages/bolandeu/pypi/simple"
++
++
++def test_project_declares_the_gitea_index_explicit() -> None:
++    import tomllib
++
++    config = tomllib.loads((SCRIPTS.parent / "pyproject.toml").read_text())
++    assert {"name": "gitea", "url": GITEA_INDEX, "explicit": True} in config["tool"]["uv"]["index"]
+diff --git a/tests/test_services.py b/tests/test_services.py
+index 3d10913..b02ec9e 100644
+--- a/tests/test_services.py
++++ b/tests/test_services.py
+@@ -1,3 +1,5 @@
++"""Tests of the project services: find the project root, round-trip the config file and check the CLI's compatibility."""
++
+ from __future__ import annotations
+ 
+ from pathlib import Path
+diff --git a/tests/test_skills.py b/tests/test_skills.py
+new file mode 100644
+index 0000000..458fd73
+--- /dev/null
++++ b/tests/test_skills.py
+@@ -0,0 +1,179 @@
++"""The package skill part (copier's include_skill): `skill install`, `skill list`, --ai, and every bundled agent
++skill: frontmatter present, name = <cli>-<dir name> (<cli> for the conventions skill), and no skill lists the
++CLI's commands (the Standard, Package skill: the help is the list)."""
++
++from __future__ import annotations
++
++import re
++from pathlib import Path
++
++import pytest
++import typer.core
++import typer.main
++
++from rb_dataio.cli import app
++from rb_dataio.core import skills
++from rb_dataio.core.version import cli_name
++
++from .test_cli import invoke, invoke_json
++
++DATA = Path(skills.__file__).resolve().parents[1] / "data"
++
++
++def _command_names() -> list[str]:
++    root = typer.main.get_command(app)
++    assert isinstance(root, typer.core.TyperGroup)
++    return sorted(root.commands)
++
++
++def _problems(data: Path) -> list[str]:
++    """What is wrong with the skills under a data dir, each line naming the file."""
++    cli = cli_name()
++    found = []
++    paths = [data / "SKILL.md", *sorted(data.glob(f"{skills.EXTRAS_DIR}/*/SKILL.md"))]
++    list_item = re.compile(rf"^\s*(?:[-*]|\d+\.|\|)\s*`?{re.escape(cli)} ({'|'.join(_command_names())})\b", re.M)
++    for path in paths:
++        text = path.read_text()
++        meta = skills.frontmatter(text)
++        expected = cli if path.parent == data else f"{cli}-{path.parent.name}"
++        if not meta:
++            found.append(f"{path}: no frontmatter")
++            continue
++        if meta.get("name") != expected:
++            found.append(f"{path}: name is {meta.get('name')!r}, expected {expected!r}")
++        if not meta.get("description"):
++            found.append(f"{path}: no description")
++        if list_item.search(text):
++            found.append(f"{path}: lists the commands of {cli}")
++    return found
++
++
++def test_every_bundled_skill_follows_the_standard() -> None:
++    assert _problems(DATA) == []
++
++
++def test_a_wrong_name_no_frontmatter_or_a_command_list_names_the_file(tmp_path: Path) -> None:
++    cli = cli_name()
++    good = f"---\nname: {cli}\ndescription: d\n---\n\n# x\n"
++    (tmp_path / "SKILL.md").write_text(good)
++    extras = tmp_path / skills.EXTRAS_DIR
++    for directory, text in {
++        "fine": f"---\nname: {cli}-fine\ndescription: d\n---\n",
++        "misnamed": f"---\nname: {cli}-other\ndescription: d\n---\n",
++        "bare": "# no frontmatter\n",
++        "listing": f"---\nname: {cli}-listing\ndescription: d\n---\n\n- `{cli} {_command_names()[0]}` does a thing\n",
++    }.items():
++        (extras / directory).mkdir(parents=True)
++        (extras / directory / "SKILL.md").write_text(text)
++    problems = _problems(tmp_path)
++    assert [Path(line.split(":")[0]).parent.name for line in problems] == ["bare", "listing", "misnamed"]
++
++
++def test_frontmatter_of_text_without_it_is_empty() -> None:
++    assert skills.frontmatter("# title\n") == {}
++    assert skills.frontmatter("---\nname: a\n") == {}
++    assert skills.frontmatter("---\nname: a\ndescription: b: c\n---\nbody") == {"name": "a", "description": "b: c"}
++
++
++def test_skill_install_writes_to_project_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
++    monkeypatch.chdir(tmp_path)
++    code, payload = invoke_json("skill", "install", "--tool", "claude-code", "--project")
++    assert code == 0
++    installed = tmp_path / ".claude" / "skills" / "dataio" / "SKILL.md"
++    assert installed.is_file()
++    assert "name: dataio" in installed.read_text()
++    assert payload["path"] == str(installed)
++
++
++def test_skill_install_without_extra_skills_writes_only_the_conventions_skill(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    monkeypatch.chdir(tmp_path)
++    code, payload = invoke_json("skill", "install", "--tool", "claude-code", "--project")
++    assert code == 0
++    assert set(payload) == {"ok", "tool", "scope", "path"}
++    assert [p.parent.name for p in (tmp_path / ".claude" / "skills").glob("*/SKILL.md")] == ["dataio"]
++
++
++@pytest.fixture
++def extra_skills(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
++    """A package data dir holding the conventions skill and two extra skills."""
++    data = tmp_path / "pkgdata"
++    data.mkdir()
++    (data / "SKILL.md").write_text("---\nname: dataio\ndescription: Conventions.\n---\n")
++    for name, description in {"og-image": "Make og images.", "video": "Make videos."}.items():
++        (data / "skills" / name).mkdir(parents=True)
++        (data / "skills" / name / "SKILL.md").write_text(f"---\nname: dataio-{name}\ndescription: {description}\n---\n")
++    monkeypatch.setattr(skills, "_data", lambda: data)
++    return data
++
++
++def test_skill_install_writes_every_bundled_skill_into_its_own_directory(
++    extra_skills: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    work = tmp_path / "work"
++    work.mkdir()
++    monkeypatch.chdir(work)
++    code, payload = invoke_json("skill", "install", "--tool", "claude-code", "--project")
++    assert code == 0
++    names = ("dataio", "dataio-og-image", "dataio-video")
++    expected = [work / ".claude" / "skills" / name / "SKILL.md" for name in names]
++    assert all(path.is_file() for path in expected)
++    assert payload["paths"] == [str(path) for path in expected]
++    assert payload["path"] == str(expected[0])
++
++
++def test_skill_install_one_skill_by_short_or_full_name(
++    extra_skills: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    work = tmp_path / "work"
++    work.mkdir()
++    monkeypatch.chdir(work)
++    for wanted in ("video", "dataio-video"):
++        code, payload = invoke_json("skill", "install", "--project", "--skill", wanted)
++        assert code == 0
++        assert "paths" not in payload
++    assert [p.parent.name for p in (work / ".claude" / "skills").glob("*/SKILL.md")] == ["dataio-video"]
++
++
++def test_skill_install_unknown_skill_names_the_bundled_ones(
++    extra_skills: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    monkeypatch.chdir(tmp_path)
++    code, payload = invoke_json("skill", "install", "--project", "--skill", "nope")
++    assert code == 2
++    assert payload["error"]["code"] == "INVALID_ARGUMENTS"
++    assert "dataio, dataio-og-image, dataio-video" in payload["error"]["message"]
++
++
++EXPECTED_SKILLS = [
++    {"name": "dataio", "description": "Conventions."},
++    {"name": "dataio-og-image", "description": "Make og images."},
++    {"name": "dataio-video", "description": "Make videos."},
++]
++
++
++def test_skill_list_shows_every_bundled_skill(extra_skills: Path) -> None:
++    code, payload = invoke_json("skill", "list")
++    assert code == 0
++    assert payload["skills"] == EXPECTED_SKILLS
++    human = invoke("skill", "list").stdout
++    assert "dataio-video: Make videos." in human
++
++
++def test_describe_lists_the_same_skills(extra_skills: Path) -> None:
++    _, described = invoke_json("describe")
++    meta = {item["name"]: item["value"] for item in described["command"]["metadata"]}
++    assert meta["x-rb-skills"] == EXPECTED_SKILLS
++
++
++def test_bare_skill_group_shows_help_and_exits_zero() -> None:
++    result = invoke("skill")
++    assert result.exit_code == 0
++    assert "Usage:" in result.output
++
++
++def test_ai_prints_the_conventions_skill() -> None:
++    result = invoke("--ai")
++    assert result.exit_code == 0
++    assert result.stdout == skills.conventions().text + "\n"
