@@ -3,7 +3,7 @@
   "info": {
     "title": "dataio",
     "version": "<version>",
-    "summary": "Универсальное чтение и запись таблиц: строки, списки, DataFrame, txt, csv, tsv, xlsx, json, jsonl, parquet, Google Sheets, stdin"
+    "summary": "Read any table into a pandas DataFrame and write it anywhere: csv, tsv, xlsx, json, jsonl, parquet, Google Sheets, stdin."
   },
   "command": {
     "name": "dataio",
