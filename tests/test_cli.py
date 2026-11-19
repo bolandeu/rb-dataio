@@ -288,7 +288,7 @@ def test_skill_install_writes_to_project_dir(tmp_path: Path, monkeypatch: pytest
 @pytest.mark.parametrize(
     "args",
     [
-        ("--json", "init", "--rb-release-unknown-option"),
+        ("--json", "init", "--gate-unknown-option"),
         ("doctor", "--json", "--no-such-option"),
         ("--json", "no-such-command"),
         ("--json", "auth", "status", "--provider"),

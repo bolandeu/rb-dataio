@@ -108,6 +108,10 @@
           {
             "name": "x-rb-type",
             "value": "str"
+          },
+          {
+            "name": "x-rb-default",
+            "value": null
           }
         ]
       },
@@ -132,6 +136,10 @@
           {
             "name": "x-rb-type",
             "value": "boolean"
+          },
+          {
+            "name": "x-rb-default",
+            "value": null
           }
         ]
       },
@@ -142,6 +150,10 @@
           {
             "name": "x-rb-type",
             "value": "boolean"
+          },
+          {
+            "name": "x-rb-default",
+            "value": null
           }
         ]
       }
@@ -215,6 +227,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -234,6 +250,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -253,6 +273,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -272,6 +296,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -291,6 +319,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -327,6 +359,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -362,6 +398,10 @@
                 "value": "str"
               },
               {
+                "name": "x-rb-default",
+                "value": null
+              },
+              {
                 "name": "x-rb-multiple",
                 "value": true
               }
@@ -383,6 +423,10 @@
               {
                 "name": "x-rb-type",
                 "value": "int range"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -402,6 +446,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -461,6 +509,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -480,6 +532,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -499,6 +555,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -518,6 +578,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -537,6 +601,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -573,6 +641,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -620,6 +692,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -665,6 +741,10 @@
                 "value": "str"
               },
               {
+                "name": "x-rb-default",
+                "value": null
+              },
+              {
                 "name": "x-rb-multiple",
                 "value": true
               }
@@ -683,6 +763,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               },
               {
                 "name": "x-rb-multiple",
@@ -706,6 +790,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -759,6 +847,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -778,6 +870,10 @@
               {
                 "name": "x-rb-type",
                 "value": "int range"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -885,6 +981,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -900,6 +1000,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           }
@@ -925,6 +1029,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -944,6 +1052,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -963,6 +1075,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -982,6 +1098,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1001,6 +1121,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1037,6 +1161,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1072,6 +1200,10 @@
                 "value": "str"
               },
               {
+                "name": "x-rb-default",
+                "value": null
+              },
+              {
                 "name": "x-rb-multiple",
                 "value": true
               }
@@ -1093,6 +1225,10 @@
               {
                 "name": "x-rb-type",
                 "value": "int range"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1112,6 +1248,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1197,6 +1337,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           }
@@ -1221,6 +1365,10 @@
                 "value": "str"
               },
               {
+                "name": "x-rb-default",
+                "value": null
+              },
+              {
                 "name": "x-rb-multiple",
                 "value": true
               }
@@ -1239,6 +1387,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               },
               {
                 "name": "x-rb-multiple",
@@ -1291,6 +1443,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1310,6 +1466,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1329,6 +1489,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1348,6 +1512,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1367,6 +1535,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1403,6 +1575,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1422,6 +1598,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1441,6 +1621,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1460,6 +1644,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1479,6 +1667,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1498,6 +1690,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1534,6 +1730,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1581,6 +1781,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1626,6 +1830,10 @@
                 "value": "str"
               },
               {
+                "name": "x-rb-default",
+                "value": null
+              },
+              {
                 "name": "x-rb-multiple",
                 "value": true
               }
@@ -1644,6 +1852,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               },
               {
                 "name": "x-rb-multiple",
@@ -1755,6 +1967,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -1770,6 +1986,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           }
@@ -1917,6 +2137,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           }
@@ -1942,6 +2166,10 @@
               {
                 "name": "x-rb-type",
                 "value": "str"
+              },
+              {
+                "name": "x-rb-default",
+                "value": null
               }
             ]
           },
@@ -2137,6 +2365,10 @@
                   {
                     "name": "x-rb-type",
                     "value": "str"
+                  },
+                  {
+                    "name": "x-rb-default",
+                    "value": null
                   }
                 ]
               },
@@ -2213,6 +2445,10 @@
                   {
                     "name": "x-rb-type",
                     "value": "str"
+                  },
+                  {
+                    "name": "x-rb-default",
+                    "value": null
                   }
                 ]
               },
@@ -2403,6 +2639,10 @@
                   {
                     "name": "x-rb-type",
                     "value": "str"
+                  },
+                  {
+                    "name": "x-rb-default",
+                    "value": null
                   }
                 ]
               }
@@ -2454,6 +2694,10 @@
                   {
                     "name": "x-rb-type",
                     "value": "str"
+                  },
+                  {
+                    "name": "x-rb-default",
+                    "value": null
                   }
                 ]
               },
@@ -2469,6 +2713,10 @@
                   {
                     "name": "x-rb-type",
                     "value": "str"
+                  },
+                  {
+                    "name": "x-rb-default",
+                    "value": null
                   }
                 ]
               }
@@ -2537,6 +2785,10 @@
                   {
                     "name": "x-rb-type",
                     "value": "str"
+                  },
+                  {
+                    "name": "x-rb-default",
+                    "value": null
                   }
                 ]
               },
@@ -2665,13 +2917,6 @@
             "purpose": "credential",
             "provider": "google",
             "field": "private_key",
-            "required": false
-          },
-          {
-            "name": "GOOGLE_APPLICATION_CREDENTIALS",
-            "purpose": "credential",
-            "provider": "google",
-            "description": "Path of a key file (JSON) with the fields; looked up last.",
             "required": false
           }
         ]

@@ -153,7 +153,7 @@ The CLI follows the shared cli-builder standard: JSON envelope, exit codes, `--d
 ## Testing Decisions
 
 - A good test checks behaviour seen from outside: what `read()` returns, what file `write()` leaves, what report and error come back. It never asserts on private helpers, engine calls or internal structures, so engines can change without test changes.
-- TDD: the failing test is committed first; existing tests are never edited to fit the code; the gate is `rb-release check` (the command is in `AGENTS.md`).
+- TDD: the failing test is committed first; existing tests are never edited to fit the code; the gate is `gate check` (the command is in `AGENTS.md`).
 - **Seam 1, the public library API** (`read`, `write`, `convert`, `info`, `formats`, `backups`, `restore`): almost all behaviour — formats, detection, types, modes, errors with codes and actions, backups and restore, bulk. Real temporary files; fixtures for cp1251/`;` CSV, BOM, leading zeros, NA words, nested JSON, multi-sheet books, SQLite/DuckDB files.
 - **Seam 2, the CLI under `--json`** through `CliRunner`: envelope shape, exit codes, `--dry-run`, `--confirm` / `--non-interactive`, stdout data rules, and the parity test between function signatures and CLI flags. The template's existing help snapshots, `describe` snapshot and `auth status` shape tests stay and cover the new commands.
 - **Seam 3, consumer contracts** (`tests/contracts/`): offline and keyless; the existing tools-catalog contract is prior art; semkit adds its own.
@@ -177,4 +177,4 @@ The CLI follows the shared cli-builder standard: JSON envelope, exit codes, `--d
 
 - Under Antagor this spec becomes the epic cards: one card per plan epic, created when the Human says the plan is final (`antagor-epic`), then sliced (`antagor-slice`). The cards take their acceptance from the user stories of their epic.
 - Terms: `CONTEXT.md` (Адрес, Источник, Цель, Режим записи, Отчёт, Резервная копия). Decisions with reasons: `docs/adr/0001`–`0005`.
-- The project mode is switched to `fast` by the Human: `antagor -C /Users/bolandau/Work/tools/dataio mode set fast`.
+- The project mode is switched to `fast` by the Human: `antagor -C /Users/bolandau/Work/tools/rb-dataio mode set fast`.

@@ -19,7 +19,7 @@ Run the interview below with the Human, in Russian, one block at a time. Each qu
 
 ## Context (read only what you need)
 - Why the tool exists and the full discussion summary: `/Users/bolandau/Work/_sandbox/semtools/docs/interviews.md` (top part).
-- Sibling tool: `~/Work/tools/semkit` (phrase processing, will depend on dataio).
+- Sibling tool: `~/Work/tools/rb-semkit` (phrase processing, will depend on dataio).
 
 ## Сессия 1. dataio
 

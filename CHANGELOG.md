@@ -58,7 +58,7 @@ Time: 1.2h since the epic was approved
 
 ### Outside epics
 
-- CLI Standard v1.25.0: a usage error under --json prints the INVALID_ARGUMENTS envelope; the gate is rb-release check (DATAIO-029)
+- CLI Standard v1.25.0: a usage error under --json prints the INVALID_ARGUMENTS envelope; the gate is gate check (DATAIO-029)
 
 ## v0.1.26 — 2026-10-18
 
