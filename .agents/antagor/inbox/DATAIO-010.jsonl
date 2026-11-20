@@ -1,1 +1,0 @@
-{"n": 1, "ts": "2026-10-16T13:22:28+00:00", "type": "finding", "text": "tests/test_scripts.py::test_antagor_project_config fails on main: config['publish'] now has 'regenerate': {'uv.lock': 'uv lock'} (commit 409d392), the test does not expect it.", "status": "resolved", "note": "My config change (409d392); the test is fixed in a separate chore task of E-002."}

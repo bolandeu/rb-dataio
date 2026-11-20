@@ -1,1 +1,0 @@
-{"n": 1, "ts": "2026-10-16T13:52:32+00:00", "type": "finding", "text": "DATAIO-011: mode='error' checks only that the file exists (pipeline.write_frame), so for a container or a base a write of a NEW sheet/table into an existing file is TARGET_EXISTS. For bases (DATAIO-012/013) mode=error should likely mean 'the table exists'. Left as is: outside this task.", "status": "open"}

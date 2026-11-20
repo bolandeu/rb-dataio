@@ -1,1 +1,0 @@
-{"n": 1, "ts": "2026-10-17T17:52:56+00:00", "type": "finding", "text": "tests/test_scripts.py::test_antagor_project_config failed on main: an antagor upgrade (5603ce8) added scratch/ to .agents/antagor/.gitignore, and the test expected only state/ and receipts/. DATAIO-025 updated the assertion to include scratch/.", "status": "open"}
