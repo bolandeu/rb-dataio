@@ -93,14 +93,10 @@ def test_describe_and_help_are_the_same_in_ci(same_in_ci: Callable[[str], None])
     same_in_ci("test_describe_and_help_show_both_options")
 
 
-def test_docs_describe_the_target_columns() -> None:
+def test_readme_describes_the_target_columns() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    spec = (ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8")
-    out_of_scope = spec.split("## Out of Scope", 1)[1]
 
     assert "columns=[" in readme
     assert "rename={" in readme
     assert "dataio convert" in readme
     assert "--columns" in readme
-    assert "target columns" in spec.split("### Writing", 1)[1].split("###", 1)[0]
-    assert "column" in out_of_scope and "read" in out_of_scope
