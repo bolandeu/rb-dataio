@@ -2148,7 +2148,7 @@
       },
       {
         "name": "init",
-        "description": "Initialize a project: creates .rb_dataio/config.toml in the target directory.\n\nExample: dataio init --name demo",
+        "description": "Initialize a project: creates .dataio/config.toml in the target directory.\n\nExample: dataio init --name demo",
         "options": [
           {
             "name": "--name",
