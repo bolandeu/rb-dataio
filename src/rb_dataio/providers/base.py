@@ -10,32 +10,13 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
-from dataclasses import dataclass
-from datetime import datetime
-from typing import ClassVar, Literal
+from typing import ClassVar
+
+# The shape of `auth status` is the family's (rb-credentials, ADR 0017): re-exported here under the names a
+# provider and the `cli-generator` template already use.
+from rb_credentials.status import Health, HealthStatus, Quota  # noqa: F401 — re-exported for providers
 
 from ..core.version import module_exists
-
-# What a provider's own health check can conclude. `missing` and `unchecked`
-# are decided by `auth status` before a check ever runs.
-HealthStatus = Literal["ok", "invalid", "expired", "quota_exhausted", "unreachable"]
-
-
-@dataclass(frozen=True)
-class Quota:
-    remaining: int | None = None
-    limit: int | None = None
-    unit: str = "requests"
-
-
-@dataclass(frozen=True)
-class Health:
-    """Result of `Provider.health_check()`. Never put a credential value in `message`."""
-
-    status: HealthStatus = "ok"
-    expires_at: datetime | None = None
-    quota: Quota | None = None
-    message: str | None = None
 
 
 class Provider:

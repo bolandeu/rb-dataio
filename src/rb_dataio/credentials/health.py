@@ -11,6 +11,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from rb_credentials.status import entry as _record
+from rb_credentials.status import is_problem, iso, scrub
+from rb_credentials.status import report as _envelope
 from rich.markup import escape
 
 from .. import output, providers
@@ -20,29 +23,12 @@ from ..providers import Health, Provider
 from . import manager
 
 CHECK_TIMEOUT = 10.0  # seconds per provider — enforced by the provider's own client timeout
-# Statuses that are a problem even for an optional provider: a credential is
-# there but wrong. Anything else only counts against required providers.
-ALWAYS_PROBLEMS = frozenset({"invalid", "expired"})
-HEALTHY = frozenset({"ok", "unchecked"})
 _SOURCE_ORDER = ("env", "keychain", "file")  # what wins when the fields come from several places
 _PLACE_LABEL = {"env": "", "keychain": "keychain service ", "file": "key file "}
 
 
 def _now() -> datetime:
     return datetime.now(UTC).replace(microsecond=0)
-
-
-def _iso(moment: datetime | None) -> str | None:
-    return moment.astimezone(UTC).isoformat().replace("+00:00", "Z") if moment else None
-
-
-def _scrub(message: str | None, secrets: list[str]) -> str | None:
-    if message is None:
-        return None
-    for secret in secrets:
-        if secret:
-            message = message.replace(secret, "***")
-    return message
 
 
 def _run_check(provider_cls: type[Provider], target: str | None) -> Health:
@@ -83,17 +69,12 @@ def _entry(provider_cls: type[Provider], check: bool, target: str | None = None)
     key_file_ref = f" or the key file that {provider_cls.key_file_env} names" if provider_cls.key_file_env else ""
     missing = [field for field in fields if field not in located]
 
-    entry: dict = {
-        "provider": name,
-        "required": provider_cls.required,
-        "fields": fields,
-        "source": "missing",
-        "source_ref": f"{', '.join(env_refs)} or {keychain_ref}{key_file_ref}",
-        "status": "missing",
-        "expires_at": None,
-        "quota": None,
-        "message": None,
-    }
+    entry = _record(
+        name,
+        required=provider_cls.required,
+        fields=fields,
+        source_ref=f"{', '.join(env_refs)} or {keychain_ref}{key_file_ref}",
+    )
     if missing:
         entry["message"] = f"not set: {', '.join(missing)}"
         return entry
@@ -117,17 +98,11 @@ def _entry(provider_cls: type[Provider], check: bool, target: str | None = None)
         status = "expired"
     entry.update(
         status=status,
-        expires_at=_iso(health.expires_at),
+        expires_at=iso(health.expires_at),
         quota=vars(health.quota) if health.quota else None,
-        message=_scrub(health.message, secrets),
+        message=scrub(health.message, secrets),
     )
     return entry
-
-
-def is_problem(entry: dict) -> bool:
-    if entry["status"] in ALWAYS_PROBLEMS:
-        return True
-    return entry["required"] and entry["status"] not in HEALTHY
 
 
 def doctor_check(tool: str, version: str) -> dict:
@@ -170,12 +145,8 @@ def select(known: list[type[Provider]], only: str | None) -> list[type[Provider]
 
 def report(tool: str, version: str, selected: list[type[Provider]], *, check: bool, only: str | None = None) -> dict:
     """The report for `selected` providers (only those that declare credential fields)."""
-    return {
-        "tool": tool,
-        "version": version,
-        "checked_at": _iso(_now()),
-        "credentials": [entry for cls in selected if cls.credential_fields for entry in _entries(cls, check, only)],
-    }
+    records = [entry for cls in selected if cls.credential_fields for entry in _entries(cls, check, only)]
+    return _envelope(tool, version, records)
 
 
 def status(tool: str, version: str, *, check: bool, only: str | None) -> tuple[dict, CliError | None]:
